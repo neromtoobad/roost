@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Pet } from '@/components/Pet';
 import { Ring } from '@/components/Ring';
 import { Nav } from '@/components/Nav';
+import { ConnectPill, useWallet } from '@/components/Wallet';
 import { Confetti } from '@/components/Confetti';
 import { Report, Ask } from '@/components/Report';
 import { Sparkline } from '@/components/Sparkline';
@@ -19,6 +20,7 @@ import { answerProposal, heldQty, isPaper, mergeEntries, pnl, readPet, savePet, 
 import type { Bar } from '@/lib/strategy';
 
 type Price = { price: number | null; pct24h: number; source: string };
+type Fill = { perToken: number | null; spreadPct: number | null; vendor: string | null; error?: string };
 
 export default function Home() {
   const router = useRouter();
@@ -32,6 +34,8 @@ export default function Home() {
   const [report, setReport] = useState<{ fresh: Entry[]; awayMs: number } | null>(null);
   const [duel, setDuel] = useState<Duel | null>(null);
   const remoteId = useLocal('roost.remoteId');
+  const { address, isConnected, onBsc } = useWallet();
+  const [fill, setFill] = useState<Fill | null>(null);
 
   const species = pet?.species ?? 'nova';
   const celebrate = Boolean(q.get('hatched') || q.get('fed') || q.get('public'));
@@ -43,6 +47,15 @@ export default function Home() {
     const t = setTimeout(() => { window.history.replaceState(null, '', '/'); window.dispatchEvent(new PopStateEvent('popstate')); }, 1400);
     return () => clearTimeout(t);
   }, [celebrate]);
+  // The traded leg only becomes honest once there is a taker to price against.
+  useEffect(() => {
+    if (!isConnected || !onBsc || !address) { setFill(null); return; }
+    let alive = true;
+    fetch(`/api/fill/${species}?wallet=${address}`)
+      .then((r) => r.json()).then((f: Fill) => { if (alive) setFill(f); }).catch(() => {});
+    return () => { alive = false; };
+  }, [isConnected, onBsc, address, species]);
+
   useEffect(() => {
     let alive = true;
     fetch('/api/holidays').then((r) => r.json()).then((j: { dates: string[] }) => { if (alive) setHolidays(new Set(j.dates)); }).catch(() => {});
@@ -113,12 +126,22 @@ export default function Home() {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-[430px] flex-col px-4 pb-24 pt-[max(12px,env(safe-area-inset-top))]">
-      <div className="flex items-center justify-between">
-        <span className="rounded-full border px-3 py-1.5 text-[12px] num" style={{ borderColor: night ? 'var(--accent)' : 'var(--ink)', color: night ? 'var(--accent)' : 'var(--ink)', boxShadow: night ? 'var(--glow)' : 'none' }}>
+      <div className="flex items-center justify-between gap-2">
+        <span className="truncate rounded-full border px-3 py-1.5 text-[12px] num" style={{ borderColor: night ? 'var(--accent)' : 'var(--ink)', color: night ? 'var(--accent)' : 'var(--ink)', boxShadow: night ? 'var(--glow)' : 'none' }}>
           {night ? '☾' : '☀'} {sessionLabel[session]}
         </span>
-        <span className="text-[13px] font-semibold" style={{ color: 'var(--muted)' }}>{pet?.name ?? sp.name} · day {pet?.streak ?? 1}</span>
+        <div className="shrink-0"><ConnectPill /></div>
       </div>
+      <p className="mt-1 text-right text-[13px] font-semibold" style={{ color: 'var(--muted)' }}>{pet?.name ?? sp.name} · day {pet?.streak ?? 1}</p>
+      {fill?.spreadPct != null && (
+        <p className="mt-0.5 text-right text-[11.5px] num" style={{ color: 'var(--muted)' }}>
+          {sp.ticker} on-chain{' '}
+          <b style={{ color: fill.spreadPct >= 0 ? 'var(--up)' : 'var(--down)' }}>
+            {fill.spreadPct >= 0 ? '+' : ''}{fill.spreadPct.toFixed(3)}%
+          </b>{' '}
+          vs reference{fill.vendor ? ` · ${fill.vendor}` : ''}
+        </p>
+      )}
 
       <div className="relative mt-5 flex flex-col items-center">
         <div className="card relative mb-2 max-w-[264px] px-4 py-2.5 text-center text-[15px] font-semibold" style={{ fontFamily: 'var(--font-display)' }}>

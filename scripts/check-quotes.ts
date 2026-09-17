@@ -19,7 +19,7 @@ async function main() {
     if (m && !process.env[m[1]]) process.env[m[1]] = m[2].trim();
   }
 
-  const { quotesFor, pricesFor } = await import('../src/lib/quote');
+  const { quotesFor, pricesFor, fillFor } = await import('../src/lib/quote');
   const { fetchBars } = await import('../src/lib/bars');
   const { ALL_SPECIES } = await import('../src/lib/pets');
 
@@ -53,6 +53,26 @@ async function main() {
       `  ${id.padEnd(8)} ${String(b.bars.length).padStart(3)} bars  source=${b.source === 'dex' ? G(b.source) : R(b.source)}` +
       (last ? D(`  last close ${last.close.toFixed(2)} @ ${new Date(last.t).toISOString()}`) : ''),
     );
+  }
+
+  // The executable leg, which needs a taker. Pass one: npm run check:quotes -- 0xYourAddress
+  const wallet = process.argv[2];
+  if (/^0x[a-fA-F0-9]{40}$/.test(wallet ?? '')) {
+    console.log(`\n\x1b[1mExecutable fills\x1b[0m ${D(`taker ${wallet}`)}\n`);
+    console.log('  species    plat     fill        reference   spread       impact   vendor');
+    for (const sp of ALL_SPECIES) {
+      const f = await fillFor(sp.id, wallet as `0x${string}`);
+      const n = (x: number | null, d = 2) => (x === null ? '—' : x.toFixed(d));
+      const spread = f.spreadPct === null ? '—' : `${f.spreadPct >= 0 ? '+' : ''}${f.spreadPct.toFixed(3)}%`;
+      console.log(
+        `  ${sp.id.padEnd(10)} ${sp.platform.padEnd(8)} ${n(f.perToken).padEnd(11)} ` +
+        `${n(quotes[sp.id].reference).padEnd(11)} ${spread.padEnd(12)} ${n(f.priceImpactPct, 4).padEnd(8)} ` +
+        `${f.vendor ?? ''}${f.error ? R(f.error) : ''}`,
+      );
+    }
+  } else {
+    console.log(D('\nno taker address given — skipping executable fills.'));
+    console.log(D('  npm run check:quotes -- 0xYourAddress'));
   }
 
   const open = ALL_SPECIES.filter((s) => quotes[s.id].marketStatus === 'regular').length;

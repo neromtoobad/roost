@@ -13,7 +13,7 @@
 // the spread between those two is real. That spread is the Night Owl mood: the NYSE is shut,
 // the reference has not moved since Friday, and the token is still trading.
 
-import { SPECIES, CHAIN_ID, speciesByTicker, type Species } from './pets';
+import { SPECIES, CHAIN_ID, USDT, speciesByTicker, type Species } from './pets';
 import { request } from './binance';
 
 const TTL = 60_000;
@@ -156,4 +156,71 @@ export async function pricesFor(tickers: string[]): Promise<Record<string, numbe
 
 export async function priceFor(ticker: string): Promise<number | null> {
   return (await pricesFor([ticker]))[ticker] ?? null;
+}
+
+// ── the executable leg ─────────────────────────────────────────────────────────────────
+//
+// `price-info` is an oracle read, and for several tokens it returns the same number as
+// referencePrice — so differencing them shows a flat 0.000% that means "same source", not
+// "efficient market". A real aggregator quote is the honest traded leg: it is what a
+// Fledgling would actually be filled at, impact and fees included.
+//
+// It needs a wallet address. bStock will quote without one, Ondo refuses outright — the
+// RFQ desk prices against the taker. That is why this takes a connected address.
+
+const USDT_DECIMALS = 18; // USDT on BSC is 18, not the 6 it uses on Ethereum.
+
+export type Fill = {
+  ticker: string;
+  /** USDT actually received for one whole token, per the aggregator. */
+  perToken: number | null;
+  priceImpactPct: number | null;
+  vendor: string | null;
+  /** Fill vs the underlying reference. The gap, measured against something independent. */
+  spreadPct: number | null;
+  error?: string;
+};
+
+type QuoteRow = {
+  toTokenAmount: string;
+  vendorName?: string;
+  priceImpactPercent?: string;
+  executionMode?: string;
+};
+
+/** What one token would really fetch right now, for a given taker. */
+export async function fillFor(id: Species['id'], wallet: `0x${string}`): Promise<Fill> {
+  const sp = SPECIES[id];
+  if (!sp) return { ticker: '?', perToken: null, priceImpactPct: null, vendor: null, spreadPct: null, error: 'unknown species' };
+
+  const base: Fill = { ticker: sp.ticker, perToken: null, priceImpactPct: null, vendor: null, spreadPct: null };
+  try {
+    const r = await request('GET', '/api/v1/dex/aggregator/quote', {
+      params: {
+        binanceChainId: CHAIN_ID,
+        fromTokenAddress: sp.address,
+        toTokenAddress: USDT,
+        amount: `1${'0'.repeat(sp.decimals)}`, // exactly one whole token, in base units
+        userWalletAddress: wallet,
+      },
+    });
+    const rows = (r.json as { data?: QuoteRow[] } | null)?.data;
+    const row = Array.isArray(rows) ? rows[0] : undefined;
+    if (!row) {
+      const msg = (r.json as { msg?: string } | null)?.msg ?? `no quote (HTTP ${r.status})`;
+      return { ...base, error: msg };
+    }
+
+    const perToken = Number(row.toTokenAmount) / 10 ** USDT_DECIMALS;
+    const { reference } = await quoteFor(id);
+    return {
+      ...base,
+      perToken: Number.isFinite(perToken) && perToken > 0 ? perToken : null,
+      priceImpactPct: row.priceImpactPercent !== undefined ? Number(row.priceImpactPercent) : null,
+      vendor: row.vendorName ?? null,
+      spreadPct: reference && perToken > 0 ? (perToken / reference - 1) * 100 : null,
+    };
+  } catch (e) {
+    return { ...base, error: (e as Error).message };
+  }
 }
