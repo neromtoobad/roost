@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Confetti } from '@/components/Confetti';
 import { SPECIES, petImage, type Species } from '@/lib/pets';
 import { PERSONALITIES, adoptPetRemote, type Personality } from '@/lib/store';
-import { useWallet } from '@/components/Wallet';
+import { ConnectPill, useWallet } from '@/components/Wallet';
 import { syncPet } from '@/lib/sync';
 
 // Finch's rule: egg → hatch → name → personality, inside the first minute, before any feature.
@@ -37,11 +37,19 @@ export default function Adopt() {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-[430px] flex-col px-4 pb-10 pt-[max(12px,env(safe-area-inset-top))]">
-      <div className="flex items-center justify-center">
+      <div className="flex items-center justify-between gap-2">
         <span className="rounded-full border px-3 py-1.5 text-[12px] num" style={{ borderColor: 'var(--ink)' }}>
           {step === 'egg' ? 'Adopt' : step === 'hatch' ? 'Hatching' : 'Name & personality'}
         </span>
+        {/* A Fledgling is bound to the wallet connected at adoption. Without one it stays paper,
+            so the pill has to be reachable here — not only after the pet exists. */}
+        <ConnectPill />
       </div>
+      {!address && step === 'name' && (
+        <p className="mt-2 text-center text-[11.5px]" style={{ color: 'var(--muted)' }}>
+          No wallet connected — {name || 'your Fledgling'} will trade on paper.
+        </p>
+      )}
 
       <AnimatePresence mode="wait">
         {step === 'egg' && (
