@@ -1,0 +1,5 @@
+{
+  "name": "roostsignal-workspace",
+  "private": true,
+  "packageManager": "pnpm@10.24.0"
+}
