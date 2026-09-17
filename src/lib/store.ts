@@ -90,25 +90,26 @@ export function feedPet(p: PetState, usd: number): PetState {
   return next;
 }
 
-// Clawpump bridge. The API answers { mode: 'local' } without a key, so the app is identical
-// offline except that execution is paper.
-export async function adoptPetRemote(init: { species: Species['id']; name: string; personality: Personality }): Promise<PetState> {
+// Adoption is local. There is no server-side agent to create any more: execution runs through
+// the owner's own Binance Agentic Wallet, so the only thing that makes a pet live is a bound
+// wallet address. See lib/agent.ts for why Roost deliberately holds no keys.
+export async function adoptPetRemote(
+  init: { species: Species['id']; name: string; personality: Personality },
+  wallet?: string,
+): Promise<PetState> {
   const p = adoptPet(init);
-  try {
-    const r = await fetch('/api/agent', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'adopt', ...init }) });
-    const j = (await r.json()) as { mode: string; agentId?: string; wallet?: string };
-    if (j.mode === 'clawpump' && j.agentId) { const next = { ...p, agentId: j.agentId, wallet: j.wallet }; savePet(next); return next; }
-  } catch {}
+  if (wallet && /^0x[a-fA-F0-9]{40}$/.test(wallet)) {
+    const next = { ...p, wallet };
+    savePet(next);
+    return next;
+  }
   return p;
 }
 
-export async function feedPetRemote(p: PetState, usd: number, marketOpen: boolean): Promise<PetState> {
-  const next = feedPet(p, usd);
-  if (!p.agentId) return next;
-  try {
-    await fetch('/api/agent', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'feed', agentId: p.agentId, usd, species: p.species, marketOpen }) });
-  } catch {}
-  return next;
+export async function feedPetRemote(p: PetState, usd: number, _marketOpen: boolean): Promise<PetState> {
+  // Feeding credits the pet's cash. What it then does with that cash is its own decision, and
+  // executing it is the agent's job through `baw` — ask POST /api/agent what it wants to do.
+  return feedPet(p, usd);
 }
 
 export function saveLaunch(p: PetState, launch: Launch) {

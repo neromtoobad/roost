@@ -1,35 +1,97 @@
 import { NextResponse } from 'next/server';
 import { SPECIES, type Species } from '@/lib/pets';
-import type { Personality } from '@/lib/store';
-import { chat, clawpumpEnabled, createAgent } from '@/lib/clawpump';
+import type { Personality } from '@/lib/pet-math';
+import { decide, type StrategyState } from '@/lib/strategy';
+import { fetchBars } from '@/lib/bars';
+import { quoteFor, fillFor } from '@/lib/quote';
+import { brief, toInstruction } from '@/lib/agent';
 
-// The brain behind a pet. With CLAWPUMP_API_KEY set, adopt creates a real agent (own wallet) and feed asks it to act;
-// without it the client keeps its local template voice. Same shapes either way, so the switch is invisible to the UI.
+// What does this Fledgling want to do right now, and what exactly would run it?
+//
+// This is the endpoint the Roost skill calls before touching the user's Agentic Wallet. Roost
+// decides; `baw` executes; nothing here holds a key or moves a coin. See lib/agent.ts.
 
-type Body =
-  | { action: 'adopt'; name: string; personality: Personality; species: Species['id'] }
-  | { action: 'feed'; agentId: string; usd: number; species: Species['id']; marketOpen: boolean };
+type Body = {
+  action?: 'intent';
+  species: Species['id'];
+  personality: Personality;
+  cash?: number;
+  heldQty?: number;
+  lentQty?: number;
+  lastBuyAt?: number;
+  totalFed?: number;
+  /** An unanswered question outranks everything: the pet waits rather than acting. */
+  awaitingAnswer?: boolean;
+  /** Needed to quote Ondo names at all, and to price bStock against a real taker. */
+  wallet?: string;
+};
 
 export async function POST(req: Request) {
-  const body = (await req.json()) as Body;
-  if (!clawpumpEnabled()) return NextResponse.json({ mode: 'local' });
+  let body: Body;
+  try { body = (await req.json()) as Body; }
+  catch { return NextResponse.json({ error: 'expected a JSON body' }, { status: 400 }); }
 
-  try {
-    if (body.action === 'adopt') {
-      const sp = SPECIES[body.species];
-      const a = await createAgent(body.name, body.personality, sp.ticker);
-      return NextResponse.json({ mode: 'clawpump', agentId: a.id, wallet: a.walletAddress });
-    }
-    if (body.action === 'feed') {
-      const sp = SPECIES[body.species];
-      const line = await chat(
-        body.agentId,
-        `You were just fed $${body.usd} USDT. ${body.marketOpen ? 'The market is open: buy' : 'The market is closed: plan to buy at the next open'} $${body.usd} of ${sp.ticker} (${sp.tokenSymbol} at ${sp.address} on BSC) with the USDT in your wallet, then tell your owner what you did in your voice.`,
-      );
-      return NextResponse.json({ mode: 'clawpump', line });
-    }
-  } catch (e) {
-    return NextResponse.json({ mode: 'local', error: (e as Error).message }, { status: 200 });
+  const sp = SPECIES[body.species];
+  if (!sp) return NextResponse.json({ error: 'unknown species' }, { status: 400 });
+  if (!['diamond', 'degen', 'boomer', 'quant'].includes(body.personality)) {
+    return NextResponse.json({ error: 'unknown personality' }, { status: 400 });
   }
-  return NextResponse.json({ error: 'bad action' }, { status: 400 });
+
+  const fledgling = brief(body.species, body.personality);
+
+  if (body.awaitingAnswer) {
+    return NextResponse.json({
+      fledgling,
+      instruction: {
+        kind: 'hold',
+        summary: 'Waiting on its owner.',
+        reason: 'It asked a question and has not been answered. It does not act until it is.',
+      },
+    });
+  }
+
+  const { bars, source } = await fetchBars(body.species, 7);
+  if (!bars.length) {
+    return NextResponse.json({
+      fledgling,
+      instruction: { kind: 'blocked', summary: 'No price history.', reason: 'The tape is empty.', why: 'No candles returned for this token, so no rule can fire.' },
+    });
+  }
+
+  const state: StrategyState = {
+    cash: body.cash ?? 0,
+    heldQty: body.heldQty ?? 0,
+    lentQty: body.lentQty ?? 0,
+    lastBuyAt: body.lastBuyAt ?? 0,
+    totalFed: body.totalFed ?? 0,
+  };
+
+  const i = bars.length - 1;
+  const instruction = toInstruction(body.species, decide(body.personality, bars, i, state));
+
+  // Price it so the agent can tell the owner what the money actually buys, before it runs.
+  const q = await quoteFor(body.species);
+  const fill = /^0x[a-fA-F0-9]{40}$/.test(body.wallet ?? '')
+    ? await fillFor(body.species, body.wallet as `0x${string}`)
+    : null;
+
+  const perToken = fill?.perToken ?? q.price;
+  const expectedQty = instruction.kind === 'swap' && perToken ? instruction.usd / perToken : null;
+
+  return NextResponse.json({
+    fledgling,
+    instruction,
+    market: {
+      perToken,
+      reference: q.reference,
+      spreadPct: fill?.spreadPct ?? q.spreadPct,
+      pct24h: q.pct24h,
+      marketStatus: q.marketStatus,
+      priceSource: fill ? 'aggregator-quote' : q.source,
+      barsSource: source,
+      // Quoting an Ondo name without a wallet is refused by the RFQ desk, not by us.
+      quoteDegraded: fill === null && sp.platform === 'ondo',
+    },
+    expectedQty,
+  });
 }

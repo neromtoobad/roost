@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Confetti } from '@/components/Confetti';
 import { SPECIES, petImage, type Species } from '@/lib/pets';
 import { PERSONALITIES, adoptPetRemote, type Personality } from '@/lib/store';
+import { useWallet } from '@/components/Wallet';
 import { syncPet } from '@/lib/sync';
 
 // Finch's rule: egg → hatch → name → personality, inside the first minute, before any feature.
@@ -18,6 +19,7 @@ export default function Adopt() {
   const [cracked, setCracked] = useState(false);
   const [name, setName] = useState('');
   const [personality, setPersonality] = useState<Personality>('degen');
+  const { address } = useWallet();
   const sp = pick ? SPECIES[pick] : null;
 
   const hatch = () => {
@@ -29,7 +31,8 @@ export default function Adopt() {
   const adopt = () => {
     if (!pick || !name.trim()) return;
     router.push('/?hatched=1'); // optimistic — the local pet exists immediately; the agent attaches when the API answers
-    void adoptPetRemote({ species: pick, name: name.trim().slice(0, 16), personality }).then(syncPet);
+    // A bound wallet is what makes a Fledgling live rather than paper.
+    void adoptPetRemote({ species: pick, name: name.trim().slice(0, 16), personality }, address).then(syncPet);
   };
 
   return (

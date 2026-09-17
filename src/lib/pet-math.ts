@@ -27,13 +27,13 @@ export type PetState = {
   lastTickAt: number;  // engine watermark
   diary: Entry[];
   proposal?: Proposal | null;
-  agentId?: string;    // Clawpump agent — its presence means execution is live, not paper
-  wallet?: string;
+  wallet?: string;     // the bound Agentic Wallet address — its presence means execution is live
+  agentId?: string;    // Agent Studio agent id, once the pet runs autonomously
   launch?: Launch;
 };
 
-/** No agent behind it means the trades are simulated, and every surface says so. */
-export const isPaper = (p: PetState) => !p.agentId;
+/** No wallet bound means the trades are simulated, and every surface says so. */
+export const isPaper = (p: PetState) => !p.wallet;
 
 export const heldQty = (p: PetState) => p.lots.reduce((s, l) => s + l.qty, 0) + p.yieldQty;
 export const costBasis = (p: PetState) => p.lots.reduce((s, l) => s + l.qty * l.price, 0);
