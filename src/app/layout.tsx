@@ -3,7 +3,6 @@ import { Fredoka, Nunito, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import './tokens.css';
 import { isNight, nyseSession } from '@/lib/session';
-import { Wallet } from '@/components/Wallet';
 
 const display = Fredoka({ subsets: ['latin'], weight: ['500', '600', '700'], variable: '--font-display' });
 const body = Nunito({ subsets: ['latin'], weight: ['500', '600', '700'], variable: '--font-body' });
@@ -19,7 +18,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const session = isNight(nyseSession()) ? 'night' : 'day';
   return (
     <html lang="en" data-session={session} className={`${display.variable} ${body.variable} ${mono.variable}`}>
-      <body className="min-h-dvh antialiased"><Wallet>{children}</Wallet></body>
+      <body className="min-h-dvh antialiased">{children}</body>
     </html>
   );
 }

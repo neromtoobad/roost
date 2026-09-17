@@ -10,14 +10,6 @@
     "worker": "tsx scripts/worker.ts"
   },
   "dependencies": {
-    "@meteora-ag/dynamic-bonding-curve-sdk": "^1.5.12",
-    "@solana/spl-token": "^0.4.15",
-    "@solana/wallet-adapter-base": "^0.9.28",
-    "@solana/wallet-adapter-react": "^0.15.40",
-    "@solana/wallet-adapter-react-ui": "^0.9.40",
-    "@solana/wallet-adapter-wallets": "^0.19.39",
-    "@solana/web3.js": "^1.99.0",
-    "bn.js": "^5.2.5",
     "framer-motion": "^13.4.0",
     "next": "16.3.5",
     "pg": "^8.23.0",
@@ -28,7 +20,6 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
-    "@types/bn.js": "^5.2.0",
     "@types/node": "^20",
     "@types/pg": "^8.23.1",
     "@types/react": "^19",
