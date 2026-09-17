@@ -24,7 +24,7 @@ export async function POST(req: Request) {
       const sp = SPECIES[body.species];
       const line = await chat(
         body.agentId,
-        `You were just fed $${body.usd} USDC. ${body.marketOpen ? 'The market is open: buy' : 'The market is closed: plan to buy at the next open'} $${body.usd} of ${sp.ticker} (mint ${sp.holdMint}) with the USDC in your wallet, then tell your owner what you did in your voice.`,
+        `You were just fed $${body.usd} USDT. ${body.marketOpen ? 'The market is open: buy' : 'The market is closed: plan to buy at the next open'} $${body.usd} of ${sp.ticker} (${sp.tokenSymbol} at ${sp.address} on BSC) with the USDT in your wallet, then tell your owner what you did in your voice.`,
       );
       return NextResponse.json({ mode: 'clawpump', line });
     }

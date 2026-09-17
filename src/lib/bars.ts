@@ -1,51 +1,59 @@
-import { SPECIES, type Species } from './pets';
+import { SPECIES, CHAIN_ID, type Species } from './pets';
+import { request } from './binance';
+import { quoteFor } from './quote';
 import type { Bar } from './strategy';
 
-// Hourly bars for a species' home stock, shared by the history route and the hourly worker so the
-// pet reacts to the same tape whether or not anyone has the app open.
+// Hourly bars for a Fledgling's home stock, shared by the history route and the hourly worker so
+// the pet reacts to the same tape whether or not anyone has the app open.
 //
-// Backpack's external source is the real exchange tape and needs no auth. Pre-IPO names have no
-// exchange, so they fall back to a flat series off the live on-chain price — the engine still runs,
-// it just has nothing to react to.
+// These are on-chain candles, not the exchange tape — which is the point. They keep printing
+// through the weekend, when the underlying has been shut since Friday.
+//
+// Two shapes worth knowing, both of which cost an afternoon:
+//   · `bar` is case-sensitive and lowercase. `1H` is rejected; `1h` is right.
+//   · A candle is [open, high, low, close, volume, timestamp, trades] — the timestamp is at
+//     index 5, not index 0 the way Binance spot klines put it.
 
-export type BarSet = { bars: Bar[]; source: 'nasdaq' | 'onchain-flat' | 'none' };
+export type BarSet = { bars: Bar[]; source: 'dex' | 'flat' | 'none' };
+
+type Candle = [number, number, number, number, number, number, number];
 
 export async function fetchBars(id: Species['id'], days = 7): Promise<BarSet> {
   const sp = SPECIES[id];
-  const startTime = Math.floor(Date.now() / 1000) - days * 86400;
-
-  if (!sp.preIpo) {
-    try {
-      const r = await fetch(
-        `https://api.backpack.exchange/api/v1/klines?symbol=${sp.ticker}.US_USDC&interval=1h&startTime=${startTime}&source=External`,
-        { next: { revalidate: 300 } },
-      );
-      const j = await r.json();
-      if (Array.isArray(j) && j.length) {
-        const bars = j
-          .filter((b: { close: string | null }) => b.close)
-          .map((b: { start: string; open: string; high: string; low: string; close: string }) => ({
-            t: Date.parse(`${b.start.replace(' ', 'T')}Z`),
-            open: Number(b.open), high: Number(b.high), low: Number(b.low), close: Number(b.close),
-          }));
-        if (bars.length) return { bars, source: 'nasdaq' };
-      }
-    } catch {}
-  }
+  if (!sp) return { bars: [], source: 'none' };
 
   try {
-    const r = await fetch(`https://lite-api.jup.ag/price/v3?ids=${sp.holdMint}`, { next: { revalidate: 300 } });
-    const j = await r.json();
-    const px = Number(j?.[sp.holdMint]?.usdPrice);
-    if (px) {
+    const r = await request('GET', '/api/v1/dex/market/candles', {
+      params: {
+        binanceChainId: CHAIN_ID,
+        tokenContractAddress: sp.address,
+        bar: '1h',
+        limit: Math.min(days * 24, 500),
+      },
+    });
+    const data = (r.json as { data?: Candle[] } | null)?.data;
+    if (Array.isArray(data) && data.length) {
+      const bars = data
+        .map((c) => ({ t: Number(c[5]), open: Number(c[0]), high: Number(c[1]), low: Number(c[2]), close: Number(c[3]) }))
+        .filter((b) => Number.isFinite(b.t) && Number.isFinite(b.close) && b.close > 0)
+        .sort((a, b) => a.t - b.t);
+      if (bars.length) return { bars, source: 'dex' };
+    }
+  } catch { /* fall through to the flat series */ }
+
+  // No candles — a thin book, or a listing too new to have any. The engine still runs; it just
+  // has nothing to react to, which is honest rather than invented movement.
+  try {
+    const q = await quoteFor(id);
+    if (q.price) {
       const now = Date.now();
       const bars = Array.from({ length: days * 24 }, (_, k) => {
         const t = now - (days * 24 - 1 - k) * 3600e3;
-        return { t, open: px, high: px, low: px, close: px };
+        return { t, open: q.price!, high: q.price!, low: q.price!, close: q.price! };
       });
-      return { bars, source: 'onchain-flat' };
+      return { bars, source: 'flat' };
     }
-  } catch {}
+  } catch { /* nothing to offer */ }
 
   return { bars: [], source: 'none' };
 }

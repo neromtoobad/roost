@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "worker": "tsx scripts/worker.ts",
-    "check:api": "tsx scripts/check-api.ts"
+    "check:api": "tsx scripts/check-api.ts",
+    "check:quotes": "tsx scripts/check-quotes.ts"
   },
   "dependencies": {
     "framer-motion": "^13.4.0",
