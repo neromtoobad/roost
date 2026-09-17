@@ -1,4 +1,4 @@
-/* Tamastonk design tokens — source of truth is DESIGN.md. Session-driven: <html data-session="day|night">. */
+/* Roost design tokens — source of truth is DESIGN.md. Session-driven: <html data-session="day|night">. */
 :root {
   --canvas: #F6F5EE;
   --surface: #FFFFFF;
