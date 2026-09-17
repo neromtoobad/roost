@@ -10,7 +10,8 @@
     "worker": "tsx scripts/worker.ts",
     "check:api": "tsx scripts/check-api.ts",
     "check:quotes": "tsx scripts/check-quotes.ts",
-    "check:agent": "tsx scripts/check-agent.ts"
+    "check:agent": "tsx scripts/check-agent.ts",
+    "dx": "tsx scripts/dx-evidence.ts"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.103.1",
