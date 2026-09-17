@@ -2,11 +2,11 @@
 import { SPECIES } from './pets';
 import { isPaper, type Entry, type PetState, type Proposal } from './store';
 
-// Mirrors the local Stockling to the server so it can appear on the board. The local copy stays
+// Mirrors the local Fledgling to the server so it can appear on the board. The local copy stays
 // the source of truth — this is best-effort, so the app works offline or if the database is down.
 
-const OWNER_KEY = 'stocklings.ownerKey';
-const REMOTE_ID = 'stocklings.remoteId';
+const OWNER_KEY = 'roost.ownerKey';
+const REMOTE_ID = 'roost.remoteId';
 
 /** A capability token for this device. Only its sha256 is ever stored server-side. */
 function ownerKey(): string {
@@ -60,7 +60,7 @@ export function syncPet(pet: PetState, fresh: Entry[] = []): Promise<void> {
       const j = (await r.json()) as { ok: boolean; id?: string };
       if (j.ok && j.id) { try { localStorage.setItem(REMOTE_ID, j.id); } catch {} }
     } catch {
-      // Offline or the database is unreachable — the local Stockling is unaffected.
+      // Offline or the database is unreachable — the local Fledgling is unaffected.
     } finally {
       inFlight = null;
     }
@@ -74,7 +74,7 @@ export type Pulled = {
 };
 
 /**
- * Ask the server what the Stockling did while this browser was closed. Answers null when there is
+ * Ask the server what the Fledgling did while this browser was closed. Answers null when there is
  * nothing to adopt — no remote copy yet, offline, or the local watermark is already current.
  *
  * Caveat worth knowing: adopting the server copy replaces the engine-owned numbers, so cash fed
@@ -99,7 +99,7 @@ export async function pullPet(pet: PetState): Promise<Pulled | null> {
   }
 }
 
-/** Put your Stockling up against another for 24 hours. Neither owner gets to trade. */
+/** Put your Fledgling up against another for 24 hours. Neither owner gets to trade. */
 export async function challengeRival(rivalId: string): Promise<{ ok: boolean; reason?: string }> {
   const id = remoteId();
   const key = ownerKey();
@@ -119,12 +119,12 @@ export async function challengeRival(rivalId: string): Promise<{ ok: boolean; re
 
 /**
  * Build the transaction that collects what backers have paid the pet. The owner key proves this is
- * your Stockling; the wallet that created the pool still has to sign, so nothing moves without it.
+ * your Fledgling; the wallet that created the pool still has to sign, so nothing moves without it.
  */
 export async function buildClaimTx(creator: string): Promise<{ tx?: string; error?: string }> {
   const id = remoteId();
   const key = ownerKey();
-  if (!id || !key) return { error: 'This device has no claim on that Stockling.' };
+  if (!id || !key) return { error: 'This device has no claim on that Fledgling.' };
   try {
     const r = await fetch('/api/claim', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },

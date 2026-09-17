@@ -1,7 +1,7 @@
 import { pool } from './pg';
 import { pricesFor } from './quote';
 
-// Duels: two Stocklings, 24 hours, best percentage move wins.
+// Duels: two Fledglings, 24 hours, best percentage move wins.
 //
 // Neither owner trades — the pets do. Both portfolios are valued at the challenge and again at the
 // bell, and both numbers are stored, so the result can be checked afterwards rather than believed.
@@ -52,7 +52,7 @@ export async function inDuel(ids: string[]): Promise<Set<string>> {
 }
 
 export async function challenge(a: string, b: string): Promise<{ ok: true; id: string } | { ok: false; reason: string }> {
-  if (a === b) return { ok: false, reason: 'A Stockling cannot duel itself.' };
+  if (a === b) return { ok: false, reason: 'A Fledgling cannot duel itself.' };
 
   const busy = await inDuel([a, b]);
   if (busy.has(a)) return { ok: false, reason: 'Yours is already in a duel.' };
@@ -60,7 +60,7 @@ export async function challenge(a: string, b: string): Promise<{ ok: true; id: s
 
   const values = await valueOf([a, b]);
   const av = values.get(a), bv = values.get(b);
-  if (av === undefined || bv === undefined) return { ok: false, reason: 'Unknown Stockling.' };
+  if (av === undefined || bv === undefined) return { ok: false, reason: 'Unknown Fledgling.' };
   if (av <= 0 || bv <= 0) return { ok: false, reason: 'Both need something to put on the line. Feed yours first.' };
 
   const { rows } = await pool().query<{ id: string }>(

@@ -23,7 +23,7 @@ export default function Board() {
   const [duels, setDuels] = useState<Duel[]>([]);
   const [note, setNote] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const mine = useLocal('stocklings.remoteId');
+  const mine = useLocal('roost.remoteId');
 
   const load = () => Promise.all([
     fetch('/api/leaderboard').then((r) => r.json()),
@@ -47,7 +47,7 @@ export default function Board() {
   async function onChallenge(rivalId: string) {
     setBusy(true);
     const res = await challengeRival(rivalId);
-    setNote(res.ok ? 'Duel on. 24 hours.' : res.reason === 'not-owner' ? 'That is not your Stockling.' : res.reason ?? 'Could not start it.');
+    setNote(res.ok ? 'Duel on. 24 hours.' : res.reason === 'not-owner' ? 'That is not your Fledgling.' : res.reason ?? 'Could not start it.');
     if (res.ok) {
       const [b, d] = await load();
       setRows(b.rows ?? []); setPulse(b.pulse ?? null); setDuels(d.duels ?? []);
@@ -88,7 +88,7 @@ export default function Board() {
         <div className="card mt-6 px-4 py-6 text-center">
           <img src={petImage(pet?.species ?? 'lurk', 'chill')} alt="" className="mx-auto h-24 w-24 object-contain" />
           <p className="mt-2 text-[15px] font-bold" style={{ fontFamily: 'var(--font-display)' }}>Nobody on the board yet.</p>
-          <p className="mt-1 text-[13px]" style={{ color: 'var(--muted)' }}>Feed your Stockling and it&rsquo;ll show up here once it holds something.</p>
+          <p className="mt-1 text-[13px]" style={{ color: 'var(--muted)' }}>Feed your Fledgling and it&rsquo;ll show up here once it holds something.</p>
         </div>
       )}
 

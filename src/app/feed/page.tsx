@@ -75,7 +75,7 @@ export default function FeedPage() {
       </div>
 
       <button onClick={confirm} disabled={done} className="pill mt-4 w-full text-[18px]">{done ? 'Fed!' : 'Confirm'}</button>
-      <p className="mt-3 text-center text-[12px]" style={{ color: 'var(--muted)' }}>Your Stockling never holds more than it was fed.</p>
+      <p className="mt-3 text-center text-[12px]" style={{ color: 'var(--muted)' }}>Your Fledgling never holds more than it was fed.</p>
     </main>
   );
 }

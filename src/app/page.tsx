@@ -23,7 +23,7 @@ type Price = { price: number | null; pct24h: number; source: string };
 export default function Home() {
   const router = useRouter();
   const pet = usePet();
-  const hasStore = useLocal('stocklings.pet') !== null;
+  const hasStore = useLocal('roost.pet') !== null;
   const now = useNow();
   const q = useSearch();
   const [price, setPrice] = useState<Price>({ price: null, pct24h: 0, source: 'none' });
@@ -31,7 +31,7 @@ export default function Home() {
   const [holidays, setHolidays] = useState<Set<string>>();
   const [report, setReport] = useState<{ fresh: Entry[]; awayMs: number } | null>(null);
   const [duel, setDuel] = useState<Duel | null>(null);
-  const remoteId = useLocal('stocklings.remoteId');
+  const remoteId = useLocal('roost.remoteId');
 
   const species = pet?.species ?? 'nova';
   const celebrate = Boolean(q.get('hatched') || q.get('fed') || q.get('public'));

@@ -9,8 +9,8 @@ import { createHash } from 'node:crypto';
 
 declare global {
   // Survive dev hot-reloads without leaking pools.
-  var __stocklingsPool: Pool | undefined;
-  var __stocklingsSchema: Promise<void> | undefined;
+  var __roostPool: Pool | undefined;
+  var __roostSchema: Promise<void> | undefined;
 }
 
 const connectionString = process.env.DATABASE_URL;
@@ -19,8 +19,8 @@ export const dbEnabled = () => Boolean(connectionString);
 
 export function pool(): Pool {
   if (!connectionString) throw new Error('DATABASE_URL is not set');
-  if (!globalThis.__stocklingsPool) {
-    globalThis.__stocklingsPool = new Pool({
+  if (!globalThis.__roostPool) {
+    globalThis.__roostPool = new Pool({
       connectionString,
       max: 5,
       idleTimeoutMillis: 30_000,
@@ -28,7 +28,7 @@ export function pool(): Pool {
       ssl: connectionString.includes('localhost') ? undefined : { rejectUnauthorized: false },
     });
   }
-  return globalThis.__stocklingsPool;
+  return globalThis.__roostPool;
 }
 
 export const ownerHash = (ownerKey: string) => createHash('sha256').update(ownerKey, 'utf8').digest('hex');
@@ -76,7 +76,7 @@ create table if not exists pet_entries (
 create unique index if not exists pet_entries_dedupe_idx on pet_entries (pet_id, ts, kind);
 create index if not exists pet_entries_pet_ts_idx on pet_entries (pet_id, ts desc);
 
--- A duel is 24 hours, two Stocklings, best percentage move wins. Both portfolios are valued at the
+-- A duel is 24 hours, two Fledglings, best percentage move wins. Both portfolios are valued at the
 -- challenge and again at the bell; storing the opening value is what makes the result checkable
 -- afterwards instead of a claim.
 create table if not exists duels (
@@ -98,11 +98,11 @@ create index if not exists duels_settled_idx on duels (settled_at desc);
 
 /** Idempotent, runs once per process. Keeps deploys to "push and go". */
 export function ensureSchema(): Promise<void> {
-  if (!globalThis.__stocklingsSchema) {
-    globalThis.__stocklingsSchema = pool()
+  if (!globalThis.__roostSchema) {
+    globalThis.__roostSchema = pool()
       .query(SCHEMA)
       .then(() => undefined)
-      .catch((e) => { globalThis.__stocklingsSchema = undefined; throw e; });
+      .catch((e) => { globalThis.__roostSchema = undefined; throw e; });
   }
-  return globalThis.__stocklingsSchema;
+  return globalThis.__roostSchema;
 }

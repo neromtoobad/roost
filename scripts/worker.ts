@@ -1,7 +1,7 @@
 /**
  * The hour hand.
  *
- * Stocklings are supposed to trade whether or not you are looking at them — that is the whole point
+ * Fledglings are supposed to trade whether or not you are looking at them — that is the whole point
  * of the Night Owl, who hunts dips at 3am while the NYSE is shut. Railway cron runs this once an
  * hour; the work itself lives in src/lib/tick.ts, shared with /api/tick so a run can also be
  * triggered on demand.

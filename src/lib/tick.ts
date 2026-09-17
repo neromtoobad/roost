@@ -6,7 +6,7 @@ import type { Entry, Lot, PetState, Personality, Proposal } from './pet-math';
 import { ensureSchema, pool } from './pg';
 import { settleDuels } from './duels';
 
-// One hour of the world happening to every Stockling at once.
+// One hour of the world happening to every Fledgling at once.
 //
 // This is the same deterministic engine the browser runs, pointed at Postgres instead of
 // localStorage, so a pet behaves identically whether or not its owner has the app open. Called by

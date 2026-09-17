@@ -23,7 +23,7 @@ export function useSearch(): URLSearchParams {
   return new URLSearchParams(s);
 }
 
-const LOCAL_EVENT = 'stocklings:local';
+const LOCAL_EVENT = 'roost:local';
 
 /** A localStorage value that re-renders on change. Server snapshot is null. */
 export function useLocal(key: string): string | null {

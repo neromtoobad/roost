@@ -13,7 +13,7 @@ export default function Shelf() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-[430px] flex-col px-4 pb-24 pt-[max(12px,env(safe-area-inset-top))]">
       <h1 className="text-center text-[28px] font-bold" style={{ fontFamily: 'var(--font-display)' }}>Shelf</h1>
-      <p className="text-center text-[13px]" style={{ color: 'var(--muted)' }}>Six Stocklings. One wrong detail each.</p>
+      <p className="text-center text-[13px]" style={{ color: 'var(--muted)' }}>Six Fledglings. One wrong detail each.</p>
 
       <div className="card relative mt-4 flex flex-col items-center px-4 pb-4 pt-3">
         <div className="grid h-56 w-56 place-items-center">

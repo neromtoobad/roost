@@ -44,7 +44,7 @@ export default function Adopt() {
         {step === 'egg' && (
           <motion.section key="egg" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
             <h1 className="mt-5 text-center text-[32px] font-bold" style={{ fontFamily: 'var(--font-display)' }}>Pick your egg</h1>
-            <p className="mt-1 text-center text-[14px]" style={{ color: 'var(--muted)' }}>The stock decides which Stockling hatches.</p>
+            <p className="mt-1 text-center text-[14px]" style={{ color: 'var(--muted)' }}>The stock decides which Fledgling hatches.</p>
             <div className="mt-6 grid grid-cols-2 gap-3">
               {ORDER.map((id) => {
                 const s = SPECIES[id], on = pick === id;

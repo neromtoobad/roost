@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { dbEnabled, ensureSchema, pool } from '@/lib/db';
 import type { Lot, Personality, Launch } from '@/lib/pet-math';
 
-// A Stockling as a stranger sees it, for the backing page. Public by design — it is the thing you
+// A Fledgling as a stranger sees it, for the backing page. Public by design — it is the thing you
 // send to a friend — so it carries nothing private: no owner hash, no agent id, no wallet.
 
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -21,7 +21,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
          from pets where id = $1`,
       [id],
     );
-    if (!rows.length) return NextResponse.json({ error: 'no such Stockling' }, { status: 404 });
+    if (!rows.length) return NextResponse.json({ error: 'no such Fledgling' }, { status: 404 });
 
     const r = rows[0];
     const lots = r.lots ?? [];

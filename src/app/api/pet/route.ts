@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { dbEnabled, ensureSchema, ownerHash, pool } from '@/lib/db';
 
-// Mirror a Stockling into Postgres. The browser posts its owner key here over same-origin HTTPS;
+// Mirror a Fledgling into Postgres. The browser posts its owner key here over same-origin HTTPS;
 // only the hash is stored, and an update that doesn't match the hash is refused rather than
 // silently forking a second pet.
 

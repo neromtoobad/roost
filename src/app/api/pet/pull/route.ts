@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { dbEnabled, ensureSchema, ownerHash, pool } from '@/lib/db';
 import type { Entry, Lot, Proposal } from '@/lib/pet-math';
 
-// What the Stockling did while the app was closed.
+// What the Fledgling did while the app was closed.
 //
 // The hourly worker ticks the server copy, so its watermark can be ahead of the browser's. The
 // client pulls before it pushes: if the server is ahead, the worker's result is the truth and the

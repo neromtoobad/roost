@@ -1,6 +1,6 @@
 import type { Species } from './pets';
 
-// The shape of a Stockling and the arithmetic over it. Deliberately free of React and of
+// The shape of a Fledgling and the arithmetic over it. Deliberately free of React and of
 // localStorage: the browser, the API routes and the hourly worker all reason about the same pet,
 // so the numbers a judge sees on the board are the numbers the engine acted on.
 

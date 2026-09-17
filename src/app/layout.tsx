@@ -9,8 +9,8 @@ const body = Nunito({ subsets: ['latin'], weight: ['500', '600', '700'], variabl
 const mono = JetBrains_Mono({ subsets: ['latin'], weight: ['500'], variable: '--font-mono' });
 
 export const metadata: Metadata = {
-  title: 'Stocklings',
-  description: 'Adopt a Stockling — an AI with its own wallet that invests for you.',
+  title: 'Roost',
+  description: 'Adopt a Fledgling — an AI with its own wallet that invests for you.',
 };
 export const viewport: Viewport = { themeColor: '#C8FF3D', viewportFit: 'cover' };
 

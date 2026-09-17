@@ -19,7 +19,7 @@ export const PERSONALITIES: Record<Personality, { name: string; tagline: string;
   quant:   { name: 'Quant',         tagline: 'weekly rebalance, cites basis points',              icon: '📊' },
 };
 
-const KEY = 'stocklings.pet';
+const KEY = 'roost.pet';
 const day = (t: number) => new Date(t).toLocaleDateString('en-CA');
 
 export function usePet(): PetState | null {

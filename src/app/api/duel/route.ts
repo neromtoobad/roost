@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { dbEnabled, ensureSchema, ownerHash, pool } from '@/lib/db';
 import { challenge, listDuels } from '@/lib/duels';
 
-// Challenge a rival, or read the card. You can only put up a Stockling you own: the owner key goes
+// Challenge a rival, or read the card. You can only put up a Fledgling you own: the owner key goes
 // in the body, is hashed server-side, and has to match the row.
 
 export async function GET() {

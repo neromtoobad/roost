@@ -12,7 +12,7 @@ export default function Diary() {
     <main className="mx-auto flex min-h-dvh max-w-[430px] flex-col px-4 pb-24 pt-[max(12px,env(safe-area-inset-top))]">
       <h1 className="text-center text-[28px] font-bold" style={{ fontFamily: 'var(--font-display)' }}>Diary</h1>
       <p className="text-center text-[13px]" style={{ color: 'var(--muted)' }}>
-        {pet ? `Every decision ${pet.name} made, in its own words.` : 'Adopt a Stockling to start a diary.'}
+        {pet ? `Every decision ${pet.name} made, in its own words.` : 'Adopt a Fledgling to start a diary.'}
       </p>
       <ul className="mt-5 grid gap-2">
         {entries.map((e, i) => (
