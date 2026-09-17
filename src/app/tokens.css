@@ -1,0 +1,42 @@
+/* Tamastonk design tokens — source of truth is DESIGN.md. Session-driven: <html data-session="day|night">. */
+:root {
+  --canvas: #F6F5EE;
+  --surface: #FFFFFF;
+  --ink: #111111;
+  --muted: #6B6F66;
+  --line: #E4E3DA;
+  --accent: #C8FF3D;
+  --on-accent: #111111;
+  --up: #178F62;
+  --down: #D6403F;
+  --glow: none;
+  --grid: none;
+  --radius-card: 28px;
+  --radius-pill: 999px;
+  --font-display: "Fredoka", "Nunito", system-ui, sans-serif;
+  --font-body: "Nunito", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+:root[data-session="night"] {
+  --canvas: #0B0F14;
+  --surface: #131A22;
+  --ink: #F2F4F1;
+  --muted: #8C95A0;
+  --line: #243040;
+  --up: #3ED598;
+  --down: #FF7B7A;
+  --glow: 0 0 28px #C8FF3D66;
+  --grid: radial-gradient(#1A2230 1px, transparent 1px);
+}
+body {
+  background: var(--canvas);
+  background-image: var(--grid);
+  background-size: 24px 24px;
+  color: var(--ink);
+  font-family: var(--font-body);
+  transition: background-color .6s ease, color .6s ease;
+}
+.pill { border-radius: var(--radius-pill); background: var(--accent); color: var(--on-accent); font-family: var(--font-display); font-weight: 600; height: 56px; box-shadow: var(--glow); }
+.card { border-radius: var(--radius-card); background: var(--surface); border: 1px solid var(--line); }
+.num  { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }

@@ -1,0 +1,8 @@
+@import "tailwindcss";
+
+/* Theme is driven by the NYSE session via <html data-session>, see tokens.css — not by prefers-color-scheme. */
+@theme inline {
+  --font-sans: var(--font-body);
+  --font-mono: var(--font-mono);
+}
+img { -webkit-user-drag: none; }
