@@ -59,7 +59,11 @@ async function rwaRows(): Promise<Map<string, RwaRow>> {
     const r = await request('GET', '/api/v1/dex/market/rwa/tokens');
     const data = (r.json as { data?: RwaRow[] } | null)?.data;
     if (Array.isArray(data)) for (const row of data) rows.set(addr(row.tokenContractAddress), row);
-  } catch { /* leave empty — callers degrade to a null reference rather than failing */ }
+  } catch (e) {
+    // Callers still degrade to a null reference rather than failing, but a silent
+    // degradation nobody can diagnose is how an outage looks like an empty market.
+    console.error('[quote] rwa/tokens failed —', (e as Error).message);
+  }
   if (rows.size) rwaCache = { at: Date.now(), rows };
   return rows;
 }
@@ -88,7 +92,9 @@ async function dexRows(addresses: string[]): Promise<Map<string, DexRow>> {
           out.set(a, row);
         }
       }
-    } catch { /* fall through — the RWA row still gives us a price, just not an independent one */ }
+    } catch (e) {
+      console.error('[quote] price-info failed —', (e as Error).message);
+    }
   }
   return out;
 }

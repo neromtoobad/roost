@@ -62,11 +62,24 @@ export type SpreadReport = {
 const TTL = 60_000;
 let cache: { at: number; rows: RwaRow[] } | null = null;
 
+// An upstream failure and "this ticker is not listed" are completely different problems, and
+// collapsing them into an empty array makes the second hide the first. That is the same trap the
+// Binance gateway sets by returning HTTP 200 on failure, and it is not one to reproduce.
+let lastUpstream: string | null = null;
+export const upstreamError = () => lastUpstream;
+
 async function rwaTokens(): Promise<RwaRow[]> {
   if (cache && Date.now() - cache.at < TTL) return cache.rows;
   const r = await request('GET', '/api/v1/dex/market/rwa/tokens');
   const rows = ((r.json as { data?: RwaRow[] } | null)?.data ?? []) as RwaRow[];
-  if (rows.length) cache = { at: Date.now(), rows };
+  if (rows.length) {
+    cache = { at: Date.now(), rows };
+    lastUpstream = null;
+  } else {
+    const msg = (r.json as { msg?: string } | null)?.msg ?? '(no msg)';
+    lastUpstream = `rwa/tokens returned no rows — HTTP ${r.status} code=${r.code} msg=${msg}`;
+    console.error('[signal]', lastUpstream);
+  }
   return rows;
 }
 

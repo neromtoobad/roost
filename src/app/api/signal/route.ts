@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { spreadReport, listTickers, widestSpreads } from '@/lib/signal';
+import { spreadReport, listTickers, widestSpreads, upstreamError } from '@/lib/signal';
 
 // The deliverable a Fledgling sells: how far a tokenized stock has drifted from the share it
 // stands for, and whether the exchange behind it is even open. See lib/signal.ts.
@@ -24,7 +24,12 @@ export async function GET(req: Request) {
         { headers: { 'Cache-Control': 's-maxage=300' } });
     }
     const report = await spreadReport(ticker, wallet);
-    if (!report) return NextResponse.json({ error: `no tokenized listing for ${ticker} on BSC` }, { status: 404 });
+    if (!report) {
+      // Distinguish "the upstream call failed" from "that ticker genuinely is not listed".
+      const upstream = upstreamError();
+      if (upstream) return NextResponse.json({ error: 'upstream RWA call failed', upstream }, { status: 502 });
+      return NextResponse.json({ error: `no tokenized listing for ${ticker} on BSC` }, { status: 404 });
+    }
     return NextResponse.json(report, { headers: { 'Cache-Control': 's-maxage=30' } });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 502 });
