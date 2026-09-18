@@ -54,6 +54,28 @@ Evidence: the error catalogue and latency table in `dx-evidence.md`. Strongest i
 - **Latency.** `rwa/tokens` medians ~1.9s and spikes past 3s; everything else sits around 0.4–0.8s.
   It is also the call you need first and most often.
 
+**The one that cost the most, and could not be found locally.** Deploying to Railway's default
+`sfo` region, every RWA call returned:
+
+```
+HTTP 200  code=40304  msg=Service not available due to compliance restriction
+```
+
+Three separate problems stacked on top of each other:
+
+- **It is an IP geo-block**, and the restricted list (US, Canada, Netherlands, UK, Japan) covers a
+  large share of default cloud regions. On Railway only Singapore is viable — `us-west2`,
+  `us-east4` and `europe-west4` are all prohibited.
+- **`40304` is undocumented.** The error table on the authentication page lists 40001, 40101,
+  40102, 40103, 40104, 42900, 50000, 50001. Not 40304 — the code for the single most likely
+  production failure.
+- **It is invisible until production.** The key is issued without a warning, works perfectly from
+  a local machine, and then returns an empty token list in the deployed app. Combined with HTTP
+  200, the symptom is not "you are blocked" but "the market appears to have no tokens in it".
+
+What made it findable in the end was adding our own error propagation — the API gave a usable
+message the whole time, but only to code that bothered to read `code` on a 200 response.
+
 _Your words:_
 
 ## 4. AI stack feedback — Wallet Skills, Agentic Wallet, the CLI: what worked, what did not, what is missing
@@ -104,6 +126,9 @@ Think about what you would have wanted in the first hour. Ours, as raw material:
 - One consistent chain parameter name, one consistent singular/plural convention.
 - Populate `marketStatus` for every issuer, or document that it is issuer-supplied.
 - A copy-pasteable signed request per language on the endpoint page itself, not only on the auth page.
+- Document 40304, and surface the region restriction at key-issuance time rather than at first
+  production request. A line in the Developer Portal saying which regions the key will not work
+  from would have saved an hour of debugging that looked like an empty market.
 
 _Your words:_
 
