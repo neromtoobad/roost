@@ -1,6 +1,6 @@
 # Developer Experience — raw evidence
 
-> Collected 2026-09-17T16:32:39.043Z · NYSE: **NYSE open · regular session**
+> Collected 2026-09-20T07:47:33.159Z · NYSE: **NYSE closed · weekend**
 > 
 > **This is not the report.** It is the measured material to write one from.
 > Regenerate with `npm run dx -- <taker>`. Taker used: `0x8894E0a0c962CB723c1976a4421c95949bE2D4E3`
@@ -11,12 +11,12 @@ Five sequential samples each, warm process, from a residential connection.
 
 | Endpoint | Method | min | median | max |
 |---|---|---|---|---|
-| `/dex/market/rwa/tokens` | GET | 1236ms | 1871ms | 3415ms |
-| `/dex/market/rwa/platforms` | GET | 417ms | 418ms | 1205ms |
-| `/dex/market/price-info` | POST | 472ms | 781ms | 962ms |
-| `/dex/market/candles (1h,168)` | GET | 448ms | 494ms | 500ms |
-| `/dex/aggregator/supported/chain` | GET | 422ms | 507ms | 2627ms |
-| `/dex/aggregator/quote` | GET | 449ms | 465ms | 923ms |
+| `/dex/market/rwa/tokens` | GET | 810ms | 1339ms | 2168ms |
+| `/dex/market/rwa/platforms` | GET | 404ms | 424ms | 841ms |
+| `/dex/market/price-info` | POST | 406ms | 416ms | 905ms |
+| `/dex/market/candles (1h,168)` | GET | 414ms | 441ms | 769ms |
+| `/dex/aggregator/supported/chain` | GET | 400ms | 413ms | 539ms |
+| `/dex/aggregator/quote` | GET | 415ms | 426ms | 499ms |
 
 ## Error catalogue — exact payloads
 
@@ -32,7 +32,7 @@ HTTP 200
   "code": 40001,
   "msg": "Parameter binanceChainId is required",
   "data": null,
-  "timestamp": 1789662795075,
+  "timestamp": 1789890480225,
   "success": false
 }
 ```
@@ -47,7 +47,7 @@ HTTP 200
   "code": 40001,
   "msg": "Parameter bar error: Invalid bar value: 1H, valid values: 12h,15m,1M,1d,1h,1m,1s,1w,2h,30m,30s,3d,3m,4h,5m,5s,6h,8h",
   "data": null,
-  "timestamp": 1789662795997,
+  "timestamp": 1789890480879,
   "success": false
 }
 ```
@@ -62,7 +62,7 @@ HTTP 200
   "code": 40001,
   "msg": "userWalletAddress is required for RFQ (Ondo) quote",
   "data": null,
-  "timestamp": 1789662796661,
+  "timestamp": 1789890481533,
   "success": false
 }
 ```
@@ -77,7 +77,7 @@ HTTP 200
   "code": 40001,
   "msg": "Parameter tokenContractAddresses is required",
   "data": null,
-  "timestamp": 1789662797331,
+  "timestamp": 1789890482666,
   "success": false
 }
 ```
@@ -97,33 +97,33 @@ Each row is one `aggregator/quote` for N whole tokens against USDT.
 
 | size (tokens) | USDT out | per token | impact % | vendor |
 |---|---|---|---|---|
-| 1 | 218.99 | 218.9879 | 0.0004701349 | LiquidMesh |
-| 10 | 2189.59 | 218.9590 | 0.0006945856 | LiquidMesh |
-| 100 | — | — | — | _Insufficient liquidity for a quote. Please decrease the transaction amount or try again later._ |
-| 1000 | — | — | — | _Insufficient liquidity for a quote. Please decrease the transaction amount or try again later._ |
+| 1 | 220.57 | 220.5651 | 0.0005092890 | LiquidMesh |
+| 10 | 2205.49 | 220.5493 | 0.0004273737 | LiquidMesh |
+| 100 | 22049.04 | 220.4904 | 0.0001744109 | LiquidMesh |
+| 1000 | 220356.59 | 220.3566 | 0.0002978280 | LiquidMesh |
 
 ### AAPL (`AAPLon`, ondo)
 
 | size (tokens) | USDT out | per token | impact % | vendor |
 |---|---|---|---|---|
-| 1 | 317.03 | 317.0294 | 0.0531554818 | LiquidMesh |
-| 10 | — | — | — | _Insufficient liquidity for a quote. Please decrease the transaction amount or try again later._ |
-| 100 | — | — | — | _Insufficient liquidity for a quote. Please decrease the transaction amount or try again later._ |
+| 1 | 335.28 | 335.2761 | 0.0000000000 | LiquidMesh |
+| 10 | 3352.76 | 335.2761 | -0.0000000000 | LiquidMesh |
+| 100 | 33527.61 | 335.2761 | -0.0000000000 | LiquidMesh |
 | 1000 | — | — | — | _Insufficient liquidity for a quote. Please decrease the transaction amount or try again later._ |
 
 ## On-chain vs reference, all six
 
-Snapshot at 2026-09-17T16:32:39.043Z — NYSE NYSE open · regular session.
+Snapshot at 2026-09-20T07:47:33.159Z — NYSE NYSE closed · weekend.
 Re-run this outside market hours: the whole point is that the reference leg stops moving and this table drifts.
 
 | Fledgling | ticker | platform | traded | reference | spread % | ratio | marketStatus |
 |---|---|---|---|---|---|---|---|
-| nova | NVDA | bstock | 218.99 | 219.15 | -0.075 | 1.000778 | _absent_ |
-| volt | TSLA | bstock | 367.46 | 367.56 | -0.026 | 1.000000 | _absent_ |
-| pip | AAPL | ondo | 316.99 | 338.06 | -6.234 | 1.003376 | regular |
-| booster | SPCX | bstock | 154.69 | 154.75 | -0.037 | 1.000000 | _absent_ |
-| nimbus | CRWV | bstock | 79.84 | 80.41 | -0.710 | 1.000000 | _absent_ |
-| lurk | RDDT | ondo | 152.63 | 152.71 | -0.049 | 1.000000 | regular |
+| nova | NVDA | bstock | 220.57 | 220.72 | -0.071 | 1.000778 | _absent_ |
+| volt | TSLA | bstock | 362.98 | 363.18 | -0.054 | 1.000000 | _absent_ |
+| pip | AAPL | ondo | 335.28 | 336.37 | -0.327 | 1.003376 | offhours |
+| booster | SPCX | bstock | 152.46 | 152.51 | -0.033 | 1.000000 | _absent_ |
+| nimbus | CRWV | bstock | 80.92 | 81.26 | -0.416 | 1.000000 | _absent_ |
+| lurk | RDDT | ondo | — | 151.76 | — | 1.000000 | closed |
 
 **`marketStatus` is absent on every bStock row and present on every Ondo row.** Same field, same
 endpoint, same response — populated by one issuer and not the other.
@@ -135,10 +135,10 @@ This is why the two prices in one RWA row cannot be differenced to get a spread.
 
 | token | tokenPrice | referencePrice | ratio | tokenPrice ÷ (ref × ratio) |
 |---|---|---|---|---|
-| `NVDAB` | 219.15041543738985 | 218.98 | 1.0007782237528078 | 1.000000000000 |
-| `AAPLon` | 338.06113089453436 | 336.92365180122886 | 1.003376073740221 | 1.000000000000 |
-| `KLACon` | 16888.496461753875 | 1684.4591160210286 | 10.026064925604905 | 1.000000000000 |
-| `NFLXon` | 7567.3333 | 756.73333 | 10 | 1.000000000000 |
+| `AAPLon` | 336.3748019560658 | 335.24299687771395 | 1.003376073740221 | 1.000000000000 |
+| `NVDAB` | 220.7216372486818 | 220.55 | 1.0007782237528078 | 1.000000000000 |
+| `KLACon` | 17765.840423205744 | 1771.965427616047 | 10.026064925604905 | 1.000000000000 |
+| `NFLXon` | 7192.6667 | 719.26667 | 10 | 1.000000000000 |
 
 **488 of 488** tokens with all three fields present satisfy the identity to 1e-9.
 
