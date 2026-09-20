@@ -185,10 +185,6 @@ export default function Home() {
       </div>
 
       <Link href="/feed" className="pill mt-5 grid w-full place-items-center text-[18px] active:scale-[0.98]" style={{ transition: 'transform .1s' }}>Feed $5</Link>
-      <Link href="/public" className="mt-2 grid w-full place-items-center rounded-full border py-3 text-[14px] font-bold" style={{ borderColor: 'var(--line)', background: 'var(--surface)', fontFamily: 'var(--font-display)' }}>
-        {pet?.launch ? `$${pet.name.replace(/[^a-z0-9]/gi, '').slice(0, 6).toUpperCase()} is public · view pool` : '🔔 Go public'}
-      </Link>
-
       <p className="mt-3 text-center text-[13px]" style={{ color: 'var(--muted)' }}>
         holds <span className="num" style={{ color: 'var(--ink)' }}>{qty.toFixed(4)} {sp.ticker}</span>
         {pet && pet.lentQty > 0 && <> · <span className="num">{pet.lentQty.toFixed(3)} lent</span></>}
