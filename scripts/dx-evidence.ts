@@ -139,7 +139,9 @@ async function main() {
             out.push(`| ${n} | — | — | — | _${msg}_ |`);
           } else {
             const usdt = Number(row.toTokenAmount) / 1e18;
-            out.push(`| ${n} | ${P(usdt, 2)} | ${P(usdt / n, 4)} | ${row.priceImpactPercent ?? '—'} | ${row.vendorName ?? '—'} |`);
+            // The field is a fraction despite its name; the column is a percent.
+            const impact = row.priceImpactPercent !== undefined ? P(Number(row.priceImpactPercent) * 100, 4) : '—';
+            out.push(`| ${n} | ${P(usdt, 2)} | ${P(usdt / n, 4)} | ${impact} | ${row.vendorName ?? '—'} |`);
           }
         } catch (e) {
           out.push(`| ${n} | — | — | — | _${(e as Error).message}_ |`);

@@ -70,6 +70,33 @@ export const ROOST_TOOLS: ToolSet = {
     execute: async () => getJson("/api/signal"),
   }),
 
+  roost_cross_issuer: tool({
+    description:
+      "The same stock from two issuers. bStock and Ondo both list about 40 tickers on BNB Smart " +
+      "Chain (NVDA, TSLA, GOOGL, SPY, SPCX, …). Returns a real buy and sell fill on each at the " +
+      "same size, per share: which issuer is cheaper to buy from, which pays more to sell to, " +
+      "whether buying on one and selling on the other clears anything before gas, and how far " +
+      "the issuers' own reference prices disagree. Use for any question comparing issuers or " +
+      "asking where a given trade executes best.",
+    inputSchema: z.object({
+      ticker: z
+        .string()
+        .describe("underlying ticker listed by both issuers, e.g. NVDA, TSLA, SPY"),
+      usd: z
+        .number()
+        .min(1)
+        .max(10000)
+        .optional()
+        .describe("trade size in USDT to quote each side at; default 100"),
+    }),
+    execute: async ({ ticker, usd }) => {
+      const taker = TAKER();
+      const q = taker ? `&wallet=${encodeURIComponent(taker)}` : "";
+      const size = usd ? `&usd=${usd}` : "";
+      return getJson(`/api/signal?ticker=${encodeURIComponent(ticker)}&cross=1${q}${size}`);
+    },
+  }),
+
   roost_widest_spreads: tool({
     description:
       "The tokenized stocks trading furthest from their reference price right now, widest first. " +

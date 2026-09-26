@@ -198,6 +198,16 @@ export function buildRunWork(): RunWork {
         "rather than a real fill — say so rather than presenting it as executable. " +
         "`statusSource` of 'nyse-clock' means the API omitted market status and Roost fell back to " +
         "its own exchange clock.\n\n" +
+        "SAME STOCK, TWO ISSUERS. `roost_cross_issuer` compares one ticker across bStock and Ondo. " +
+        "Every price in it is PER SHARE, ratio applied, so the issuers compare directly. " +
+        "`cheapestBuy` and `bestSell` say where a trade of that size executes best — execution " +
+        "quality, not a reason to trade. `arbitrage.pct` is before gas and is usually negative; " +
+        "when it is, say plainly that there is no arbitrage. When it is positive, lead with " +
+        "`arbitrage.afterGasUsd` instead — gas is about $0.03 a swap, which erases most of it " +
+        "at small sizes. The two issuers carry different " +
+        "reference prices (`referenceGapPct`) — do not call either one 'the' reference. A side " +
+        "with a note instead of a usable price could not be quoted or was dropped as a broken " +
+        "pool; report the note rather than the price.\n\n" +
         "Be concrete and concise. Lead with the gap and whether the exchange is open. Report " +
         "what the data shows; never give investment advice or tell anyone what to trade. " +
         "Use the read-only chain tools when on-chain context helps.",

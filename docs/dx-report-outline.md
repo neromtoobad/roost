@@ -53,6 +53,15 @@ Evidence: the error catalogue and latency table in `dx-evidence.md`. Strongest i
   way Binance spot klines put it.
 - **Latency.** `rwa/tokens` medians ~1.9s and spikes past 3s; everything else sits around 0.4–0.8s.
   It is also the call you need first and most often.
+- **`priceImpactPercent` is a fraction.** `0.946` means 94.6%. `SNDKon` filled 97% under its
+  reference on 2026-09-26 with 0.946 in the field; `AMDon` 24% under with 0.219. We read our own
+  "0.05 impact" on `AAPLon` as negligible and built a finding on it — it was 5%. Any guard written
+  as `impact > 1` (percent) passes a 95% loss. See `cross-issuer-weekend.md`.
+- **`tradeFee` is gas in USD, not a trading fee** — ~$0.02–0.04, independent of size, and not taken
+  out of `toTokenAmount`. `feeAmount` / `actualSwapAmount` come back null. Undocumented either way.
+- **`rwa/tokens` and `rwa/platforms` disagree.** Platforms says 80 bStock tokens on BSC; tokens
+  returns 46 (Ondo: 458 vs 442). `page`, `pageNo`, `pageSize` and `limit` are all ignored, so it is
+  not pagination on the caller's side.
 
 **The one that cost the most, and could not be found locally.** Deploying to Railway's default
 `sfo` region, every RWA call returned:
@@ -109,10 +118,24 @@ This is the section our evidence is strongest on. See the slippage ladder and sp
   and half your tokens report a shut exchange while the NYSE is trading.
 - **Even the zero address is not a valid taker** — thin books return insufficient liquidity for it
   where a real address quotes fine.
-- **`AAPLon` trades persistently several percent under its reference** (-5.6%, -5.9%, -6.2% across
-  runs) at 0.05 price impact, far too small for our size to explain. Worth watching across days.
-- **Outside market hours: not yet measured.** Re-run `npm run dx` on a weekend. This is the single
-  highest-value observation still missing, and it is the whole premise of the asset class.
+- **~~`AAPLon` trades persistently several percent under its reference~~ — retracted.** The
+  -5.6% runs were at "0.05 price impact", which is 5% (see section 3). On Sunday it filled -0.33%.
+- **Outside market hours, measured twice** (Sunday 2026-09-20 in `dx-evidence.md`, Saturday
+  2026-09-26 in `cross-issuer-weekend.md`): against its own issuer's reference, the on-chain price
+  does not wander — -0.03% to -0.42% across the six. It tracks the frozen reference rather than
+  discovering price.
+- **xStocks is not on BSC through this API.** `rwa/platforms` returns `ondo` and `bstock` only.
+- **Same stock, two issuers** (`cross-issuer-weekend.md`, 40 tickers listed by both):
+  - no cross-issuer arbitrage worth the name — 0 of 17 quotable pairs cleared even before gas in the
+    recorded run; a run 15 minutes earlier had DRAM at +0.09%, about two cents on $100 after gas;
+  - a real routing gap instead: NVDA cost 2.1% more to buy as `NVDAon` than `NVDAB`, SPCX 2.0%
+    (3.6% at $500), while selling was within 0.05% on either;
+  - the two issuers publish different reference prices for the same share (median 0.28% apart,
+    IBM 2.2%);
+  - on a Saturday 16 of 40 Ondo tokens refused to quote ("market is currently closed"), 5 had no
+    liquidity at $100, 4 quoted from broken pools. bStock quoted 39 of 40 both ways.
+  - Ondo's `marketStatus` distinguishes `offhours` (quotes) from `closed` (refuses) — the field is
+    useful where it exists.
 
 _Your words:_
 
@@ -125,6 +148,7 @@ Think about what you would have wanted in the first hour. Ours, as raw material:
   stands the field invites a wrong calculation that looks right.
 - One consistent chain parameter name, one consistent singular/plural convention.
 - Populate `marketStatus` for every issuer, or document that it is issuer-supplied.
+- Rename `priceImpactPercent` or make it a percent. Document `tradeFee` as gas in USD.
 - A copy-pasteable signed request per language on the endpoint page itself, not only on the auth page.
 - Document 40304, and surface the region restriction at key-issuance time rather than at first
   production request. A line in the Developer Portal saying which regions the key will not work
@@ -142,5 +166,7 @@ _Your words:_
   strategy the asset class currently supports.
 - Historical reference prices, so the weekend gap can be measured retrospectively rather than only
   by being awake for it.
+- One reference per underlying, or a documented reason why bStock and Ondo carry different ones
+  for the same share at the same instant.
 
 _Your words:_

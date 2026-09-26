@@ -222,7 +222,9 @@ export async function fillFor(id: Species['id'], wallet: `0x${string}`): Promise
     return {
       ...base,
       perToken: Number.isFinite(perToken) && perToken > 0 ? perToken : null,
-      priceImpactPct: row.priceImpactPercent !== undefined ? Number(row.priceImpactPercent) : null,
+      // Named a percent, carries a fraction: SNDKon filled 97% under its reference with 0.946
+      // here (2026-09-26). Scale it once, at the source, so nothing downstream misreads it.
+      priceImpactPct: row.priceImpactPercent !== undefined ? Number(row.priceImpactPercent) * 100 : null,
       vendor: row.vendorName ?? null,
       spreadPct: reference && perToken > 0 ? (perToken / reference - 1) * 100 : null,
     };

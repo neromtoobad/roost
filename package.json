@@ -11,7 +11,8 @@
     "check:api": "tsx scripts/check-api.ts",
     "check:quotes": "tsx scripts/check-quotes.ts",
     "check:agent": "tsx scripts/check-agent.ts",
-    "dx": "tsx scripts/dx-evidence.ts"
+    "dx": "tsx scripts/dx-evidence.ts",
+    "cross": "tsx scripts/cross-issuer.ts"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.103.1",

@@ -40,7 +40,14 @@ Everything below was found by running against the live Binance Web3 API, and eac
 
 **bStock and Ondo are not the same product.** bStock quotes and swaps through the ordinary aggregator. Ondo is request-for-quote and refuses outright — `userWalletAddress is required for RFQ (Ondo) quote`. There is no quoting an Ondo name without a taker. Even on bStock, the zero address returns *insufficient liquidity* on thinner books where a real address quotes fine, so the wallet is a hard requirement, not a nicety.
 
-**`AAPLon` fills ~5.6% under its reference, repeatably**, at 0.05 price impact — far too small for our size to be moving it. The pool is priced there.
+**`priceImpactPercent` is a fraction, not a percent.** `0.946` is a 94.6% impact — `SNDKon` filled 97% under its reference on a Saturday with exactly that in the field. We misread it ourselves: `AAPLon` filling ~5.6% under its reference "at 0.05 impact" looked like a pool priced off the share, and was a 5% impact on a thin book. The same token filled 0.33% under on a Sunday. A guard written as `impact > 1` passes a fill that loses 95%. Separately, `tradeFee` is the swap's gas in USD (~$0.03 whatever the size), and it is not taken out of the quoted amount.
+
+**The same stock from two issuers is two prices, and two references.** bStock and Ondo both list 40 tickers on BSC — NVDA, TSLA, SPCX and CRWV among them, four of the six. Quoted both ways on a Saturday (`npm run cross`):
+
+- **No arbitrage worth the name.** In the recorded run, all 17 pairs quotable on both sides lost money before gas — 0.02% to 1.1% at $100. A run fifteen minutes earlier had two that cleared; the better, DRAM at +0.09%, came to about two cents once the two swaps' gas was paid.
+- **But a real routing choice.** NVDA sold for the same on either issuer, and cost **2.1% more to buy as `NVDAon`** than as `NVDAB`; SPCX 2.0% more, widening to 3.6% at $500. On a weekend bStock's round trip was a median 0.23% and never above 0.6%.
+- **The references disagree.** Per share, ratio applied, at the same instant: NVDA 224.18 vs 224.80, IBM 2.2% apart. There is no single "reference price" to measure a gap against — each issuer carries its own.
+- **Off-hours, Ondo is mostly shut and partly broken.** 16 of the 40 Ondo tokens refused to quote (*"The stock market is currently closed"*), 5 had no liquidity at $100, and 4 quoted from broken pools — `MSFTon` offered a buy 196 million percent over its reference. Roost checks every side against its own issuer's reference and keeps anything more than 5% off out of the answer.
 
 **bStock rows omit `marketStatus`.** They carry `statusInfo`, but only Ondo fills the field in. Read it naively and every bStock reports "the exchange is shut" while the NYSE is trading. Silence is not *closed* — where the API says nothing, Roost falls back to its own session clock and the report says which source answered.
 
@@ -71,7 +78,7 @@ Roost holds no keys at any layer. It decides; something the user controls execut
 
 **Binance Agentic Wallet** — [`skills/roost/`](skills/roost). Agentic Wallet is MPC-keyless: the user signs in from the Binance App by QR, the key is never reconstructed anywhere, and an AI agent drives it through the `baw` CLI inside limits set in the App. So there is no server-side key and there should not be one. `POST /api/agent` returns the Fledgling's decision as one of four instructions — a `swap` carrying the exact `baw` command, an `ask` the owner must answer, a `hold`, or a `blocked` — and the skill runs it. The skill carries Binance's own hard rule: an `orderId` is **not** a completed swap; poll to `FINISHED` or `FAILED` before reporting anything, because the diary is meant to be checkable against the chain.
 
-**BNB Agent Studio** — [`roostsignal/`](roostsignal). A Fledgling deployed as a seller agent: ERC-8004 identity, ERC-8183 task interface, A2A + MCP + X402 faces. What it sells is the gap — `/api/signal` reports it for **all 448 tokenized tickers on BSC**, not just the six with faces. Priced at 0.1 U on the ERC-8183 rail with the x402 rail free. Its system prompt's first rule is that every number must come from a tool call: an invented price is worse than no answer, because measured numbers are the entire product.
+**BNB Agent Studio** — [`roostsignal/`](roostsignal). A Fledgling deployed as a seller agent: ERC-8004 identity, ERC-8183 task interface, A2A + MCP + X402 faces. What it sells is the gap — `/api/signal` reports it for **all 448 tokenized tickers on BSC**, not just the six with faces — and, for the 40 that two issuers list, where the same share executes best (`/api/signal?ticker=NVDA&cross=1&wallet=…`). Priced at 0.1 U on the ERC-8183 rail with the x402 rail free. Its system prompt's first rule is that every number must come from a tool call: an invented price is worse than no answer, because measured numbers are the entire product.
 
 ## Stack
 
@@ -104,6 +111,7 @@ Verify the data path against the live API:
 npm run check:api                     # credentials, clock drift, signature, RWA endpoints
 npm run check:quotes -- 0xYourAddress # the price layer, and real fills for all six
 npm run check:agent  -- 0xYourAddress # what each personality wants to do right now
+npm run cross        -- 0xYourAddress # bStock vs Ondo on every ticker both list → docs/cross-issuer-<session>.md
 ```
 
 `check:api` proves four things in order, because each only matters if the last passed, and decodes every documented error code to a plain-English cause. Dev switches: `?night=1` forces the night theme, `?mood=sulking` pins a mood.
@@ -116,6 +124,6 @@ npm run worker
 
 ## Status
 
-**Working and verified against the live API:** adoption and hatching, the feed loop with live pricing, the mood engine, the strategy engine and its diary, the two-source spread with real aggregator fills, hourly candles on both platforms, the wallet layer, the agent intent layer, and the seller agent's deliverable across 448 tickers.
+**Working and verified against the live API:** adoption and hatching, the feed loop with live pricing, the mood engine, the strategy engine and its diary, the two-source spread with real aggregator fills, hourly candles on both platforms, the wallet layer, the agent intent layer, the seller agent's deliverable across 448 tickers, and the cross-issuer comparison across the 40 both issuers list.
 
 **Honest gaps.** Nothing has executed on-chain yet — the `baw` hop and the Agent Studio deploy are both built and typechecked but have never run, because each needs a signed-in wallet. `DATABASE_URL` is unset locally, so the Board, duels and the hourly worker are inert until Postgres is attached. Lending is `blocked` for `diamond` and `quant` until a BSC venue exists. And `/api/holidays` still reads the NYSE closure calendar from Backpack's public API — a Solana-ecosystem venue, and the next thing to replace.
