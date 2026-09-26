@@ -16,17 +16,27 @@ export async function GET() {
 
   try {
     return NextResponse.json(await cached('leaderboard', board), { headers: { 'Cache-Control': 's-maxage=30' } });
-  } catch {
+  } catch (e) {
+    // An empty board and a broken one look identical from outside; say which in the logs.
+    console.error('[board] load failed —', (e as Error).message);
     return NextResponse.json({ rows: [], pulse: null, cloud: false });
   }
 }
 
+/** Times one step of a load, so a slow one can say which part was slow. */
+function timed<T>(ms: Record<string, number>, label: string, p: Promise<T>): Promise<T> {
+  const start = Date.now();
+  return p.finally(() => { ms[label] = Date.now() - start; });
+}
+
 async function board() {
-  await ensureSchema();
+  const ms: Record<string, number> = {};
+  const start = Date.now();
+  await timed(ms, 'schema', ensureSchema());
   // Three independent reads, so none waits on another: the two queries cross to the database's
   // region, and every pet's ticker is one of the six, so the prices need not wait for the rows.
   const [{ rows }, acts, prices] = await Promise.all([
-    pool().query<{
+    timed(ms, 'pets', pool().query<{
       id: string; name: string; species: string; ticker: string; personality: string;
       streak: number; paper: boolean; is_public: boolean; held_qty: string; cost_basis: string; lent_qty: string;
     }>(
@@ -38,16 +48,18 @@ async function board() {
          from pets p
         order by p.updated_at desc
         limit 100`,
-    ),
+    )),
     // Proof the pets act on their own: how much happened in the last day, and how much of it
     // happened while the NYSE was shut and nobody could have pressed a button.
-    pool().query<{ ts: Date }>(
+    timed(ms, 'entries', pool().query<{ ts: Date }>(
       `select ts from pet_entries
         where ts > now() - interval '24 hours' and kind in ('buy','lend','ask')
         order by ts desc limit 1000`,
-    ),
-    pricesFor(ALL_SPECIES.map((s) => s.ticker)),
+    )),
+    timed(ms, 'prices', pricesFor(ALL_SPECIES.map((s) => s.ticker))),
   ]);
+  const total = Date.now() - start;
+  if (total > 1000) console.log(`[board] slow load ${total}ms — ${Object.entries(ms).map(([k, v]) => `${k} ${v}ms`).join(', ')}`);
   const pulse = {
     actions: acts.rows.length,
     afterHours: acts.rows.filter((a) => nyseSession(a.ts) !== 'regular').length,
