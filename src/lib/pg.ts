@@ -23,10 +23,15 @@ export function pool(): Pool {
     globalThis.__roostPool = new Pool({
       connectionString,
       max: 5,
-      idleTimeoutMillis: 30_000,
+      // The database is in another region, so a fresh connection costs several round trips across
+      // the Pacific. Keep idle ones for a while rather than paying that every half minute.
+      idleTimeoutMillis: 5 * 60_000,
       // Railway's Postgres image ships a self-signed certificate.
       ssl: connectionString.includes('localhost') ? undefined : { rejectUnauthorized: false },
     });
+    // An idle connection the server drops arrives as an 'error' event on the pool. Unhandled, that
+    // takes the whole process down; handled, the pool discards it and opens another when needed.
+    globalThis.__roostPool.on('error', (e) => console.error('[pg] idle connection dropped —', e.message));
   }
   return globalThis.__roostPool;
 }

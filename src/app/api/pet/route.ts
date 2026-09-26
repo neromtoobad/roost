@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { dbEnabled, ensureSchema, ownerHash, pool } from '@/lib/db';
+import { invalidate } from '@/lib/swr';
 
 // Mirror a Fledgling into Postgres. The browser posts its owner key here over same-origin HTTPS;
 // only the hash is stored, and an update that doesn't match the hash is refused rather than
@@ -77,6 +78,8 @@ export async function POST(req: Request) {
       );
     }
 
+    // What the board and the duel card show just changed; do not serve them from before it.
+    invalidate('leaderboard', 'duels');
     return NextResponse.json({ ok: true, id });
   } catch (e) {
     // The cloud is a mirror; never break the app because it's unreachable.

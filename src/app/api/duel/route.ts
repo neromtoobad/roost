@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { dbEnabled, ensureSchema, ownerHash, pool } from '@/lib/db';
 import { challenge, listDuels } from '@/lib/duels';
+import { cached, invalidate } from '@/lib/swr';
 
 // Challenge a rival, or read the card. You can only put up a Fledgling you own: the owner key goes
 // in the body, is hashed server-side, and has to match the row.
@@ -8,8 +9,8 @@ import { challenge, listDuels } from '@/lib/duels';
 export async function GET() {
   if (!dbEnabled()) return NextResponse.json({ duels: [] });
   try {
-    await ensureSchema();
-    return NextResponse.json({ duels: await listDuels() }, { headers: { 'Cache-Control': 's-maxage=15' } });
+    const duels = await cached('duels', async () => { await ensureSchema(); return listDuels(); });
+    return NextResponse.json({ duels }, { headers: { 'Cache-Control': 's-maxage=15' } });
   } catch {
     return NextResponse.json({ duels: [] });
   }
@@ -30,7 +31,9 @@ export async function POST(req: Request) {
     const mine = await pool().query(`select 1 from pets where id=$1 and owner_hash=$2`, [id, ownerHash(ownerKey)]);
     if (!mine.rowCount) return NextResponse.json({ ok: false, reason: 'not-owner' }, { status: 403 });
 
-    return NextResponse.json(await challenge(id, rivalId));
+    const result = await challenge(id, rivalId);
+    if (result.ok) invalidate('duels');
+    return NextResponse.json(result);
   } catch (e) {
     return NextResponse.json({ ok: false, reason: (e as Error).message });
   }

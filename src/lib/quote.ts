@@ -151,13 +151,29 @@ export async function quoteFor(id: Species['id']): Promise<Quote> {
   return (await quotesFor([id]))[id];
 }
 
-/** Prices by ticker. Kept for the leaderboard and duels, which value portfolios by ticker. */
+/**
+ * Prices by ticker, for the leaderboard and duels. They only need the traded print, so this reads
+ * the DEX feed alone (~0.4s) and falls back to the full quote — which also pulls the rwa/tokens
+ * list, ~1.3s median — only for a ticker the feed has no price for. Same answer as `quotesFor`'s
+ * `price`, which prefers the same print and falls back the same way.
+ */
 export async function pricesFor(tickers: string[]): Promise<Record<string, number | null>> {
-  const uniq = [...new Set(tickers)];
-  const ids = uniq.map(speciesByTicker).filter((s): s is Species => Boolean(s)).map((s) => s.id);
-  const quotes = await quotesFor(ids);
-  const byTicker = new Map(Object.values(quotes).map((q) => [q.ticker.toUpperCase(), q.price]));
-  return Object.fromEntries(uniq.map((t) => [t, byTicker.get(t.toUpperCase()) ?? null]));
+  const wanted = [...new Set(tickers)].map((t) => [t, speciesByTicker(t)] as const);
+  const known = wanted.filter((w): w is readonly [string, Species] => Boolean(w[1]));
+  const dex = await dexRows(known.map(([, sp]) => sp.address));
+
+  const out: Record<string, number | null> = Object.fromEntries(wanted.map(([t]) => [t, null]));
+  const missing: (readonly [string, Species])[] = [];
+  for (const [t, sp] of known) {
+    const v = Number(dex.get(addr(sp.address))?.price);
+    if (Number.isFinite(v) && v > 0) out[t] = v;
+    else missing.push([t, sp]);
+  }
+  if (missing.length) {
+    const quotes = await quotesFor(missing.map(([, sp]) => sp.id));
+    for (const [t, sp] of missing) out[t] = quotes[sp.id]?.price ?? null;
+  }
+  return out;
 }
 
 export async function priceFor(ticker: string): Promise<number | null> {

@@ -1,5 +1,6 @@
 import { pool } from './pg';
 import { pricesFor } from './quote';
+import { ALL_SPECIES } from './pets';
 
 // Duels: two Fledglings, 24 hours, best percentage move wins.
 //
@@ -23,15 +24,17 @@ export async function valueOf(ids: string[]): Promise<Map<string, number>> {
   const out = new Map<string, number>();
   if (!ids.length) return out;
 
-  const { rows } = await pool().query<ValueRow>(
-    `select p.id, p.ticker, p.cash,
-            coalesce((select sum((l->>'qty')::numeric) from jsonb_array_elements(p.lots) l), 0) + p.yield_qty as held_qty,
-            coalesce((select sum((l->>'qty')::numeric * (l->>'price')::numeric) from jsonb_array_elements(p.lots) l), 0) as cost_basis
-       from pets p where p.id = any($1::uuid[])`,
-    [ids],
-  );
-
-  const prices = await pricesFor(rows.map((r) => r.ticker));
+  // Every pet's ticker is one of the six, so the prices need not wait for the rows.
+  const [{ rows }, prices] = await Promise.all([
+    pool().query<ValueRow>(
+      `select p.id, p.ticker, p.cash,
+              coalesce((select sum((l->>'qty')::numeric) from jsonb_array_elements(p.lots) l), 0) + p.yield_qty as held_qty,
+              coalesce((select sum((l->>'qty')::numeric * (l->>'price')::numeric) from jsonb_array_elements(p.lots) l), 0) as cost_basis
+         from pets p where p.id = any($1::uuid[])`,
+      [ids],
+    ),
+    pricesFor(ALL_SPECIES.map((s) => s.ticker)),
+  ]);
   for (const r of rows) {
     const px = prices[r.ticker];
     const held = Number(r.held_qty) || 0;
