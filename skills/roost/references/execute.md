@@ -57,9 +57,20 @@ which is the only time it matters.
     "pct24h": 2.17, "marketStatus": null,
     "priceSource": "aggregator-quote", "barsSource": "dex", "quoteDegraded": false
   },
-  "expectedQty": 0.0729
+  "expectedQty": 0.0729,
+  "preflight": {
+    "status": "would-succeed",
+    "summary": "Simulated against this wallet just now: 16.00 USDT in, 0.07296 NVDAB out (at least 0.07223 after 1% slippage), plus about $0.02 of gas.",
+    "spendsUsdt": 16, "receivesQty": 0.07296, "minReceiveQty": 0.07223, "slippagePct": 1,
+    "gasUsd": 0.02, "usdtBalance": 325.8, "bnbBalance": 0.08,
+    "executionMode": "SWAP", "spender": null, "failReason": null
+  }
 }
 ```
+
+`preflight` is the same buy, built by the Binance aggregator for this wallet and run through the
+Transaction API's simulator against current chain state. Nothing is signed or broadcast. It is
+`null` unless the instruction is a `swap` and you passed `wallet`.
 
 ---
 
@@ -71,6 +82,7 @@ Say four things, in the pet's voice but with the numbers untouched:
 - **why** — `instruction.reason`, verbatim, because a deterministic engine produced it
 - what they get — `expectedQty` of the token, at `market.perToken`
 - how that compares to the real stock — `market.spreadPct` against `market.reference`
+- whether it would actually go through from their wallet — `preflight.summary`, verbatim
 
 That last one is the point of the product. A tokenized stock trades around the clock while the
 exchange behind it is shut, so the spread is where the story is. If `market.marketStatus` is
@@ -83,7 +95,20 @@ Get an explicit yes. Then run it.
 
 ## 3. Execute
 
-Run `instruction.cli` exactly as given. Do not rewrite the amount, retarget the token, or add
+First, what the simulation said:
+
+| `preflight.status` | Do this |
+|---|---|
+| `would-succeed` | Proceed on the user's yes. |
+| `would-fail` | **Do not run it.** Read `preflight.summary` to the user — it names what is short (USDT, BNB for gas) or the revert, verbatim. Running it anyway spends gas to fail. |
+| `needs-approval` | Tell the user the wallet has not approved the aggregator's router for USDT. Binance does not document whether `baw market-order swap` approves for itself, so run it only once they know — and if it then fails on allowance, this is why. Do not retry. |
+| `not-simulated` | Say it was not simulated and why (`preflight.summary` carries the gateway's reason — a closed market, a minimum order size, an RFQ fill with no transaction to simulate). Proceed on the user's yes as before. |
+| `null` | You did not pass `wallet`. Ask Roost again with it. |
+
+A simulation is a prediction against the chain as it is now, not a reservation. It does not
+replace polling to a terminal state after the swap.
+
+Then run `instruction.cli` exactly as given. Do not rewrite the amount, retarget the token, or add
 slippage the user did not ask for.
 
 Before it, complete the swap security pre-check from the `binance-agentic-wallet` skill

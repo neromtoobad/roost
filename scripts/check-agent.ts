@@ -5,6 +5,9 @@
  *
  * This is the same path POST /api/agent takes: real candles, the real engine, the real
  * instruction. Nothing is executed — Roost never executes. See src/lib/agent.ts.
+ *
+ * With a wallet, every swap is also simulated against it (src/lib/preflight.ts): signed by nobody,
+ * broadcast nowhere, but it says whether the buy would go through from that wallet right now.
  */
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -23,6 +26,8 @@ async function main() {
   const { fetchBars } = await import('../src/lib/bars');
   const { toInstruction, brief } = await import('../src/lib/agent');
   const { quoteFor, fillFor } = await import('../src/lib/quote');
+  const { preflightBuy } = await import('../src/lib/preflight');
+  const { SPECIES } = await import('../src/lib/pets');
 
   const wallet = process.argv[2];
   const hasWallet = /^0x[a-fA-F0-9]{40}$/.test(wallet ?? '');
@@ -48,6 +53,11 @@ async function main() {
       const qty = per ? ins.usd / per : null;
       console.log(`        ${D(`→ about ${qty?.toFixed(5)} ${brief(species, p).token}`)}`);
       console.log(`        ${D(ins.cli)}`);
+      if (hasWallet) {
+        const pf = await preflightBuy(SPECIES[species], ins.usd, wallet);
+        const mark = pf.status === 'would-succeed' ? G('SIM ✓') : pf.status === 'not-simulated' ? D('SIM –') : Y('SIM ✗');
+        console.log(`        ${mark} ${pf.summary}`);
+      }
     }
     if (ins.kind === 'blocked') console.log(`        ${Y('why: ' + ins.why)}`);
     console.log();

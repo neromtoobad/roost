@@ -5,11 +5,15 @@ import { decide, type StrategyState } from '@/lib/strategy';
 import { fetchBars } from '@/lib/bars';
 import { quoteFor, fillFor } from '@/lib/quote';
 import { brief, toInstruction } from '@/lib/agent';
+import { preflightBuy } from '@/lib/preflight';
 
 // What does this Fledgling want to do right now, and what exactly would run it?
 //
 // This is the endpoint the Roost skill calls before touching the user's Agentic Wallet. Roost
 // decides; `baw` executes; nothing here holds a key or moves a coin. See lib/agent.ts.
+//
+// A swap also comes back simulated against the wallet that would sign it (lib/preflight.ts), so
+// the owner hears "this would fail: the wallet holds 3 USDT" before saying yes, not after.
 
 type Body = {
   action?: 'intent';
@@ -70,10 +74,13 @@ export async function POST(req: Request) {
   const instruction = toInstruction(body.species, decide(body.personality, bars, i, state));
 
   // Price it so the agent can tell the owner what the money actually buys, before it runs.
-  const q = await quoteFor(body.species);
-  const fill = /^0x[a-fA-F0-9]{40}$/.test(body.wallet ?? '')
-    ? await fillFor(body.species, body.wallet as `0x${string}`)
-    : null;
+  const wallet = /^0x[a-fA-F0-9]{40}$/.test(body.wallet ?? '') ? (body.wallet as `0x${string}`) : null;
+  const [q, fill, preflight] = await Promise.all([
+    quoteFor(body.species),
+    wallet ? fillFor(body.species, wallet) : null,
+    // Only a swap has a transaction to simulate, and only a wallet can be simulated against.
+    wallet && instruction.kind === 'swap' ? preflightBuy(sp, instruction.usd, wallet) : null,
+  ]);
 
   const perToken = fill?.perToken ?? q.price;
   const expectedQty = instruction.kind === 'swap' && perToken ? instruction.usd / perToken : null;
@@ -93,5 +100,6 @@ export async function POST(req: Request) {
       quoteDegraded: fill === null && sp.platform === 'ondo',
     },
     expectedQty,
+    preflight,
   });
 }

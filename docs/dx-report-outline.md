@@ -63,6 +63,18 @@ Evidence: the error catalogue and latency table in `dx-evidence.md`. Strongest i
   returns 46 (Ondo: 458 vs 442). `page`, `pageNo`, `pageSize` and `limit` are all ignored, so it is
   not pagination on the caller's side.
 
+- **`simulate` has no reference page**, and its errors send you the wrong way. The Transaction API
+  introduction lists it; no page gives its body. An empty body returns a bare `Parameter error`.
+  A body without the right key returns `code 50000` — the "internal error, retry" code — with
+  `evmParams is required for EVM chains`. There is no `evmParams`: the field is `evmTx`, found only
+  by reading the JS connector's generated types. The connector in turn marks `evmTx`, `solTx` and
+  `tronTx` all required when exactly one may be sent.
+- **A simulation works once you have it.** `{ binanceChainId, evmTx: { from, to, value, data } }`
+  → `status`, `failReason` (the revert string, verbatim), signed base-unit `balanceChanges` and
+  `allowanceChanges`. ~1.5–2s. The successful one matched the quote to 0.005%.
+- **Ondo's minimum order is enforced at the quote**: `Minimum order amount is 5 USD.` — for an
+  order of exactly $5.
+
 **The one that cost the most, and could not be found locally.** Deploying to Railway's default
 `sfo` region, every RWA call returned:
 
@@ -102,6 +114,10 @@ We read the Agentic Wallet skill and ran the Agent Studio CLI. Observations:
 - Missing: no way to exercise the `baw` path without a real Binance MPC wallet, so the last hop
   cannot be tested in CI or by a reviewer. Worth requesting a sandbox/dry-run mode.
 - `bunx` is required for `bag deploy` but not `bag init`; that is documented, and doctor flags it.
+- The market-order page does not say whether `baw market-order swap` handles the ERC-20 approval
+  itself, which router it uses, or its default slippage. Roost simulates the aggregator's swap for
+  the same wallet as a pre-flight, and has to report a missing router allowance as "needs
+  approval" rather than "will fail" because it cannot know.
 
 _Your words:_
 
@@ -168,5 +184,8 @@ _Your words:_
   by being awake for it.
 - One reference per underlying, or a documented reason why bStock and Ondo carry different ones
   for the same share at the same instant.
+- Bundle simulation, or state overrides on `simulate`. A first buy is two transactions — approve,
+  then swap — and the swap cannot be simulated until the approval is on-chain, so a first-time
+  buyer's pre-flight can only ever say "needs approval".
 
 _Your words:_

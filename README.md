@@ -53,6 +53,8 @@ Everything below was found by running against the live Binance Web3 API, and eac
 
 **The gateway's sharp edges.** The signed `requestPath` must carry the `/build` prefix — Binance's own docs call omitting it the #1 cause of `40102`, and they're right. The chain parameter is `binanceChainId`, not `chainId`. Failures come back as **HTTP 200** with the error in the body's `code`, so status-code-only handling swallows them silently. Candle `bar` is case-sensitive lowercase (`1h`, not `1H`), and a candle's timestamp is at **index 5**, not index 0 the way Binance spot klines put it.
 
+**Simulate catches what a quote cannot.** Twelve wallets that had just used the aggregator's router, each asked to buy $1 of NVDAB: eleven would have reverted — six on balance, five on allowance. Every one had a perfectly good quote. The endpoint has no reference page yet; its body is `{ binanceChainId, evmTx: { from, to, value, data } }`, and anything else gets an error naming `evmParams` — a field that does not exist — as code `50000`, the "internal error, retry" code.
+
 **Lending has no venue.** The DeFi API lists ten protocols on BSC, but none is confirmed to take a tokenized equity as collateral. Rather than emit a command that would fail on-chain, a Fledgling that wants to lend reports `blocked` and says why. Its shares sit idle rather than pretend to earn.
 
 ## The six
@@ -76,7 +78,7 @@ Roost holds no keys at any layer. It decides; something the user controls execut
 
 **The app.** Connect a wallet (wagmi 3 over EIP-6963, so Binance Web3 Wallet announces itself by name), adopt, feed, watch. A Fledgling is bound to the wallet connected at adoption — without one it is explicitly **paper**, and every surface says so.
 
-**Binance Agentic Wallet** — [`skills/roost/`](skills/roost). Agentic Wallet is MPC-keyless: the user signs in from the Binance App by QR, the key is never reconstructed anywhere, and an AI agent drives it through the `baw` CLI inside limits set in the App. So there is no server-side key and there should not be one. `POST /api/agent` returns the Fledgling's decision as one of four instructions — a `swap` carrying the exact `baw` command, an `ask` the owner must answer, a `hold`, or a `blocked` — and the skill runs it. The skill carries Binance's own hard rule: an `orderId` is **not** a completed swap; poll to `FINISHED` or `FAILED` before reporting anything, because the diary is meant to be checkable against the chain.
+**Binance Agentic Wallet** — [`skills/roost/`](skills/roost). Agentic Wallet is MPC-keyless: the user signs in from the Binance App by QR, the key is never reconstructed anywhere, and an AI agent drives it through the `baw` CLI inside limits set in the App. So there is no server-side key and there should not be one. `POST /api/agent` returns the Fledgling's decision as one of four instructions — a `swap` carrying the exact `baw` command, an `ask` the owner must answer, a `hold`, or a `blocked` — and the skill runs it. Before it does, every `swap` comes back **simulated against the wallet that would sign it**: the aggregator builds the unsigned transaction, the Transaction API's `simulate` runs it against current chain state, and the Wallet API reads the USDT and BNB behind it. A buy that would revert — no USDT, no BNB for gas, no allowance — is caught before the owner says yes, and the skill will not run one that would fail. The skill carries Binance's own hard rule: an `orderId` is **not** a completed swap; poll to `FINISHED` or `FAILED` before reporting anything, because the diary is meant to be checkable against the chain.
 
 **BNB Agent Studio** — [`roostsignal/`](roostsignal). A Fledgling deployed as a seller agent: ERC-8004 identity, ERC-8183 task interface, A2A + MCP + X402 faces. What it sells is the gap — `/api/signal` reports it for **all 448 tokenized tickers on BSC**, not just the six with faces — and, for the 40 that two issuers list, where the same share executes best (`/api/signal?ticker=NVDA&cross=1&wallet=…`). Priced at 0.1 U on the ERC-8183 rail with the x402 rail free. Its system prompt's first rule is that every number must come from a tool call: an invented price is worse than no answer, because measured numbers are the entire product.
 
@@ -88,7 +90,9 @@ Next.js 16 · TypeScript · Tailwind · Framer Motion · wagmi 3 + viem · Railw
 |---|---|---|
 | Tokenized stock list, reference price, market status | Binance Web3 **RWA Data API** | HMAC-SHA256 |
 | Traded price, 24h change | Binance Web3 **Market API** | HMAC-SHA256 |
-| Executable fill, price impact | Binance Web3 **Trading API** (aggregator) | HMAC-SHA256 |
+| Executable fill, price impact, unsigned swap tx | Binance Web3 **Trading API** (aggregator) | HMAC-SHA256 |
+| Pre-flight simulation of every buy | Binance Web3 **Transaction API** (`simulate`) | HMAC-SHA256 |
+| USDT and BNB behind the wallet | Binance Web3 **Wallet API** | HMAC-SHA256 |
 | Hourly candles | Binance Web3 **Market API** | HMAC-SHA256 |
 | Execution | Binance **Agentic Wallet** (`baw`) | QR / MPC, user-held |
 | Seller agent | **BNB Agent Studio** (`bag`) | wallet keystore, user-held |
@@ -124,6 +128,6 @@ npm run worker
 
 ## Status
 
-**Working and verified against the live API:** adoption and hatching, the feed loop with live pricing, the mood engine, the strategy engine and its diary, the two-source spread with real aggregator fills, hourly candles on both platforms, the wallet layer, the agent intent layer, the seller agent's deliverable across 448 tickers, and the cross-issuer comparison across the 40 both issuers list.
+**Working and verified against the live API:** adoption and hatching, the feed loop with live pricing, the mood engine, the strategy engine and its diary, the two-source spread with real aggregator fills, hourly candles on both platforms, the wallet layer, the agent intent layer, the seller agent's deliverable across 448 tickers, the cross-issuer comparison across the 40 both issuers list, and the pre-flight simulation — run against live wallets in all four outcomes (would succeed, needs approval, would fail, not simulated). Its path through `/api/agent` fires only when a rule does, which needs a market-hours bar; `npm run check:agent -- 0xYourAddress` shows it then.
 
 **Honest gaps.** Nothing has executed on-chain yet — the `baw` hop and the Agent Studio deploy are both built and typechecked but have never run, because each needs a signed-in wallet. `DATABASE_URL` is unset locally, so the Board, duels and the hourly worker are inert until Postgres is attached. Lending is `blocked` for `diamond` and `quant` until a BSC venue exists. And `/api/holidays` still reads the NYSE closure calendar from Backpack's public API — a Solana-ecosystem venue, and the next thing to replace.

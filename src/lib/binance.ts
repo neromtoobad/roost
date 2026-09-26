@@ -120,5 +120,9 @@ async function call<T>(method: Method, path: string, opts: { params?: Params; bo
   return (data !== undefined ? data : r.json) as T;
 }
 
+/** `x` whole tokens in base units, as the decimal string the gateway wants. Micro-token precision. */
+export const baseUnits = (x: number, decimals: number) =>
+  decimals >= 6 ? `${Math.round(x * 1e6)}${'0'.repeat(decimals - 6)}` : `${Math.round(x * 10 ** decimals)}`;
+
 export const get = <T>(path: string, params?: Params) => call<T>('GET', path, { params });
 export const post = <T>(path: string, body?: unknown) => call<T>('POST', path, { body });

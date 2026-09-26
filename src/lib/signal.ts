@@ -18,7 +18,7 @@
 // This module is the deliverable behind the ERC-8183 `notify_funded` call. It works for any RWA
 // token on BSC, not only the six with faces.
 
-import { request } from './binance';
+import { request, baseUnits } from './binance';
 import { CHAIN_ID, USDT } from './pets';
 import { nyseSession } from './session';
 
@@ -305,10 +305,6 @@ function referenceGap(refs: (number | null)[]): number | null {
   return ok.length > 1 ? pct(Math.max(...ok), Math.min(...ok)) : null;
 }
 
-/** `x` whole tokens in base units, as the decimal string the gateway wants. */
-const units = (x: number, decimals: number) =>
-  decimals >= 6 ? `${Math.round(x * 1e6)}${'0'.repeat(decimals - 6)}` : `${Math.round(x * 10 ** decimals)}`;
-
 /** One aggregator quote: what `amount` of `from` fetches in `to`, in base units, or why not. */
 async function quoteOut(from: string, to: string, amount: string, wallet: string):
   Promise<{ out: number | null; impactPct: number | null; gasUsd: number | null; note: string | null }> {
@@ -357,12 +353,12 @@ async function legFor(row: RwaRow, usd: number, wallet: string | undefined): Pro
     leg.bidNote = leg.askNote = 'the RWA row carries no usable price or ratio to size a quote from';
     return leg;
   }
-  const sellUnits = units(usd / tokenPrice, decimals);
+  const sellUnits = baseUnits(usd / tokenPrice, decimals);
   const sold = Number(sellUnits) / 10 ** decimals;
 
   const [sell, buy] = await Promise.all([
     quoteOut(row.tokenContractAddress, USDT, sellUnits, wallet!),
-    quoteOut(USDT, row.tokenContractAddress, units(usd, 18), wallet!), // USDT on BSC is 18 decimals
+    quoteOut(USDT, row.tokenContractAddress, baseUnits(usd, 18), wallet!), // USDT on BSC is 18 decimals
   ]);
   leg.bidPerShare = sell.out !== null ? sell.out / 1e18 / (sold * ratio) : null;
   leg.askPerShare = buy.out !== null ? usd / ((buy.out / 10 ** decimals) * ratio) : null;

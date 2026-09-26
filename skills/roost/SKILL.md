@@ -57,8 +57,10 @@ do not attempt to work around it.
 `POST /api/agent` always answers with exactly one `instruction`. Handle each one differently —
 they are not interchangeable, and three of the four must not result in a trade.
 
-- **`swap`** — the pet decided to buy. `instruction.cli` is the exact `baw` command. Show the
-  user the summary, reason and expected quantity, get a yes, then run it.
+- **`swap`** — the pet decided to buy. `instruction.cli` is the exact `baw` command, and
+  `preflight` says whether it would go through from this wallet right now. Show the user the
+  summary, reason, expected quantity and `preflight.summary`, get a yes, then run it. **Never run
+  a swap whose `preflight.status` is `would-fail`.**
 - **`ask`** — the pet wants to spend more than its rule lets it decide alone. **Do not trade.**
   Put the question to the user. Only if they agree does it become a swap.
 - **`hold`** — nothing fired this hour, or the pet is waiting on an unanswered question. Say so.
