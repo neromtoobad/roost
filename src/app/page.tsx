@@ -170,7 +170,11 @@ export default function Home() {
         </div>
       )}
 
-      {pet && <Ask pet={pet} price={price.price} onAnswer={(yes) => { if (price.price) void syncPet(answerProposal(pet, yes, price.price)); }} />}
+      {pet && <Ask pet={pet} price={price.price} onAnswer={(yes) => {
+        // A live pet's yes is a signature, and signatures happen on the feed screen.
+        if (yes && !isPaper(pet)) { router.push('/feed?proposal=1'); return; }
+        if (price.price) void syncPet(answerProposal(pet, yes, price.price));
+      }} />}
 
       {duel && (
         <Link href="/duels" className="mt-2 block">

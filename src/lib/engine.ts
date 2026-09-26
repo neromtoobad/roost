@@ -7,6 +7,11 @@ import { isPaper, totalFed, type Entry, type PetState } from './pet-math';
 //
 // Pure — it returns the next pet rather than storing it. The browser writes the result to
 // localStorage, the hourly worker writes it to Postgres, and both get identical actions.
+//
+// A live Fledgling — one bound to a wallet — never records a trade here. Roost holds no keys, so
+// nothing it decides can happen until the owner signs: a buy becomes a request for a signature,
+// and the lot is written only from the receipt once they do (store.recordBuy). A paper Fledgling
+// still fills at the bar's close, and says it is paper.
 
 export type TickResult = { pet: PetState; fresh: Entry[]; from: number; to: number };
 
@@ -45,7 +50,17 @@ export function runEngine(pet: PetState, bars: Bar[], now = Date.now()): TickRes
     const intent = decide(pet.personality, bars, idx < 0 ? i : idx, s);
     if (!intent) continue;
 
-    if (intent.kind === 'buy') {
+    if (intent.kind === 'buy' && !paper) {
+      const usd = Math.min(intent.usd, s.cash);
+      if (usd < 1) continue;
+      const why = intent.why ?? 'its rule fired';
+      proposal = { ts: bar.t, usd, reason: why };
+      fresh.push({ ts: bar.t, text: `Wants to buy $${usd.toFixed(2)} — ${why}. Needs your signature.`, kind: 'ask', usd });
+    } else if (intent.kind === 'lend' && !paper) {
+      // No venue on BSC takes a tokenized equity as collateral. A paper pet can pretend; real
+      // shares stay idle rather than report yield nobody is paying.
+      continue;
+    } else if (intent.kind === 'buy') {
       const usd = Math.min(intent.usd, s.cash);
       if (usd < 1) continue;
       const qty = usd / bar.close;

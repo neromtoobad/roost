@@ -1,5 +1,6 @@
 'use client';
 import { Nav } from '@/components/Nav';
+import { TxLink } from '@/components/Report';
 import { petImage } from '@/lib/pets';
 import { usePet, type EntryKind } from '@/lib/store';
 
@@ -27,10 +28,7 @@ export default function Diary() {
                 {e.usd != null && e.qty == null && ` · $${e.usd.toFixed(2)}`}
                 {e.paper && ' · paper'}
               </p>
-              {e.sig && (
-                <a href={`https://solscan.io/tx/${e.sig}`} target="_blank" rel="noreferrer"
-                  className="mt-1 inline-block text-[11.5px] num" style={{ color: 'var(--accent)' }}>View on Solscan ↗</a>
-              )}
+              {e.sig && <TxLink sig={e.sig} />}
             </div>
           </li>
         ))}

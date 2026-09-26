@@ -2,7 +2,7 @@
 import { useMemo } from 'react';
 import { setLocal, useLocal } from './client';
 import { isPaper, type Entry, type Launch, type PetState, type Personality } from './pet-math';
-import type { Species } from './pets';
+import { SPECIES, type Species } from './pets';
 
 // Pet state as the browser holds it. Feeding adds cash; the strategy engine decides what to do with
 // it. Those are separate on purpose — "you fed it" and "it bought something" are different events,
@@ -110,6 +110,37 @@ export async function feedPetRemote(p: PetState, usd: number, _marketOpen: boole
   // Feeding credits the pet's cash. What it then does with that cash is its own decision, and
   // executing it is the agent's job through `baw` — ask POST /api/agent what it wants to do.
   return feedPet(p, usd);
+}
+
+/**
+ * A buy that happened on-chain, recorded from its receipt. `fromCash` is the pet's own decision
+ * being signed (it spends cash the owner fed earlier); otherwise the owner fed and it ate at once.
+ * Returns the new pet and the entries it added, for syncing.
+ */
+export function recordBuy(
+  p: PetState,
+  b: { hash: string; qty: number; spent: number; fromCash: boolean; reason?: string },
+): { pet: PetState; fresh: Entry[] } {
+  const t = Date.now();
+  const ticker = SPECIES[p.species].ticker;
+  const price = b.spent / b.qty;
+  const fresh: Entry[] = [
+    ...(b.fromCash ? [] : [{ ts: t, text: `Fed $${b.spent.toFixed(2)}.`, kind: 'feed' as const, usd: b.spent }]),
+    {
+      ts: t + 1, kind: 'buy', qty: b.qty, price, usd: b.spent, sig: b.hash, paper: false,
+      text: b.reason ?? `Ate it. ${b.qty.toFixed(4)} ${ticker}, on-chain, signed by you.`,
+    },
+  ];
+  const next: PetState = {
+    ...p,
+    lastFed: b.fromCash ? p.lastFed : t,
+    cash: b.fromCash ? Math.max(0, p.cash - b.spent) : p.cash,
+    proposal: b.fromCash ? null : p.proposal,
+    lots: [...p.lots, { ts: t, qty: b.qty, price }],
+    diary: [...p.diary, ...fresh],
+  };
+  savePet(next);
+  return { pet: next, fresh };
 }
 
 export function saveLaunch(p: PetState, launch: Launch) {

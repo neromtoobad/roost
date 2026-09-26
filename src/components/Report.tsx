@@ -2,11 +2,22 @@
 import { motion } from 'framer-motion';
 import { petImage } from '@/lib/pets';
 import { awayLabel } from '@/lib/engine';
-import type { Entry, PetState } from '@/lib/store';
+import { isPaper, type Entry, type PetState } from '@/lib/store';
 
 const ICON: Record<string, string> = { buy: '📈', lend: '🏦', yield: '✨', hold: '🤚', ask: '🙋', feed: '🍽', system: '🔔' };
 
-/** "While you were out." The appointment mechanic — the reason to open the app tomorrow. */
+/** A BSC transaction on BscScan. Signatures from the Solana era still resolve on Solscan. */
+export function TxLink({ sig }: { sig: string }) {
+  const bsc = sig.startsWith('0x');
+  return (
+    <a href={bsc ? `https://bscscan.com/tx/${sig}` : `https://solscan.io/tx/${sig}`} target="_blank" rel="noreferrer"
+      className="mt-1 inline-block text-[11.5px] num" style={{ color: 'var(--accent)' }}>
+      View on {bsc ? 'BscScan' : 'Solscan'} ↗
+    </a>
+  );
+}
+
+/** "While you were out. The appointment mechanic — the reason to open the app tomorrow. */
 export function Report({ pet, fresh, awayMs, price, onClose }: {
   pet: PetState; fresh: Entry[]; awayMs: number; price: number | null; onClose: () => void;
 }) {
@@ -58,6 +69,7 @@ export function Report({ pet, fresh, awayMs, price, onClose }: {
                   {f.qty != null && f.price != null && ` · ${f.qty.toFixed(4)} @ $${f.price.toFixed(2)}`}
                   {f.paper && ' · paper'}
                 </p>
+                {f.sig && <TxLink sig={f.sig} />}
               </div>
             </li>
           ))}
@@ -69,10 +81,14 @@ export function Report({ pet, fresh, awayMs, price, onClose }: {
   );
 }
 
-/** The pet asking before it does something big. One tap either way. */
+/**
+ * The pet asking before it does something. One tap either way. A live pet asks for every buy —
+ * Roost cannot sign — so its yes is a signature, taken on the feed screen.
+ */
 export function Ask({ pet, price, onAnswer }: { pet: PetState; price: number | null; onAnswer: (yes: boolean) => void }) {
   if (!pet.proposal) return null;
   const { usd, reason } = pet.proposal;
+  const live = !isPaper(pet);
   return (
     <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
       className="card mt-3 px-4 py-3" style={{ outline: '3px solid var(--accent)', boxShadow: 'var(--glow)' }}>
@@ -83,7 +99,7 @@ export function Ask({ pet, price, onAnswer }: { pet: PetState; price: number | n
         It&rsquo;s {reason}{price ? ` · $${price.toFixed(2)} now` : ''}.
       </p>
       <div className="mt-3 flex gap-2">
-        <button onClick={() => onAnswer(true)} className="pill flex-1 text-[15px]">Let {pet.name.split(' ')[0]}</button>
+        <button onClick={() => onAnswer(true)} className="pill flex-1 text-[15px]">{live ? 'Sign it' : `Let ${pet.name.split(' ')[0]}`}</button>
         <button onClick={() => onAnswer(false)} className="flex-1 rounded-full border py-3 text-[15px] font-bold"
           style={{ borderColor: 'var(--line)', background: 'var(--surface)', fontFamily: 'var(--font-display)' }}>Not today</button>
       </div>

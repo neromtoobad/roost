@@ -54,7 +54,7 @@ export type Preflight = {
   simulatedAt: number;
 };
 
-type QuoteRow = { quoteId: string; executionMode?: string; tradeFee?: string };
+type QuoteRow = { quoteId: string; executionMode?: string; tradeFee?: string; approveTarget?: string };
 type Tx = { from: string; to: string; value: string; data: string; gas: string; gasPrice: string; minReceiveAmount?: string; slippagePercent?: string };
 type Simulation = {
   status?: string;
@@ -98,24 +98,43 @@ async function balances(wallet: string): Promise<{ usdt: number | null; bnb: num
   }
 }
 
+/** A transaction for the owner's wallet to sign, exactly as the aggregator built it. */
+export type UnsignedTx = { to: string; data: string; value: string; gas: string };
+
+export type BuyPlan = {
+  preflight: Preflight;
+  /** The swap, present only when the simulation says it would go through. */
+  swap: UnsignedTx | null;
+  /** A USDT approval for exactly this amount, present only when that is all that stands in the way. */
+  approval: UnsignedTx | null;
+};
+
 /** Would buying `usd` of this Fledgling's token go through from `wallet`, right now? */
 export async function preflightBuy(sp: Species, usd: number, wallet: string): Promise<Preflight> {
+  return (await planBuy(sp, usd, wallet)).preflight;
+}
+
+/**
+ * The same check, plus what to sign. The web app hands `approval` then `swap` to the owner's
+ * wallet; nothing here signs, and a transaction that does not match the request is refused
+ * rather than passed on — the wallet prompt is the last line of defence, not the only one.
+ */
+export async function planBuy(sp: Species, usd: number, wallet: string): Promise<BuyPlan> {
   const out: Preflight = {
     status: 'not-simulated', summary: '', spendsUsdt: null, receivesQty: null, minReceiveQty: null,
     slippagePct: null, gasUsd: null, usdtBalance: null, bnbBalance: null, executionMode: null,
     spender: null, failReason: null, simulatedAt: Date.now(),
   };
+  const only = (preflight: Preflight): BuyPlan => ({ preflight, swap: null, approval: null });
   // The gateway's own reason is the useful part ("market is currently closed", "minimum order
   // amount is 5 USD"), so it goes in the sentence, not only in `failReason`.
-  const notSimulated = (why: string, failReason: string | null = null): Preflight => ({
+  const notSimulated = (why: string, failReason: string | null = null): BuyPlan => only({
     ...out, status: 'not-simulated', failReason,
     summary: `Not simulated: ${why}${failReason ? ` — ${failReason.replace(/\.+$/, '')}` : ''}.`,
   });
 
-  const pair = {
-    binanceChainId: CHAIN_ID, fromTokenAddress: USDT, toTokenAddress: sp.address,
-    amount: baseUnits(usd, USDT_DECIMALS), userWalletAddress: wallet,
-  };
+  const amount = baseUnits(usd, USDT_DECIMALS);
+  const pair = { binanceChainId: CHAIN_ID, fromTokenAddress: USDT, toTokenAddress: sp.address, amount, userWalletAddress: wallet };
 
   try {
     const [held, q] = await Promise.all([
@@ -139,6 +158,12 @@ export async function preflightBuy(sp: Species, usd: number, wallet: string): Pr
     const s = await request('GET', '/api/v1/dex/aggregator/swap', { params: { quoteId: quote.quoteId, ...pair, autoSlippage: 'true' } });
     const tx = (s.json as { data?: { tx?: Tx } } | null)?.data?.tx;
     if (!tx) return notSimulated('the aggregator would not build the transaction', gatewayMsg(s));
+    // Spends USDT, so it carries no BNB; comes from this wallet; goes to the router the quote named.
+    const mismatch = lower(tx.from) !== lower(wallet) ? `sender ${tx.from}`
+      : Number(tx.value || 0) !== 0 ? `value ${tx.value}`
+      : quote.approveTarget && lower(tx.to) !== lower(quote.approveTarget) ? `router ${tx.to}, quote named ${quote.approveTarget}`
+      : null;
+    if (mismatch) return notSimulated('the aggregator returned a transaction that does not match this buy, so it is not passed on', mismatch);
     const min = Number(tx.minReceiveAmount) / 10 ** sp.decimals;
     out.minReceiveQty = Number.isFinite(min) ? min : null;
     out.slippagePct = Number.isFinite(Number(tx.slippagePercent)) ? Number(tx.slippagePercent) : null;
@@ -159,7 +184,7 @@ export async function preflightBuy(sp: Species, usd: number, wallet: string): Pr
     if (held.bnb !== null && Number.isFinite(gasBnb) && held.bnb < gasBnb) {
       short.push(`it holds ${held.bnb.toPrecision(2)} BNB and the swap needs about ${gasBnb.toPrecision(2)} BNB for gas`);
     }
-    if (short.length) return { ...out, status: 'would-fail', summary: `Would fail: ${short.join('; ')}.` };
+    if (short.length) return only({ ...out, status: 'would-fail', summary: `Would fail: ${short.join('; ')}.` });
 
     if (sim.status === 'SUCCESS') {
       const mine = (sim.balanceChanges ?? []).filter((c) => lower(c.owner) === lower(wallet));
@@ -176,20 +201,46 @@ export async function preflightBuy(sp: Species, usd: number, wallet: string): Pr
       const floor = out.minReceiveQty !== null ? ` (at least ${out.minReceiveQty.toPrecision(4)} after ${out.slippagePct ?? '?'}% slippage)` : '';
       const gas = out.gasUsd !== null ? `, plus about $${out.gasUsd.toFixed(2)} of gas` : '';
       return {
-        ...out, status: 'would-succeed',
-        summary: `Simulated against this wallet just now: ${(out.spendsUsdt ?? usd).toFixed(2)} USDT in, ${qty} ${sp.tokenSymbol} out${floor}${gas}.`,
+        preflight: {
+          ...out, status: 'would-succeed',
+          summary: `Simulated against this wallet just now: ${(out.spendsUsdt ?? usd).toFixed(2)} USDT in, ${qty} ${sp.tokenSymbol} out${floor}${gas}.`,
+        },
+        swap: { to: tx.to, data: tx.data, value: tx.value || '0', gas: tx.gas },
+        approval: null,
       };
     }
 
     if (/allowance/i.test(sim.failReason ?? '')) {
-      const fine = held.usdt !== null && held.bnb !== null ? 'The USDT and the gas are there; the' : 'The';
-      return {
+      const fine = held.usdt !== null && held.bnb !== null ? 'The USDT and the gas are there; it' : 'It';
+      const preflight: Preflight = {
         ...out, status: 'needs-approval', spender: tx.to,
-        summary: `Would not go through yet: this wallet has not allowed the aggregator's router (${abbrev(tx.to)}) to spend its USDT. ${fine} first buy through that router needs a one-time approval.`,
+        summary: `Would not go through yet: this wallet has not allowed the aggregator's router (${abbrev(tx.to)}) to spend this much of its USDT. ${fine} needs an approval first.`,
       };
+      return { preflight, swap: null, approval: await approvalFor(amount, tx.to) };
     }
-    return { ...out, status: 'would-fail', summary: `Would fail: ${sim.failReason || 'the simulation reverted without giving a reason'}.` };
+    return only({ ...out, status: 'would-fail', summary: `Would fail: ${sim.failReason || 'the simulation reverted without giving a reason'}.` });
   } catch (e) {
     return notSimulated('the gateway call failed', (e as Error).message);
   }
+}
+
+/**
+ * A USDT approval for exactly `amount`, to exactly `router`, or null. Exact rather than unlimited:
+ * it costs the owner a second signature per buy, and in exchange nothing can ever pull more USDT
+ * from their wallet than the buy they just agreed to.
+ */
+async function approvalFor(amount: string, router: string): Promise<UnsignedTx | null> {
+  const r = await request('GET', '/api/v1/dex/aggregator/approve-transaction', {
+    params: { binanceChainId: CHAIN_ID, tokenContractAddress: USDT, approveAmount: amount },
+  });
+  const row = (r.json as { data?: { data?: string; dexContractAddress?: string; gasLimit?: string }[] } | null)?.data?.[0];
+  const data = row?.data ?? '';
+  // approve(address spender, uint256 amount): selector, then two 32-byte words.
+  const spender = `0x${data.slice(34, 74)}`;
+  const approved = data.length >= 138 ? BigInt(`0x${data.slice(74, 138)}`) : null;
+  const ok = data.startsWith('0x095ea7b3')
+    && lower(spender) === lower(router)
+    && lower(row?.dexContractAddress) === lower(router)
+    && approved !== null && approved === BigInt(amount);
+  return ok ? { to: USDT, data, value: '0', gas: row?.gasLimit || '70000' } : null;
 }
