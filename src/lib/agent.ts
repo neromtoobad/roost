@@ -97,6 +97,25 @@ export function toInstruction(speciesId: Species['id'], intent: Intent | null): 
   }
 }
 
+/**
+ * The owner feeding it, now. Not a rule firing: the owner asked, so the pet does not wait for its
+ * personality's moment — the same as "Buy now" in the web app. Everything after this is identical:
+ * the pre-flight simulates it against the wallet, the owner confirms, `baw` runs it.
+ */
+export function feedInstruction(speciesId: Species['id'], usd: number): Instruction {
+  const sp = SPECIES[speciesId];
+  return {
+    kind: 'swap',
+    summary: `Feed ${sp.name}: buy $${usd.toFixed(2)} of ${sp.ticker} (${sp.tokenSymbol}) now`,
+    reason: 'You fed it. A live Fledgling eats at once when its owner asks — it does not wait for its rule.',
+    cli: bawSwap(sp, usd),
+    usd,
+    fromToken: USDT,
+    toToken: sp.address,
+    chainId: CHAIN_ID,
+  };
+}
+
 /** What the agent needs to know about a Fledgling before it does anything on its behalf. */
 export function brief(speciesId: Species['id'], personality: Personality) {
   const sp = SPECIES[speciesId];

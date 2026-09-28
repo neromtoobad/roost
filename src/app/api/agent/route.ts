@@ -4,7 +4,7 @@ import type { Personality } from '@/lib/pet-math';
 import { decide, type StrategyState } from '@/lib/strategy';
 import { fetchBars } from '@/lib/bars';
 import { quoteFor, fillFor } from '@/lib/quote';
-import { brief, toInstruction } from '@/lib/agent';
+import { brief, feedInstruction, toInstruction, type Instruction } from '@/lib/agent';
 import { preflightBuy } from '@/lib/preflight';
 
 // What does this Fledgling want to do right now, and what exactly would run it?
@@ -14,9 +14,15 @@ import { preflightBuy } from '@/lib/preflight';
 //
 // A swap also comes back simulated against the wallet that would sign it (lib/preflight.ts), so
 // the owner hears "this would fail: the wallet holds 3 USDT" before saying yes, not after.
+//
+// Two actions:
+//   intent (default)  what the pet's own rule wants this hour — often nothing, outside market hours
+//   feed + usd        the owner feeding it now: a swap for exactly that amount, at any hour
 
 type Body = {
-  action?: 'intent';
+  action?: 'intent' | 'feed';
+  /** For `feed`: how much USDT the owner is feeding it. */
+  usd?: number;
   species: Species['id'];
   personality: Personality;
   cash?: number;
@@ -43,35 +49,48 @@ export async function POST(req: Request) {
 
   const fledgling = brief(body.species, body.personality);
 
-  if (body.awaitingAnswer) {
-    return NextResponse.json({
-      fledgling,
-      instruction: {
-        kind: 'hold',
-        summary: 'Waiting on its owner.',
-        reason: 'It asked a question and has not been answered. It does not act until it is.',
-      },
-    });
+  let instruction: Instruction;
+  let barsSource: string | null = null;
+
+  if (body.action === 'feed') {
+    const usd = Number(body.usd);
+    if (!Number.isFinite(usd) || usd < 1 || usd > 10_000) {
+      return NextResponse.json({ error: 'feed needs usd between 1 and 10000' }, { status: 400 });
+    }
+    // An open question stops the pet acting on its own. The owner feeding it is not the pet acting.
+    instruction = feedInstruction(body.species, Math.round(usd * 100) / 100);
+  } else {
+    if (body.awaitingAnswer) {
+      return NextResponse.json({
+        fledgling,
+        instruction: {
+          kind: 'hold',
+          summary: 'Waiting on its owner.',
+          reason: 'It asked a question and has not been answered. It does not act until it is.',
+        },
+      });
+    }
+
+    const { bars, source } = await fetchBars(body.species, 7);
+    if (!bars.length) {
+      return NextResponse.json({
+        fledgling,
+        instruction: { kind: 'blocked', summary: 'No price history.', reason: 'The tape is empty.', why: 'No candles returned for this token, so no rule can fire.' },
+      });
+    }
+
+    const state: StrategyState = {
+      cash: body.cash ?? 0,
+      heldQty: body.heldQty ?? 0,
+      lentQty: body.lentQty ?? 0,
+      lastBuyAt: body.lastBuyAt ?? 0,
+      totalFed: body.totalFed ?? 0,
+    };
+
+    const i = bars.length - 1;
+    instruction = toInstruction(body.species, decide(body.personality, bars, i, state));
+    barsSource = source;
   }
-
-  const { bars, source } = await fetchBars(body.species, 7);
-  if (!bars.length) {
-    return NextResponse.json({
-      fledgling,
-      instruction: { kind: 'blocked', summary: 'No price history.', reason: 'The tape is empty.', why: 'No candles returned for this token, so no rule can fire.' },
-    });
-  }
-
-  const state: StrategyState = {
-    cash: body.cash ?? 0,
-    heldQty: body.heldQty ?? 0,
-    lentQty: body.lentQty ?? 0,
-    lastBuyAt: body.lastBuyAt ?? 0,
-    totalFed: body.totalFed ?? 0,
-  };
-
-  const i = bars.length - 1;
-  const instruction = toInstruction(body.species, decide(body.personality, bars, i, state));
 
   // Price it so the agent can tell the owner what the money actually buys, before it runs.
   const wallet = /^0x[a-fA-F0-9]{40}$/.test(body.wallet ?? '') ? (body.wallet as `0x${string}`) : null;
@@ -95,7 +114,7 @@ export async function POST(req: Request) {
       pct24h: q.pct24h,
       marketStatus: q.marketStatus,
       priceSource: fill ? 'aggregator-quote' : q.source,
-      barsSource: source,
+      barsSource,
       // Quoting an Ondo name without a wallet is refused by the RFQ desk, not by us.
       quoteDegraded: fill === null && sp.platform === 'ondo',
     },

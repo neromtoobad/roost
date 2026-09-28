@@ -46,7 +46,7 @@ do not attempt to work around it.
 | User intent | Do this | Reference |
 |---|---|---|
 | What does my pet want to do? | `POST {ROOST_URL}/api/agent` | [execute.md](references/execute.md) |
-| Feed / fund my pet, then act | ask Roost, then `baw market-order swap` | [execute.md](references/execute.md) |
+| Feed my pet $X (it buys now) | `POST {ROOST_URL}/api/agent` with `"action": "feed", "usd": X`, then `baw market-order swap` | [execute.md](references/execute.md#feeding-now) |
 | Did it actually trade? | `baw market-order list --orderId <id> --json` | [execute.md](references/execute.md) |
 | What is my pet holding / how is it doing? | `GET {ROOST_URL}/api/pet/<id>` | — |
 | What's the price / how far off the real stock is it? | `GET {ROOST_URL}/api/price/<species>` | — |
@@ -54,7 +54,8 @@ do not attempt to work around it.
 
 ## The four instruction kinds
 
-`POST /api/agent` always answers with exactly one `instruction`. Handle each one differently —
+`POST /api/agent` always answers with exactly one `instruction`. A feed (`"action": "feed"`)
+always answers `swap`: the owner asked, so the pet does not wait for its rule. Handle each one differently —
 they are not interchangeable, and three of the four must not result in a trade.
 
 - **`swap`** — the pet decided to buy. `instruction.cli` is the exact `baw` command, and

@@ -72,6 +72,27 @@ which is the only time it matters.
 Transaction API's simulator against current chain state. Nothing is signed or broadcast. It is
 `null` unless the instruction is a `swap` and you passed `wallet`.
 
+### Feeding now
+
+When the user says "feed Nova $5" — or "buy $10 of my pet's stock" — they are not asking what the
+pet wants. They are feeding it, and a fed Fledgling eats at once:
+
+```bash
+curl -s -X POST "$ROOST_URL/api/agent" \
+  -H 'Content-Type: application/json' \
+  -d '{ "action": "feed", "usd": 5, "species": "nova", "personality": "degen",
+        "wallet": "0xYourAgenticWalletAddress" }'
+```
+
+The answer has the same shape as above, and the instruction is always a `swap` for exactly that
+amount, at any hour — it does not wait for the market open or for the pet's rule to fire. Every
+step below still applies: show the user the pre-flight, get their yes, run it, poll it. An open
+question (`awaitingAnswer`) does not block a feed; that rule stops the pet acting on its own, and
+here the owner is the one acting.
+
+Ondo names (Pip, Lurk) have a $5 minimum and refuse to quote while their market is `closed` — the
+pre-flight says so in its summary. Report it rather than retrying in another size.
+
 ---
 
 ## 2. Show the user, before anything moves

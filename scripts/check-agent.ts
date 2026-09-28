@@ -24,7 +24,7 @@ async function main() {
   }
   const { decide } = await import('../src/lib/strategy');
   const { fetchBars } = await import('../src/lib/bars');
-  const { toInstruction, brief } = await import('../src/lib/agent');
+  const { toInstruction, brief, feedInstruction } = await import('../src/lib/agent');
   const { quoteFor, fillFor } = await import('../src/lib/quote');
   const { preflightBuy } = await import('../src/lib/preflight');
   const { SPECIES } = await import('../src/lib/pets');
@@ -62,6 +62,20 @@ async function main() {
     if (ins.kind === 'blocked') console.log(`        ${Y('why: ' + ins.why)}`);
     console.log();
   }
+
+  // What the owner gets when they feed it themselves: a swap now, whatever the rules say.
+  const feed = feedInstruction(species, 5);
+  console.log(`${B('Feeding it $5 now')}  ${D('— action: feed, at any hour')}`);
+  console.log(`  ${G('SWAP')}  ${feed.summary}`);
+  if (feed.kind === 'swap') {
+    console.log(`        ${D(feed.cli)}`);
+    if (hasWallet) {
+      const pf = await preflightBuy(SPECIES[species], feed.usd, wallet);
+      const mark = pf.status === 'would-succeed' ? G('SIM ✓') : pf.status === 'not-simulated' ? D('SIM –') : Y('SIM ✗');
+      console.log(`        ${mark} ${pf.summary}`);
+    }
+  }
+  console.log();
 
   // The rule that matters most: an unanswered question stops everything.
   console.log(B('Awaiting an answer'));
