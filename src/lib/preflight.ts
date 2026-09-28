@@ -25,6 +25,17 @@
 
 import { request, baseUnits } from './binance';
 import { CHAIN_ID, USDT, type Species } from './pets';
+import { referencePerToken } from './quote';
+
+/**
+ * The most a buy may pay above its token's own reference price. Measured on a Saturday: bStock
+ * asks sat within 0.6% of their references, sane weekend Ondo asks 1–2% over — and broken pools
+ * 5.7% (AMDon), 15.5% (SPYon) and 800% (SNDKon) over, every one of which would have gone through.
+ * A buy can succeed and still be a bad buy; the simulation cannot tell those apart, this can.
+ */
+export const MAX_PREMIUM_PCT = 3;
+/** Above this the buy still goes ahead, but the owner is told what they are paying over. */
+const NOTE_PREMIUM_PCT = 1;
 
 export type Preflight = {
   /**
@@ -51,10 +62,12 @@ export type Preflight = {
   spender: string | null;
   /** Verbatim from the simulation, or from the gateway when it would not build a transaction. */
   failReason: string | null;
+  /** The quoted price per token against the token's own reference: positive is paying over. Null if unchecked. */
+  premiumPct: number | null;
   simulatedAt: number;
 };
 
-type QuoteRow = { quoteId: string; executionMode?: string; tradeFee?: string; approveTarget?: string };
+type QuoteRow = { quoteId: string; executionMode?: string; tradeFee?: string; approveTarget?: string; toTokenAmount?: string };
 type Tx = { from: string; to: string; value: string; data: string; gas: string; gasPrice: string; minReceiveAmount?: string; slippagePercent?: string };
 type Simulation = {
   status?: string;
@@ -119,11 +132,14 @@ export async function preflightBuy(sp: Species, usd: number, wallet: string): Pr
  * wallet; nothing here signs, and a transaction that does not match the request is refused
  * rather than passed on — the wallet prompt is the last line of defence, not the only one.
  */
-export async function planBuy(sp: Species, usd: number, wallet: string): Promise<BuyPlan> {
+export async function planBuy(
+  sp: Species, usd: number, wallet: string,
+  { maxPremiumPct = MAX_PREMIUM_PCT }: { maxPremiumPct?: number } = {},
+): Promise<BuyPlan> {
   const out: Preflight = {
     status: 'not-simulated', summary: '', spendsUsdt: null, receivesQty: null, minReceiveQty: null,
     slippagePct: null, gasUsd: null, usdtBalance: null, bnbBalance: null, executionMode: null,
-    spender: null, failReason: null, simulatedAt: Date.now(),
+    spender: null, failReason: null, premiumPct: null, simulatedAt: Date.now(),
   };
   const only = (preflight: Preflight): BuyPlan => ({ preflight, swap: null, approval: null });
   // The gateway's own reason is the useful part ("market is currently closed", "minimum order
@@ -137,9 +153,10 @@ export async function planBuy(sp: Species, usd: number, wallet: string): Promise
   const pair = { binanceChainId: CHAIN_ID, fromTokenAddress: USDT, toTokenAddress: sp.address, amount, userWalletAddress: wallet };
 
   try {
-    const [held, q] = await Promise.all([
+    const [held, q, reference] = await Promise.all([
       balances(wallet),
       request('GET', '/api/v1/dex/aggregator/quote', { params: pair }),
+      referencePerToken(sp.address).catch(() => null),
     ]);
     out.usdtBalance = held.usdt;
     out.bnbBalance = held.bnb;
@@ -149,8 +166,26 @@ export async function planBuy(sp: Species, usd: number, wallet: string): Promise
     out.executionMode = quote.executionMode ?? null;
     const gasUsd = Number(quote.tradeFee);
     out.gasUsd = Number.isFinite(gasUsd) ? gasUsd : null;
+    // Price before anything else, RFQ included: a buy that would go through can still be a bad
+    // buy, and nobody should be asked to approve USDT for one.
+    const perToken = usd / (Number(quote.toTokenAmount) / 10 ** sp.decimals);
+    out.premiumPct = reference && Number.isFinite(perToken) && perToken > 0 ? (perToken / reference - 1) * 100 : null;
+    if (out.premiumPct !== null && out.premiumPct > maxPremiumPct) {
+      return only({
+        ...out, status: 'would-fail',
+        summary: `Not buying: this fill costs ${out.premiumPct.toFixed(1)}% more than ${sp.ticker}'s reference price ($${perToken.toFixed(2)} a token against $${reference!.toFixed(2)}). The pool is thin or broken right now; paying that is not a trade, it is a donation.`,
+      });
+    }
+    // Under the limit but worth knowing, before an approval as much as before the swap.
+    const priceNote = out.premiumPct === null
+      ? ' Not checked against the reference price — the RWA list did not answer.'
+      : out.premiumPct > NOTE_PREMIUM_PCT
+        ? ` That is ${out.premiumPct.toFixed(1)}% over ${sp.ticker}'s reference price.`
+        : '';
+
     if (quote.executionMode === 'RFQ') {
-      return notSimulated('this is a request-for-quote fill, settled from a signed order rather than a transaction, so there is nothing on-chain to simulate before the desk fills it');
+      const rfq = notSimulated('this is a request-for-quote fill, settled from a signed order rather than a transaction, so there is nothing on-chain to simulate before the desk fills it');
+      return { ...rfq, preflight: { ...rfq.preflight, summary: rfq.preflight.summary + priceNote } };
     }
 
     // autoSlippage rather than a number of ours: the preflight should not tighten or loosen what
@@ -203,7 +238,7 @@ export async function planBuy(sp: Species, usd: number, wallet: string): Promise
       return {
         preflight: {
           ...out, status: 'would-succeed',
-          summary: `Simulated against this wallet just now: ${(out.spendsUsdt ?? usd).toFixed(2)} USDT in, ${qty} ${sp.tokenSymbol} out${floor}${gas}.`,
+          summary: `Simulated against this wallet just now: ${(out.spendsUsdt ?? usd).toFixed(2)} USDT in, ${qty} ${sp.tokenSymbol} out${floor}${gas}.${priceNote}`,
         },
         swap: { to: tx.to, data: tx.data, value: tx.value || '0', gas: tx.gas },
         approval: null,
@@ -214,7 +249,7 @@ export async function planBuy(sp: Species, usd: number, wallet: string): Promise
       const fine = held.usdt !== null && held.bnb !== null ? 'The USDT and the gas are there; it' : 'It';
       const preflight: Preflight = {
         ...out, status: 'needs-approval', spender: tx.to,
-        summary: `Would not go through yet: this wallet has not allowed the aggregator's router (${abbrev(tx.to)}) to spend this much of its USDT. ${fine} needs an approval first.`,
+        summary: `Would not go through yet: this wallet has not allowed the aggregator's router (${abbrev(tx.to)}) to spend this much of its USDT. ${fine} needs an approval first.${priceNote}`,
       };
       return { preflight, swap: null, approval: await approvalFor(amount, tx.to) };
     }

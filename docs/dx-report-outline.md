@@ -152,6 +152,12 @@ This is the section our evidence is strongest on. See the slippage ladder and sp
     liquidity at $100, 4 quoted from broken pools. bStock quoted 39 of 40 both ways.
   - Ondo's `marketStatus` distinguishes `offhours` (quotes) from `closed` (refuses) — the field is
     useful where it exists.
+- **The aggregator routes into broken pools, and they stay broken.** Monday 2026-09-28 ~07:45 UTC,
+  Ondo's overnight session: a $10 buy of `MSFTon` quoted 197 million percent over its reference —
+  the same pool was broken on Saturday — `SNDKon` +809%, `AMDon` +3.5%. Each would have gone
+  through; the simulation says "success". The only warning in the response is
+  `priceImpactPercent`, a fraction under a percent's name. Roost now refuses any buy more than 3%
+  over the token's own reference before asking for an approval.
 
 _Your words:_
 

@@ -63,7 +63,7 @@ which is the only time it matters.
     "summary": "Simulated against this wallet just now: 16.00 USDT in, 0.07296 NVDAB out (at least 0.07223 after 1% slippage), plus about $0.02 of gas.",
     "spendsUsdt": 16, "receivesQty": 0.07296, "minReceiveQty": 0.07223, "slippagePct": 1,
     "gasUsd": 0.02, "usdtBalance": 325.8, "bnbBalance": 0.08,
-    "executionMode": "SWAP", "spender": null, "failReason": null
+    "executionMode": "SWAP", "spender": null, "failReason": null, "premiumPct": 0.06
   }
 }
 ```
@@ -121,7 +121,7 @@ First, what the simulation said:
 | `preflight.status` | Do this |
 |---|---|
 | `would-succeed` | Proceed on the user's yes. |
-| `would-fail` | **Do not run it.** Read `preflight.summary` to the user — it names what is short (USDT, BNB for gas) or the revert, verbatim. Running it anyway spends gas to fail. |
+| `would-fail` | **Do not run it.** Read `preflight.summary` to the user — it names what is short (USDT, BNB for gas), the revert, or a price more than 3% over the token's own reference (a broken pool: it would go through, and it would be a bad buy). Running it anyway spends gas to fail, or money to overpay. |
 | `needs-approval` | Tell the user the wallet has not approved the aggregator's router for USDT. Binance does not document whether `baw market-order swap` approves for itself, so run it only once they know — and if it then fails on allowance, this is why. Do not retry. |
 | `not-simulated` | Say it was not simulated and why (`preflight.summary` carries the gateway's reason — a closed market, a minimum order size, an RFQ fill with no transaction to simulate). Proceed on the user's yes as before. |
 | `null` | You did not pass `wallet`. Ask Roost again with it. |

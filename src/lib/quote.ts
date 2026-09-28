@@ -55,17 +55,37 @@ let rwaCache: { at: number; rows: Map<string, RwaRow> } | null = null;
 async function rwaRows(): Promise<Map<string, RwaRow>> {
   if (rwaCache && Date.now() - rwaCache.at < TTL) return rwaCache.rows;
   const rows = new Map<string, RwaRow>();
-  try {
-    const r = await request('GET', '/api/v1/dex/market/rwa/tokens');
-    const data = (r.json as { data?: RwaRow[] } | null)?.data;
-    if (Array.isArray(data)) for (const row of data) rows.set(addr(row.tokenContractAddress), row);
-  } catch (e) {
-    // Callers still degrade to a null reference rather than failing, but a silent
-    // degradation nobody can diagnose is how an outage looks like an empty market.
-    console.error('[quote] rwa/tokens failed —', (e as Error).message);
+  // Twice at most: the gateway answers some failures with HTTP 200 and an empty body, and the
+  // overpay guard in lib/preflight should not skip its check over one transient empty answer.
+  for (let attempt = 0; attempt < 2 && !rows.size; attempt++) {
+    if (attempt) await new Promise((r) => setTimeout(r, 300));
+    try {
+      const r = await request('GET', '/api/v1/dex/market/rwa/tokens');
+      const data = (r.json as { data?: RwaRow[] } | null)?.data;
+      if (Array.isArray(data)) for (const row of data) rows.set(addr(row.tokenContractAddress), row);
+      if (!rows.size) {
+        const msg = (r.json as { msg?: string } | null)?.msg ?? '(no msg)';
+        console.error(`[quote] rwa/tokens returned no rows — HTTP ${r.status} code=${r.code} msg=${msg}`);
+      }
+    } catch (e) {
+      // Callers still degrade to a null reference rather than failing, but a silent
+      // degradation nobody can diagnose is how an outage looks like an empty market.
+      console.error('[quote] rwa/tokens failed —', (e as Error).message);
+    }
   }
   if (rows.size) rwaCache = { at: Date.now(), rows };
   return rows;
+}
+
+/**
+ * What one token is worth at its own issuer's reference price, ratio applied. Null when the RWA
+ * list has no usable row for it. Per issuer on purpose: bStock and Ondo publish different
+ * references for the same share, so a token is only ever measured against its own.
+ */
+export async function referencePerToken(address: string): Promise<number | null> {
+  const row = (await rwaRows()).get(addr(address));
+  const v = row ? Number(row.referencePrice) * Number(row.tokenToShareRatio) : NaN;
+  return Number.isFinite(v) && v > 0 ? v : null;
 }
 
 const dexCache = new Map<string, { at: number; row: DexRow }>();
