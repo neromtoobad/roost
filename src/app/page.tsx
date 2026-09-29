@@ -14,7 +14,7 @@ import { TelegramLink } from '@/components/Telegram';
 import { petImage, type Mood } from '@/lib/pets';
 import { computeMood, moodLine } from '@/lib/mood';
 import { isNight, nyseSession, sessionLabel } from '@/lib/session';
-import { useNow, useSearch } from '@/lib/client';
+import { WIDE, WIDER, useMedia, useNow, useSearch } from '@/lib/client';
 import { runEngine } from '@/lib/engine';
 import { pullPet, syncPet } from '@/lib/sync';
 import { answerProposal, feedPet, feedingDay, heldQty, isPaper, markCelebrated, mergeEntries, noteRatio, pauseSchedule, petPet, pnl, readPet, savePet, setCurrentPet, stockOf, touchVisit, useFocusPet, usePet, usePets, waitingLine, type Entry } from '@/lib/store';
@@ -31,6 +31,8 @@ export default function Home() {
   const hasStore = pets.length > 0;
   const now = useNow();
   const q = useSearch();
+  const wide = useMedia(WIDE);
+  const wider = useMedia(WIDER);
   // A link from the Telegram pet names which Fledgling it is about.
   const elsewhere = useFocusPet(q);
   const [price, setPrice] = useState<Price>({ price: null, pct24h: 0, source: 'none' });
@@ -189,7 +191,7 @@ export default function Home() {
   if (!hasStore && !pet) return <main className="min-h-dvh" />;
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-[430px] flex-col px-4 pb-24 pt-[max(12px,env(safe-area-inset-top))]">
+    <main className="mx-auto flex min-h-dvh max-w-[430px] flex-col px-4 pb-24 pt-[max(12px,env(safe-area-inset-top))] lg:max-w-[1120px] lg:px-10 lg:pb-12 lg:pt-8">
       <div className="flex items-center justify-between gap-2">
         <span className="truncate rounded-full border px-3 py-1.5 text-[12px] num" style={{ borderColor: night ? 'var(--accent)' : 'var(--ink)', color: night ? 'var(--accent)' : 'var(--ink)', boxShadow: night ? 'var(--glow)' : 'none' }}>
           {night ? '☾' : '☀'} {sessionLabel[session]}
@@ -215,9 +217,9 @@ export default function Home() {
             style={{ borderColor: 'var(--line)', background: 'var(--surface)' }}>+</Link>
         </div>
       )}
-      <p className="mt-1 text-right text-[13px] font-semibold" style={{ color: 'var(--muted)' }}>{pet?.name} · {ticker}{stock && stock.company !== ticker ? ` · ${stock.company}` : ''} · day {pet?.streak ?? 1}</p>
+      <p className="mt-1 text-right text-[13px] font-semibold lg:hidden" style={{ color: 'var(--muted)' }}>{pet?.name} · {ticker}{stock && stock.company !== ticker ? ` · ${stock.company}` : ''} · day {pet?.streak ?? 1}</p>
       {pet?.litter && (
-        <p className="text-right text-[12px]">
+        <p className="text-right text-[12px] lg:hidden">
           <Link href={`/litter?key=${pet.litter.key}`} className="underline" style={{ color: 'var(--muted)' }}>one of the {pet.litter.name} litter ›</Link>
         </p>
       )}
@@ -236,19 +238,33 @@ export default function Home() {
         </p>
       )}
 
-      <div className="relative mt-5 flex flex-col items-center">
-        <div className="card relative mb-2 max-w-[264px] px-4 py-2.5 text-center text-[15px] font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
+      {/* Desktop: the pet gets a stage of its own on the left, and the numbers sit beside it. */}
+      <div className="lg:mt-4 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(360px,420px)] xl:gap-10">
+      <section className="lg:sticky lg:top-8 lg:rounded-[28px] lg:border lg:border-[var(--line)] lg:bg-[var(--surface)] lg:flex lg:min-h-[620px] lg:flex-col lg:items-center lg:justify-center lg:py-10">
+      <div className="relative mt-5 flex flex-col items-center lg:mt-0">
+        <div className="card relative mb-2 max-w-[264px] px-4 py-2.5 text-center text-[15px] font-semibold lg:max-w-[360px] lg:px-5 lg:py-3 lg:text-[18px]" style={{ fontFamily: 'var(--font-display)' }}>
           {line}
           <span className="absolute -bottom-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45" style={{ background: 'var(--surface)', borderRight: '1px solid var(--line)', borderBottom: '1px solid var(--line)' }} aria-hidden />
         </div>
         <button type="button" onClick={onPet} className="relative" aria-label={pet && canPet(pet.care) ? `Pet ${pet.name}` : `${pet?.name} was petted recently`}>
           {(celebrate || ms) && <Confetti />}
           {/* It grows with care: a Hatchling is small, a Legend is not. Never with money. */}
-          <Pet id={species} mood={mood} night={night} size={Math.round(300 * grown.scale)} />
+          <Pet id={species} mood={mood} night={night} size={Math.round((wider ? 440 : 300) * grown.scale)} />
         </button>
-        <p className="-mt-1 text-[11.5px] num" style={{ color: 'var(--muted)' }}>
+        <p className="-mt-1 text-[11.5px] num lg:text-[13px]" style={{ color: 'var(--muted)' }}>
           {grown.name}{grown.next !== null ? ` · ${grown.points}/${grown.next} to grow` : ''}
-          {pet && canPet(pet.care) ? ' · tap to pet' : ''}
+          {pet && canPet(pet.care) ? ` · ${wide ? 'click' : 'tap'} to pet` : ''}
+        </p>
+      </div>
+      </section>
+
+      <section className="lg:flex lg:flex-col">
+      {/* Desktop: the name as a heading, where the phone has a caption above the pet. */}
+      <div className="mb-4 hidden lg:block">
+        <h1 className="text-[36px] font-bold leading-tight" style={{ fontFamily: 'var(--font-display)' }}>{pet?.name}</h1>
+        <p className="text-[14px] font-semibold" style={{ color: 'var(--muted)' }}>
+          <span className="num" style={{ color: 'var(--ink)' }}>{ticker}</span>{stock && stock.company !== ticker ? ` · ${stock.company}` : ''} · day {pet?.streak ?? 1}
+          {pet?.litter && <> · <Link href={`/litter?key=${pet.litter.key}`} className="underline">{pet.litter.name} litter</Link></>}
         </p>
       </div>
 
@@ -342,6 +358,8 @@ export default function Home() {
         <p className="mt-1 text-center text-[12px]" style={{ color: 'var(--muted)' }}>{waitingLine[pet.personality]}</p>
       )}
       {pet && <TelegramLink pet={pet} />}
+      </section>
+      </div>
 
       {report && pet && <Report pet={pet} fresh={report.fresh} awayMs={report.awayMs} price={price.price} onClose={() => setReport(null)} />}
       <Nav />

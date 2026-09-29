@@ -13,6 +13,20 @@ export function useNow(interval = 30_000): number {
   );
 }
 
+/** Whether a media query matches — for sizes CSS alone cannot set, like the pet's pixel size. Server snapshot is false. */
+export function useMedia(query: string): boolean {
+  return useSyncExternalStore(
+    (cb) => { const m = window.matchMedia(query); m.addEventListener('change', cb); return () => m.removeEventListener('change', cb); },
+    () => window.matchMedia(query).matches,
+    () => false,
+  );
+}
+
+/** The width at which Roost stops being a phone column: the sidebar appears and screens go two-up. */
+export const WIDE = '(min-width: 1024px)';
+/** Wide enough for the full-size pet and the roomier columns. */
+export const WIDER = '(min-width: 1280px)';
+
 /** The current URL query string. Server snapshot is ''. */
 export function useSearch(): URLSearchParams {
   const s = useSyncExternalStore(

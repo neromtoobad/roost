@@ -91,7 +91,7 @@ export default function ReleasePage() {
   };
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-[430px] flex-col px-4 pb-10 pt-[max(12px,env(safe-area-inset-top))]">
+    <main className="mx-auto flex min-h-dvh max-w-[430px] flex-col px-4 pb-10 pt-[max(12px,env(safe-area-inset-top))] lg:max-w-[1040px] lg:px-10 lg:pb-12 lg:pt-8">
       <div className="grid grid-cols-[40px_1fr_40px] items-center">
         <button onClick={() => router.back()} aria-label="Back" className="text-[22px]">‹</button>
         <span className="justify-self-center rounded-full border px-3 py-1.5 text-[12px] num" style={{ borderColor: 'var(--ink)' }}>
@@ -99,8 +99,11 @@ export default function ReleasePage() {
         </span>
       </div>
 
-      <div className="mx-auto mt-4 grid h-52 w-52 place-items-center">
-        <motion.img src={petImage(pet.species, mood)} alt="" className="h-48 w-48 object-contain"
+      {/* Desktop: the pet and the question on the left, the choices on the right. */}
+      <div className="lg:mt-6 lg:grid lg:grid-cols-2 lg:items-center lg:gap-8 xl:gap-14">
+      <div className="lg:rounded-[28px] lg:border lg:border-[var(--line)] lg:bg-[var(--surface)] lg:px-6 lg:py-10">
+      <div className="mx-auto mt-4 grid h-52 w-52 place-items-center lg:mt-0 lg:h-64 lg:w-64 xl:h-80 xl:w-80">
+        <motion.img src={petImage(pet.species, mood)} alt="" className="h-48 w-48 object-contain lg:h-60 lg:w-60 xl:h-76 xl:w-76"
           animate={paperDone || step.at === 'done' ? { y: [0, -8, 0] } : {}} transition={{ duration: 0.5 }} />
       </div>
 
@@ -108,7 +111,9 @@ export default function ReleasePage() {
         How much should {pet.name} let go of?
       </h1>
 
-      <div className="card mt-4 grid grid-cols-2 gap-3 px-4 py-3 text-[13px]">
+      </div>
+      <div>
+      <div className="card mt-4 grid grid-cols-2 gap-3 px-4 py-3 text-[13px] lg:mt-0">
         <div>
           <p style={{ color: 'var(--muted)' }}>{pet.name} holds</p>
           <p className="num text-[16px] font-bold">{recorded.toFixed(4)} {stock.ticker}</p>
@@ -177,6 +182,8 @@ export default function ReleasePage() {
       <p className="mt-3 text-center text-[12px]" style={{ color: 'var(--muted)' }}>
         {live ? 'Roost never holds your keys or your USDT. A sale more than 3% under the reference price is refused.' : 'Paper: nothing real moves.'}
       </p>
+      </div>
+      </div>
     </main>
   );
 }

@@ -49,12 +49,13 @@ export default function Nest() {
   const singles = pets.filter((p) => !p.litter);
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-[430px] flex-col px-4 pb-24 pt-[max(12px,env(safe-area-inset-top))]">
-      <h1 className="text-center text-[28px] font-bold" style={{ fontFamily: 'var(--font-display)' }}>Nest</h1>
-      <p className="text-center text-[13px]" style={{ color: 'var(--muted)' }}>
+    <main className="mx-auto flex min-h-dvh max-w-[430px] flex-col px-4 pb-24 pt-[max(12px,env(safe-area-inset-top))] lg:max-w-[1120px] lg:px-10 lg:pb-12 lg:pt-8">
+      <h1 className="text-center text-[28px] font-bold lg:text-left lg:text-[36px]" style={{ fontFamily: 'var(--font-display)' }}>Nest</h1>
+      <p className="text-center text-[13px] lg:text-left lg:text-[14px]" style={{ color: 'var(--muted)' }}>
         {pets.length ? `${pets.length} Fledgling${pets.length === 1 ? '' : 's'}, one portfolio.` : 'No Fledglings yet.'}
       </p>
 
+      <div className="lg:grid lg:grid-cols-2 lg:gap-4">
       {[{ label: 'Real money', t: live }, { label: 'Paper', t: paper }].filter((x) => x.t.n > 0).map(({ label, t }) => {
         const pnl = t.value - t.basis;
         return (
@@ -71,7 +72,10 @@ export default function Nest() {
         );
       })}
 
+      </div>
+
       {/* Litters first, each as one card: hatched together, fed together. */}
+      <div className="lg:grid lg:grid-cols-2 lg:gap-4">
       {litters.map(([k, pups]) => {
         const l = pups[0].litter!;
         const v = pups.map(row).reduce((t, r) => ({ value: t.value + (r.value ?? 0) + r.cash, basis: t.basis + r.basis }), { value: 0, basis: 0 });
@@ -94,7 +98,9 @@ export default function Nest() {
         );
       })}
 
-      <ul className="mt-4 grid gap-2">
+      </div>
+
+      <ul className="mt-4 grid gap-2 lg:grid-cols-2 lg:gap-3">
         {singles.map((p) => {
           const s = stockOf(p), r = row(p), on = p.uid === current;
           return (
@@ -124,8 +130,8 @@ export default function Nest() {
         })}
       </ul>
 
-      <Link href="/adopt" className="pill mt-4 grid w-full place-items-center text-[17px]">Hatch another</Link>
-      <Link href="/shelf" className="mt-3 text-center text-[13px] underline" style={{ color: 'var(--muted)' }}>Meet the six Fledglings</Link>
+      <Link href="/adopt" className="pill mt-4 grid w-full place-items-center text-[17px] lg:mt-6 lg:w-[320px]">Hatch another</Link>
+      <Link href="/shelf" className="mt-3 text-center text-[13px] underline lg:hidden" style={{ color: 'var(--muted)' }}>Meet the six Fledglings</Link>
       <Nav />
     </main>
   );

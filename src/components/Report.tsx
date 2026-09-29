@@ -26,11 +26,12 @@ export function Report({ pet, fresh, awayMs, price, onClose }: {
   const earned = fresh.filter((f) => f.kind === 'yield').reduce((s, f) => s + (f.qty ?? 0), 0);
 
   return (
-    <div className="fixed inset-0 z-30 flex items-end justify-center" style={{ background: 'rgba(0,0,0,.45)' }} onClick={onClose}>
+    <div className="fixed inset-0 z-30 flex items-end justify-center lg:items-center lg:p-8" style={{ background: 'rgba(0,0,0,.45)' }} onClick={onClose}>
+      {/* A bottom sheet on a phone; a dialog in the middle of a desktop screen. */}
       <motion.div onClick={(e) => e.stopPropagation()} initial={{ y: '100%' }} animate={{ y: 0 }} transition={{ type: 'spring', stiffness: 260, damping: 28 }}
-        className="w-full max-w-[430px] rounded-t-[28px] px-5 pb-[max(20px,env(safe-area-inset-bottom))] pt-4"
+        className="w-full max-w-[430px] rounded-t-[28px] px-5 pb-[max(20px,env(safe-area-inset-bottom))] pt-4 lg:max-w-[520px] lg:rounded-[28px] lg:px-7 lg:pb-7"
         style={{ background: 'var(--surface)', maxHeight: '86dvh', overflowY: 'auto' }}>
-        <div className="mx-auto mb-3 h-1 w-10 rounded-full" style={{ background: 'var(--line)' }} />
+        <div className="mx-auto mb-3 h-1 w-10 rounded-full lg:hidden" style={{ background: 'var(--line)' }} />
         <div className="flex items-center gap-3">
           <img src={petImage(pet.species, 'happy')} alt="" className="h-14 w-14 object-contain" />
           <div>

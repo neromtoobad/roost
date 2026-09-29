@@ -116,7 +116,7 @@ export default function FeedPage() {
   };
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-[430px] flex-col px-4 pb-10 pt-[max(12px,env(safe-area-inset-top))]">
+    <main className="mx-auto flex min-h-dvh max-w-[430px] flex-col px-4 pb-10 pt-[max(12px,env(safe-area-inset-top))] lg:max-w-[1040px] lg:px-10 lg:pb-12 lg:pt-8">
       <div className="grid grid-cols-[40px_1fr_40px] items-center">
         <button onClick={() => router.back()} aria-label="Back" className="text-[22px]">‹</button>
         <span className="justify-self-center rounded-full border px-3 py-1.5 text-[12px] num" style={{ borderColor: 'var(--ink)' }}>
@@ -130,8 +130,11 @@ export default function FeedPage() {
         </p>
       )}
 
-      <div className="relative mx-auto mt-4 grid h-56 w-56 place-items-center">
-        <motion.img src={petImage(pet.species, face(step, paperDone))} alt="" className="h-52 w-52 object-contain"
+      {/* Desktop: the pet and the question on the left, the choices on the right. */}
+      <div className="lg:mt-6 lg:grid lg:grid-cols-2 lg:items-center lg:gap-8 xl:gap-14">
+      <div className="lg:rounded-[28px] lg:border lg:border-[var(--line)] lg:bg-[var(--surface)] lg:px-6 lg:py-10">
+      <div className="relative mx-auto mt-4 grid h-56 w-56 place-items-center lg:mt-0 lg:h-64 lg:w-64 xl:h-80 xl:w-80">
+        <motion.img src={petImage(pet.species, face(step, paperDone))} alt="" className="h-52 w-52 object-contain lg:h-60 lg:w-60 xl:h-76 xl:w-76"
           animate={paperDone || step.at === 'done' ? { y: [0, -6, 0] } : {}} transition={{ duration: 0.4 }} />
       </div>
 
@@ -139,8 +142,10 @@ export default function FeedPage() {
         {signing ? `${pet.name} wants $${signing.usd.toFixed(2)} in.` : due ? `Feeding day: $${due.usd} ${CADENCE_LABEL[due.every]}.` : `How much do you want to feed ${pet.name}?`}
       </h1>
 
+      </div>
+      <div>
       {!signing && !due && (
-        <div className="mt-5 grid grid-cols-4 gap-2">
+        <div className="mt-5 grid grid-cols-4 gap-2 lg:mt-0">
           {amounts.map((a) => (
             <button key={a} onClick={() => { setUsd(a); if (step.at === 'stopped') reset(); }} disabled={busy(step) || step.at === 'done'}
               className="rounded-full py-3 text-[16px] font-bold num"
@@ -224,6 +229,8 @@ export default function FeedPage() {
           ? 'Roost never holds your keys. The diary records what the chain says, not the quote.'
           : 'Paper: no wallet was bound at adoption, so nothing real moves.'}
       </p>
+      </div>
+      </div>
     </main>
   );
 }

@@ -58,7 +58,7 @@ export default function Board() {
   const medal = (i: number) => (i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}`);
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-[430px] flex-col px-4 pb-24 pt-[max(12px,env(safe-area-inset-top))]">
+    <main className="mx-auto flex min-h-dvh max-w-[430px] flex-col px-4 pb-24 pt-[max(12px,env(safe-area-inset-top))] lg:max-w-[820px] lg:px-10 lg:pb-12 lg:pt-8">
       <h1 className="text-center text-[28px] font-bold" style={{ fontFamily: 'var(--font-display)' }}>Board</h1>
       <p className="text-center text-[13px]" style={{ color: 'var(--muted)' }}>
         Ranked by real P&amp;L. Nobody reports their own score.

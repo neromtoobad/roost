@@ -10,7 +10,7 @@ export default function Diary() {
   const pet = usePet();
   const entries = pet ? [...pet.diary].reverse() : [];
   return (
-    <main className="mx-auto flex min-h-dvh max-w-[430px] flex-col px-4 pb-24 pt-[max(12px,env(safe-area-inset-top))]">
+    <main className="mx-auto flex min-h-dvh max-w-[430px] flex-col px-4 pb-24 pt-[max(12px,env(safe-area-inset-top))] lg:max-w-[820px] lg:px-10 lg:pb-12 lg:pt-8">
       <h1 className="text-center text-[28px] font-bold" style={{ fontFamily: 'var(--font-display)' }}>Diary</h1>
       <p className="text-center text-[13px]" style={{ color: 'var(--muted)' }}>
         {pet ? `Every decision ${pet.name} made, in its own words.` : 'Adopt a Fledgling to start a diary.'}

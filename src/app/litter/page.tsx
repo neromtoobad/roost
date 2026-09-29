@@ -137,7 +137,7 @@ export default function LitterPage() {
   const hatched = Boolean(q.get('hatched'));
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-[430px] flex-col px-4 pb-24 pt-[max(12px,env(safe-area-inset-top))]">
+    <main className="mx-auto flex min-h-dvh max-w-[430px] flex-col px-4 pb-24 pt-[max(12px,env(safe-area-inset-top))] lg:max-w-[1120px] lg:px-10 lg:pb-12 lg:pt-8">
       <div className="flex items-center justify-between gap-2">
         <button onClick={() => router.push('/nest')} aria-label="Back to the nest" className="text-[22px]">‹</button>
         <ConnectPill />
@@ -152,6 +152,8 @@ export default function LitterPage() {
         {pups.length} pups · {live ? `live, bound to ${short(bound)}` : 'paper'} · {PERSONALITIES[first.personality].name}
       </p>
 
+      <div className="lg:mt-4 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start lg:gap-8 xl:grid-cols-[minmax(0,1fr)_400px] xl:gap-10">
+      <div>
       <div className="card mt-4 px-4 py-3">
         <p className="text-[11.5px]" style={{ color: 'var(--muted)' }}>Together</p>
         <p className="num text-[24px] font-bold leading-tight">${total.toFixed(2)}</p>
@@ -187,7 +189,10 @@ export default function LitterPage() {
         })}
       </ul>
 
-      <p className="mt-5 text-[12px] font-semibold uppercase tracking-wide" style={{ color: 'var(--muted)' }}>Feed the litter</p>
+      </div>
+
+      <div className="lg:sticky lg:top-8">
+      <p className="mt-5 text-[12px] font-semibold uppercase tracking-wide lg:mt-4" style={{ color: 'var(--muted)' }}>Feed the litter</p>
       <div className="mt-2 grid grid-cols-4 gap-2">
         {(live ? AMOUNTS.live : AMOUNTS.paper).map((a) => (
           <button key={a} onClick={() => { setUsd(a); setOutcomes(null); }} disabled={running}
@@ -249,6 +254,8 @@ export default function LitterPage() {
           ? 'Roost never holds your keys. Each buy is simulated first and refused over 3% above its reference.'
           : 'Paper: nothing real moves. Each pup deploys what it is fed by its personality.'}
       </p>
+      </div>
+      </div>
       <Nav />
     </main>
   );

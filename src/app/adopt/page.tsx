@@ -9,6 +9,7 @@ import { ConnectPill, useWallet } from '@/components/Wallet';
 import { syncPet } from '@/lib/sync';
 import { StockCard, type StockInfo } from '@/components/StockCard';
 import { LITTERS, type Litter, type LitterMember } from '@/lib/litters';
+import { WIDE, useMedia } from '@/lib/client';
 import type { IssuerChoice } from '@/lib/issuer';
 
 // Finch's rule: egg → hatch → name → personality, inside the first minute, before any feature.
@@ -57,6 +58,7 @@ export default function Adopt() {
   const [name, setName] = useState('');
   const [personality, setPersonality] = useState<Personality>('degen');
   const { address } = useWallet();
+  const wide = useMedia(WIDE);
   const sp = pick ? SPECIES[pick] : null;
 
   // Any stock: a search over the ~450, the most traded shown before anything is typed.
@@ -146,7 +148,7 @@ export default function Adopt() {
   };
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-[430px] flex-col px-4 pb-10 pt-[max(12px,env(safe-area-inset-top))]">
+    <main className="mx-auto flex min-h-dvh max-w-[430px] flex-col px-4 pb-10 pt-[max(12px,env(safe-area-inset-top))] lg:max-w-[1120px] lg:px-10 lg:pb-12 lg:pt-8">
       <div className="flex items-center justify-between gap-2">
         <span className="rounded-full border px-3 py-1.5 text-[12px] num" style={{ borderColor: 'var(--ink)' }}>
           {step === 'egg' ? 'Adopt' : step === 'stock' ? 'Meet the stock' : step === 'litter' ? 'A litter' : step === 'hatch' ? 'Hatching' : 'Name & personality'}
@@ -167,6 +169,8 @@ export default function Adopt() {
             <h1 className="mt-5 text-center text-[32px] font-bold" style={{ fontFamily: 'var(--font-display)' }}>Pick your egg</h1>
             <p className="mt-1 text-center text-[14px]" style={{ color: 'var(--muted)' }}>Any of ~450 tokenized stocks. Its sector decides which Fledgling hatches.</p>
 
+            <div className="lg:mt-4 lg:grid lg:grid-cols-2 lg:items-start lg:gap-10">
+            <div>
             <label className="card mt-5 flex items-center gap-2 px-4 py-3">
               <span aria-hidden>🔎</span>
               <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Ticker or company — NVDA, Coca-Cola, SPY…"
@@ -179,7 +183,7 @@ export default function Adopt() {
               {results && results.list.length === 0 && q.trim() && (
                 <p className="card px-4 py-3 text-[13px]" style={{ color: 'var(--muted)' }}>No tokenized stock on BSC matches “{q.trim()}”.</p>
               )}
-              {(results?.list ?? []).slice(0, q.trim() ? 20 : 8).map((l) => (
+              {(results?.list ?? []).slice(0, q.trim() ? 20 : wide ? 12 : 8).map((l) => (
                 <div key={l.ticker} className="card flex items-center justify-between gap-2 px-3 py-2">
                   <div className="min-w-0">
                     <p className="truncate text-[14.5px] font-bold" style={{ fontFamily: 'var(--font-display)' }}>
@@ -198,8 +202,11 @@ export default function Adopt() {
               ))}
             </div>
 
+            </div>
+
+            <div className="lg:mt-5">
             {/* Themes, hatched as several pups and fed as one. Binance's own sector names. */}
-            <p className="mt-6 text-[12px] font-semibold uppercase tracking-wide" style={{ color: 'var(--muted)' }}>Or a litter</p>
+            <p className="mt-6 text-[12px] font-semibold uppercase tracking-wide lg:mt-0" style={{ color: 'var(--muted)' }}>Or a litter</p>
             <div className="mt-2 grid grid-cols-2 gap-2">
               {LITTERS.map((l) => (
                 <button key={l.id} onClick={() => void openLitter(l)} disabled={loading !== null}
@@ -215,13 +222,13 @@ export default function Adopt() {
             </div>
 
             <p className="mt-6 text-[12px] font-semibold uppercase tracking-wide" style={{ color: 'var(--muted)' }}>Or a classic</p>
-            <div className="mt-2 grid grid-cols-2 gap-3">
+            <div className="mt-2 grid grid-cols-2 gap-3 xl:grid-cols-3">
               {ORDER.map((id) => {
                 const s = SPECIES[id], on = pick === id;
                 return (
                   <button key={id} onClick={() => setPick(id)} className="card flex flex-col items-center gap-2 px-3 pb-3 pt-4 text-left transition-transform active:scale-[0.98]"
                     style={{ outline: on ? '3px solid var(--accent)' : '3px solid transparent', boxShadow: on ? 'var(--glow)' : 'none' }}>
-                    <img src={`/pets/eggs/${id}.png`} alt="" className="h-28 w-28 object-contain" draggable={false} />
+                    <img src={`/pets/eggs/${id}.png`} alt="" className="h-28 w-28 object-contain lg:h-24 lg:w-24" draggable={false} />
                     <span className="text-[15px] font-bold" style={{ fontFamily: 'var(--font-display)' }}>{s.ticker}</span>
                     <span className="-mt-1 text-[12px]" style={{ color: 'var(--muted)' }}>{s.preIpo ? 'pre-IPO' : 'tokenized stock'}</span>
                   </button>
@@ -229,12 +236,16 @@ export default function Adopt() {
               })}
             </div>
             <button onClick={() => { setChosen(null); setChoice(null); hatch(); }} disabled={!pick} className="pill mt-6 w-full text-[18px] disabled:opacity-40">Hatch</button>
+            </div>
+            </div>
           </motion.section>
         )}
 
         {step === 'stock' && chosen && sp && (
-          <motion.section key="stock" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-            <div className="mx-auto mt-3 grid h-32 w-32 place-items-center">
+          <motion.section key="stock" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+            className="lg:mx-auto lg:mt-6 lg:grid lg:w-full lg:max-w-[960px] lg:grid-cols-[300px_minmax(0,1fr)] lg:items-start lg:gap-8 xl:grid-cols-[380px_minmax(0,1fr)] xl:gap-10">
+            <div className="lg:sticky lg:top-8">
+            <div className="mx-auto mt-3 grid h-32 w-32 place-items-center lg:h-44 lg:w-44">
               <img src={`/pets/eggs/${sp.id}.png`} alt="" className="h-28 w-28 object-contain" draggable={false} />
             </div>
             <p className="text-center text-[14px]" style={{ color: 'var(--muted)' }}>
@@ -264,11 +275,14 @@ export default function Adopt() {
                 </p>
               </div>
             )}
-            <div className="mt-3"><StockCard info={chosen} /></div>
+            </div>
+            <div>
+            <div className="mt-3 lg:mt-0"><StockCard info={chosen} /></div>
             <button onClick={hatch} className="pill mt-4 w-full text-[18px]">Hatch {chosen.stock.ticker}</button>
             <button onClick={() => { setChosen(null); setChoice(null); setPick(null); setStep('egg'); }} className="mt-3 w-full text-center text-[13px] underline" style={{ color: 'var(--muted)' }}>
               Pick a different stock
             </button>
+            </div>
           </motion.section>
         )}
 
@@ -279,7 +293,8 @@ export default function Adopt() {
             <p className="mt-2 text-center text-[12px]" style={{ color: 'var(--muted)' }}>
               {pups.length} pups, fed as one: each feed tops up whoever has fallen furthest behind first.
             </p>
-            <ul className="mt-3 grid gap-1.5">
+            <div className="lg:mx-auto lg:mt-4 lg:grid lg:max-w-[1000px] lg:grid-cols-2 lg:items-start lg:gap-10">
+            <ul className="mt-3 grid gap-1.5 lg:mt-0">
               {litter.members.map((m) => (
                 <li key={m.ticker} className="card flex items-start gap-3 px-3 py-2.5" style={{ opacity: m.stock ? 1 : 0.5 }}>
                   <img src={`/pets/eggs/${m.species}.png`} alt="" className="h-10 w-10 shrink-0 object-contain" />
@@ -292,7 +307,8 @@ export default function Adopt() {
                 </li>
               ))}
             </ul>
-            <p className="mt-4 text-[12px] font-semibold uppercase tracking-wide" style={{ color: 'var(--muted)' }}>One personality for the litter</p>
+            <div className="lg:sticky lg:top-8">
+            <p className="mt-4 text-[12px] font-semibold uppercase tracking-wide lg:mt-0" style={{ color: 'var(--muted)' }}>One personality for the litter</p>
             <PersonalityPicker value={personality} onChange={setPersonality} />
             <button onClick={hatchLitter} disabled={!pups.length} className="pill mt-4 w-full text-[18px] disabled:opacity-40">Hatch {pups.length} pups</button>
             <p className="mt-2 text-center text-[11.5px]" style={{ color: 'var(--muted)' }}>
@@ -301,6 +317,8 @@ export default function Adopt() {
             <button onClick={() => { setLitter(null); setStep('egg'); }} className="mt-3 w-full text-center text-[13px] underline" style={{ color: 'var(--muted)' }}>
               Pick something else
             </button>
+            </div>
+            </div>
           </motion.section>
         )}
 
@@ -350,7 +368,7 @@ export default function Adopt() {
         )}
 
         {step === 'name' && sp && (
-          <motion.section key="name" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+          <motion.section key="name" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="lg:mx-auto lg:w-full lg:max-w-[480px]">
             <div className="mx-auto mt-2 grid h-44 w-44 place-items-center">
               <img src={petImage(sp.id, 'happy')} alt="" className="h-44 w-44 object-contain" />
             </div>
