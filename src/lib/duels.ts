@@ -1,6 +1,6 @@
 import { pool } from './pg';
-import { pricesFor } from './quote';
-import { ALL_SPECIES } from './pets';
+import { pricesByAddress } from './quote';
+import { SPECIES, type Species } from './pets';
 
 // Duels: two Fledglings, 24 hours, best percentage move wins.
 //
@@ -17,26 +17,25 @@ export type Duel = {
   winner: string | null; settledAt: number | null;
 };
 
-type ValueRow = { id: string; ticker: string; cash: string; held_qty: string; cost_basis: string };
+type ValueRow = { id: string; ticker: string; species: string; token_address: string | null; cash: string; held_qty: string; cost_basis: string };
 
 /** Live portfolio value per pet: idle cash plus what it holds, marked at the exchange print. */
 export async function valueOf(ids: string[]): Promise<Map<string, number>> {
   const out = new Map<string, number>();
   if (!ids.length) return out;
 
-  // Every pet's ticker is one of the six, so the prices need not wait for the rows.
-  const [{ rows }, prices] = await Promise.all([
-    pool().query<ValueRow>(
-      `select p.id, p.ticker, p.cash,
-              coalesce((select sum((l->>'qty')::numeric) from jsonb_array_elements(p.lots) l), 0) + p.yield_qty as held_qty,
-              coalesce((select sum((l->>'qty')::numeric * (l->>'price')::numeric) from jsonb_array_elements(p.lots) l), 0) as cost_basis
-         from pets p where p.id = any($1::uuid[])`,
-      [ids],
-    ),
-    pricesFor(ALL_SPECIES.map((s) => s.ticker)),
-  ]);
+  const { rows } = await pool().query<ValueRow>(
+    `select p.id, p.ticker, p.species, p.token_address, p.cash,
+            coalesce((select sum((l->>'qty')::numeric) from jsonb_array_elements(p.lots) l), 0) + p.yield_qty as held_qty,
+            coalesce((select sum((l->>'qty')::numeric * (l->>'price')::numeric) from jsonb_array_elements(p.lots) l), 0) as cost_basis
+       from pets p where p.id = any($1::uuid[])`,
+    [ids],
+  );
+  // A pet can hold any of ~450 stocks, so the prints wanted are only known once the rows land.
+  const addressOf = (r: ValueRow) => (r.token_address ?? SPECIES[r.species as Species['id']]?.address ?? '').toLowerCase();
+  const prices = await pricesByAddress(rows.map(addressOf).filter(Boolean));
   for (const r of rows) {
-    const px = prices[r.ticker];
+    const px = prices[addressOf(r)];
     const held = Number(r.held_qty) || 0;
     // No print available: fall back to what it paid, so a duel is never blocked by a quiet feed.
     const marked = px ? held * px : Number(r.cost_basis) || 0;

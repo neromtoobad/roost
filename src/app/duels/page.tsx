@@ -2,7 +2,6 @@
 import { useEffect, useState } from 'react';
 import { Nav } from '@/components/Nav';
 import { PERSONALITIES, usePet, type Personality } from '@/lib/store';
-import { useLocal } from '@/lib/client';
 import { petImage, type Species } from '@/lib/pets';
 import { challengeRival } from '@/lib/sync';
 import { DuelCard, type Duel } from '@/components/Duel';
@@ -23,7 +22,8 @@ export default function Board() {
   const [duels, setDuels] = useState<Duel[]>([]);
   const [note, setNote] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const mine = useLocal('roost.remoteId');
+  // Which row is yours: the pet on screen, once it has synced.
+  const mine = pet?.remoteId ?? null;
 
   const load = () => Promise.all([
     fetch('/api/leaderboard').then((r) => r.json()),

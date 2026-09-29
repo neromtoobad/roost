@@ -1,12 +1,10 @@
 'use client';
-import { SPECIES } from './pets';
-import { isPaper, type Entry, type PetState, type Proposal } from './store';
+import { isPaper, patchPet, readPet, stockOf, type Entry, type PetState, type Proposal } from './store';
 
 // Mirrors the local Fledgling to the server so it can appear on the board. The local copy stays
 // the source of truth — this is best-effort, so the app works offline or if the database is down.
 
 const OWNER_KEY = 'roost.ownerKey';
-const REMOTE_ID = 'roost.remoteId';
 
 /** A capability token for this device. Only its sha256 is ever stored server-side. */
 function ownerKey(): string {
@@ -17,28 +15,31 @@ function ownerKey(): string {
   } catch { return ''; }
 }
 
-export function remoteId(): string | null {
-  try { return localStorage.getItem(REMOTE_ID); } catch { return null; }
-}
-
-let inFlight: Promise<void> | null = null;
+// One in flight per pet: bursts for the same pet (adopt → tick → feed in one second) collapse into
+// a single round trip, and two pets syncing at once do not swallow each other.
+const inFlight = new Map<string, Promise<void>>();
 
 export function syncPet(pet: PetState, fresh: Entry[] = []): Promise<void> {
-  // Collapse bursts (adopt → tick → feed in one second) into a single round trip.
-  if (inFlight) return inFlight;
-  inFlight = (async () => {
+  const key = pet.uid ?? `adopted:${pet.adoptedAt}`;
+  const running = inFlight.get(key);
+  if (running) return running;
+  const stock = stockOf(pet);
+  const job = (async () => {
     try {
-      const key = ownerKey();
-      if (!key) return;
+      const owner = ownerKey();
+      if (!owner) return;
       const r = await fetch('/api/pet', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ownerKey: key,
+          ownerKey: owner,
           pet: {
-            id: remoteId(),
+            id: pet.remoteId ?? null,
             species: pet.species,
-            ticker: SPECIES[pet.species].ticker,
+            ticker: stock.ticker,
+            // Only when it is not the species' signature stock; null keeps the column meaning that.
+            tokenAddress: pet.stock ? stock.address : null,
+            tokenSymbol: pet.stock ? stock.tokenSymbol : null,
             name: pet.name,
             personality: pet.personality,
             adoptedAt: pet.adoptedAt,
@@ -53,19 +54,22 @@ export function syncPet(pet: PetState, fresh: Entry[] = []): Promise<void> {
             launch: pet.launch ?? null,
             proposal: pet.proposal ?? null,
             paper: isPaper(pet),
+            realized: pet.realized ?? 0,
           },
           entries: fresh.map((e) => ({ ts: e.ts, kind: e.kind, text: e.text, qty: e.qty ?? null, price: e.price ?? null, usd: e.usd ?? null, sig: e.sig ?? null, paper: e.paper ?? true })),
         }),
       });
       const j = (await r.json()) as { ok: boolean; id?: string };
-      if (j.ok && j.id) { try { localStorage.setItem(REMOTE_ID, j.id); } catch {} }
+      // The server id arrives after the fact; set just that field so nothing newer is overwritten.
+      if (j.ok && j.id && j.id !== pet.remoteId && pet.uid) patchPet(pet.uid, { remoteId: j.id });
     } catch {
       // Offline or the database is unreachable — the local Fledgling is unaffected.
     } finally {
-      inFlight = null;
+      inFlight.delete(key);
     }
   })();
-  return inFlight;
+  inFlight.set(key, job);
+  return job;
 }
 
 export type Pulled = {
@@ -82,7 +86,7 @@ export type Pulled = {
  * the pet in a session, keeps that out of reach in practice.
  */
 export async function pullPet(pet: PetState): Promise<Pulled | null> {
-  const id = remoteId();
+  const id = pet.remoteId;
   const key = ownerKey();
   if (!id || !key) return null;
   try {
@@ -101,7 +105,7 @@ export async function pullPet(pet: PetState): Promise<Pulled | null> {
 
 /** Put your Fledgling up against another for 24 hours. Neither owner gets to trade. */
 export async function challengeRival(rivalId: string): Promise<{ ok: boolean; reason?: string }> {
-  const id = remoteId();
+  const id = readPet()?.remoteId;
   const key = ownerKey();
   if (!id) return { ok: false, reason: 'Feed yours first so it lands on the board.' };
   if (!key) return { ok: false, reason: 'This device has no key.' };
@@ -115,30 +119,4 @@ export async function challengeRival(rivalId: string): Promise<{ ok: boolean; re
   } catch {
     return { ok: false, reason: 'Offline.' };
   }
-}
-
-/**
- * Build the transaction that collects what backers have paid the pet. The owner key proves this is
- * your Fledgling; the wallet that created the pool still has to sign, so nothing moves without it.
- */
-export async function buildClaimTx(creator: string): Promise<{ tx?: string; error?: string }> {
-  const id = remoteId();
-  const key = ownerKey();
-  if (!id || !key) return { error: 'This device has no claim on that Fledgling.' };
-  try {
-    const r = await fetch('/api/claim', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ownerKey: key, id, creator }),
-    });
-    return (await r.json()) as { tx?: string; error?: string };
-  } catch {
-    return { error: 'Offline.' };
-  }
-}
-
-/** The link you send to a friend. Null until the pet has synced and has a public page. */
-export function backLink(): string | null {
-  const id = remoteId();
-  if (!id || typeof window === 'undefined') return null;
-  return `${window.location.origin}/back/${id}`;
 }

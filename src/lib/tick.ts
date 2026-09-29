@@ -15,7 +15,7 @@ import { settleDuels } from './duels';
 export type TickSummary = { at: number; pets: number; acted: number; waiting: number; lines: string[] };
 
 type Row = {
-  id: string; species: string; name: string; personality: Personality;
+  id: string; species: string; ticker: string; token_address: string | null; name: string; personality: Personality;
   adopted_at: Date; streak: number; cash: string; lots: Lot[] | null;
   lent_qty: string; yield_qty: string; last_tick_at: Date | null;
   agent_id: string | null; wallet: string | null; proposal: Proposal | null;
@@ -27,18 +27,22 @@ export async function runTick(now = Date.now()): Promise<TickSummary> {
   const lines: string[] = [];
 
   const { rows } = await db.query<Row>(
-    `select id, species, name, personality, adopted_at, streak, cash, lots, lent_qty, yield_qty,
-            last_tick_at, agent_id, wallet, proposal
+    `select id, species, ticker, token_address, name, personality, adopted_at, streak, cash, lots,
+            lent_qty, yield_qty, last_tick_at, agent_id, wallet, proposal
        from pets order by updated_at desc limit 500`,
   );
 
+  // The stock a row holds: its own token, or its species' signature stock.
+  const stockKey = (r: Row) => (r.token_address ?? SPECIES[r.species as Species['id']]?.address ?? '').toLowerCase();
+
   // One fetch per stock, not per pet.
   const bars = new Map<string, Bar[]>();
-  for (const id of new Set(rows.map((r) => r.species))) {
-    if (!SPECIES[id as Species['id']]) continue;
-    const { bars: b, source } = await fetchBars(id as Species['id']);
-    bars.set(id, b);
-    lines.push(`${id}: ${b.length} bars (${source})`);
+  for (const r of rows) {
+    const key = stockKey(r);
+    if (!key || bars.has(key)) continue;
+    const { bars: b, source } = await fetchBars({ ticker: r.ticker, address: key as `0x${string}` });
+    bars.set(key, b);
+    lines.push(`${r.ticker}: ${b.length} bars (${source})`);
   }
 
   let acted = 0, waiting = 0;
@@ -46,7 +50,7 @@ export async function runTick(now = Date.now()): Promise<TickSummary> {
     // A pet holding an open question waits for its owner. The rule that matters most is the one
     // that still applies when nobody is watching.
     if (r.proposal) { waiting++; continue; }
-    const b = bars.get(r.species);
+    const b = bars.get(stockKey(r));
     if (!b?.length) continue;
 
     const adoptedAt = r.adopted_at.getTime();

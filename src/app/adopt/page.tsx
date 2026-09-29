@@ -1,16 +1,21 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Confetti } from '@/components/Confetti';
-import { SPECIES, petImage, type Species } from '@/lib/pets';
+import { SPECIES, petImage, type Species, type Stock } from '@/lib/pets';
 import { PERSONALITIES, adoptPetRemote, type Personality } from '@/lib/store';
 import { ConnectPill, useWallet } from '@/components/Wallet';
 import { syncPet } from '@/lib/sync';
+import { StockCard, type StockInfo } from '@/components/StockCard';
 
 // Finch's rule: egg → hatch → name → personality, inside the first minute, before any feature.
-type Step = 'egg' | 'hatch' | 'name';
+// The egg can be any tokenized stock on BSC — about 450 — or one of the six classics. The sector
+// decides which Fledgling hatches (see speciesFor in lib/pets).
+type Step = 'egg' | 'stock' | 'hatch' | 'name';
 const ORDER: Species['id'][] = ['nova', 'volt', 'pip', 'booster', 'nimbus', 'lurk'];
+type Listing = { ticker: string; company: string; assetType?: number; tokens: Stock[] };
+const ISSUER: Record<string, string> = { bstock: 'bStock', ondo: 'Ondo' };
 
 export default function Adopt() {
   const router = useRouter();
@@ -22,6 +27,33 @@ export default function Adopt() {
   const { address } = useWallet();
   const sp = pick ? SPECIES[pick] : null;
 
+  // Any stock: a search over the ~450, the most traded shown before anything is typed.
+  const [q, setQ] = useState('');
+  const [results, setResults] = useState<{ q: string; list: Listing[] } | null>(null);
+  const [chosen, setChosen] = useState<StockInfo | null>(null);
+  const [loading, setLoading] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    const t = setTimeout(() => {
+      fetch(`/api/stocks${q.trim() ? `?q=${encodeURIComponent(q.trim())}` : ''}`)
+        .then((r) => r.json())
+        .then((j: { results?: Listing[] }) => { if (alive) setResults({ q, list: j.results ?? [] }); })
+        .catch(() => {});
+    }, q ? 180 : 0);
+    return () => { alive = false; clearTimeout(t); };
+  }, [q]);
+
+  const openStock = (token: Stock) => {
+    setLoading(token.address);
+    fetch(`/api/stock/${token.address}`).then((r) => r.json()).then((info: StockInfo) => {
+      setLoading(null);
+      if (!info?.stock) return;
+      setChosen(info);
+      setPick(info.species);
+      setStep('stock');
+    }).catch(() => setLoading(null));
+  };
+
   const hatch = () => {
     if (!pick) return;
     setStep('hatch');
@@ -31,15 +63,17 @@ export default function Adopt() {
   const adopt = () => {
     if (!pick || !name.trim()) return;
     router.push('/?hatched=1'); // optimistic — the local pet exists immediately; the agent attaches when the API answers
-    // A bound wallet is what makes a Fledgling live rather than paper.
-    void adoptPetRemote({ species: pick, name: name.trim().slice(0, 16), personality }, address).then(syncPet);
+    // A bound wallet is what makes a Fledgling live rather than paper. A searched stock rides along;
+    // a classic egg keeps its species' signature stock.
+    const stock = chosen?.stock;
+    void adoptPetRemote({ species: pick, name: name.trim().slice(0, 16), personality, ...(stock ? { stock } : {}) }, address).then(syncPet);
   };
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-[430px] flex-col px-4 pb-10 pt-[max(12px,env(safe-area-inset-top))]">
       <div className="flex items-center justify-between gap-2">
         <span className="rounded-full border px-3 py-1.5 text-[12px] num" style={{ borderColor: 'var(--ink)' }}>
-          {step === 'egg' ? 'Adopt' : step === 'hatch' ? 'Hatching' : 'Name & personality'}
+          {step === 'egg' ? 'Adopt' : step === 'stock' ? 'Meet the stock' : step === 'hatch' ? 'Hatching' : 'Name & personality'}
         </span>
         {/* A Fledgling is bound to the wallet connected at adoption. Without one it stays paper,
             so the pill has to be reachable here — not only after the pet exists. */}
@@ -55,8 +89,44 @@ export default function Adopt() {
         {step === 'egg' && (
           <motion.section key="egg" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
             <h1 className="mt-5 text-center text-[32px] font-bold" style={{ fontFamily: 'var(--font-display)' }}>Pick your egg</h1>
-            <p className="mt-1 text-center text-[14px]" style={{ color: 'var(--muted)' }}>The stock decides which Fledgling hatches.</p>
-            <div className="mt-6 grid grid-cols-2 gap-3">
+            <p className="mt-1 text-center text-[14px]" style={{ color: 'var(--muted)' }}>Any of ~450 tokenized stocks. Its sector decides which Fledgling hatches.</p>
+
+            <label className="card mt-5 flex items-center gap-2 px-4 py-3">
+              <span aria-hidden>🔎</span>
+              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Ticker or company — NVDA, Coca-Cola, SPY…"
+                className="w-full bg-transparent text-[15px] outline-none" style={{ color: 'var(--ink)' }} aria-label="Search tokenized stocks" />
+            </label>
+            <p className="mt-3 text-[12px] font-semibold uppercase tracking-wide" style={{ color: 'var(--muted)' }}>
+              {q.trim() ? 'Matches' : 'Most traded on BSC right now'}
+            </p>
+            <div className="mt-2 grid gap-1.5">
+              {results && results.list.length === 0 && q.trim() && (
+                <p className="card px-4 py-3 text-[13px]" style={{ color: 'var(--muted)' }}>No tokenized stock on BSC matches “{q.trim()}”.</p>
+              )}
+              {(results?.list ?? []).slice(0, q.trim() ? 20 : 8).map((l) => (
+                <div key={l.ticker} className="card flex items-center justify-between gap-2 px-3 py-2">
+                  <div className="min-w-0">
+                    <p className="truncate text-[14.5px] font-bold" style={{ fontFamily: 'var(--font-display)' }}>
+                      {l.ticker}{l.assetType === 3 && <span className="ml-1.5 text-[11px] font-semibold" style={{ color: 'var(--muted)' }}>ETF</span>}
+                    </p>
+                    <p className="truncate text-[12px]" style={{ color: 'var(--muted)' }}>{l.company}</p>
+                  </div>
+                  {/* One company, sometimes two issuers: they are different tokens with different prices. */}
+                  <div className="flex shrink-0 gap-1">
+                    {l.tokens.map((t) => (
+                      <button key={t.address} onClick={() => openStock(t)} disabled={loading !== null}
+                        className="rounded-full px-3 py-1.5 text-[12px] font-bold"
+                        style={{ background: 'var(--accent)', color: 'var(--on-accent)', opacity: loading && loading !== t.address ? 0.4 : 1 }}>
+                        {loading === t.address ? '…' : ISSUER[t.platform] ?? t.platform}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <p className="mt-6 text-[12px] font-semibold uppercase tracking-wide" style={{ color: 'var(--muted)' }}>Or a classic</p>
+            <div className="mt-2 grid grid-cols-2 gap-3">
               {ORDER.map((id) => {
                 const s = SPECIES[id], on = pick === id;
                 return (
@@ -69,7 +139,24 @@ export default function Adopt() {
                 );
               })}
             </div>
-            <button onClick={hatch} disabled={!pick} className="pill mt-6 w-full text-[18px] disabled:opacity-40">Hatch</button>
+            <button onClick={() => { setChosen(null); hatch(); }} disabled={!pick} className="pill mt-6 w-full text-[18px] disabled:opacity-40">Hatch</button>
+          </motion.section>
+        )}
+
+        {step === 'stock' && chosen && sp && (
+          <motion.section key="stock" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+            <div className="mx-auto mt-3 grid h-32 w-32 place-items-center">
+              <img src={`/pets/eggs/${sp.id}.png`} alt="" className="h-28 w-28 object-contain" draggable={false} />
+            </div>
+            <p className="text-center text-[14px]" style={{ color: 'var(--muted)' }}>
+              {chosen.company?.industry ? `${chosen.company.industry}` : chosen.stock.assetType === 3 ? 'An ETF' : 'This stock'} hatches {/^[aeiou]/i.test(sp.species) ? 'an' : 'a'}{' '}
+              <b style={{ color: 'var(--ink)' }}>{sp.species.toLowerCase()}</b>.
+            </p>
+            <div className="mt-3"><StockCard info={chosen} /></div>
+            <button onClick={hatch} className="pill mt-4 w-full text-[18px]">Hatch {chosen.stock.ticker}</button>
+            <button onClick={() => { setChosen(null); setPick(null); setStep('egg'); }} className="mt-3 w-full text-center text-[13px] underline" style={{ color: 'var(--muted)' }}>
+              Pick a different stock
+            </button>
           </motion.section>
         )}
 

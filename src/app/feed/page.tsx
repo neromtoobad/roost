@@ -4,8 +4,8 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Confetti } from '@/components/Confetti';
 import { ConnectPill, useWallet } from '@/components/Wallet';
-import { SPECIES, petImage, type Mood } from '@/lib/pets';
-import { PERSONALITIES, feedPetRemote, isPaper, readPet, recordBuy, usePet } from '@/lib/store';
+import { petImage, type Mood } from '@/lib/pets';
+import { PERSONALITIES, feedPetRemote, isPaper, readPet, recordBuy, stockOf, usePet } from '@/lib/store';
 import { syncPet } from '@/lib/sync';
 import { nyseSession } from '@/lib/session';
 import { useSearch } from '@/lib/client';
@@ -65,12 +65,12 @@ export default function FeedPage() {
   useEffect(() => {
     if (!pet) return;
     let alive = true;
-    fetch(`/api/price/${pet.species}`).then((r) => r.json()).then((p: Price) => { if (alive) setPrice(p); }).catch(() => {});
+    fetch(`/api/price/${stockOf(pet).address}`).then((r) => r.json()).then((p: Price) => { if (alive) setPrice(p); }).catch(() => {});
     return () => { alive = false; };
-  }, [pet?.species]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pet?.uid, pet?.species]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!pet) return null;
-  const sp = SPECIES[pet.species];
+  const sp = stockOf(pet);
   const live = !isPaper(pet);
   const open = nyseSession() === 'regular';
   // Arriving from "Sign it": the amount is the pet's own decision, not a choice on this screen.
@@ -96,12 +96,12 @@ export default function FeedPage() {
 
   const buyNow = async () => {
     if (step.at === 'done') { router.push('/?fed=1'); return; }
-    const b = await run(pet.species, amount, bound);
+    const b = await run({ species: pet.species, stock: sp }, amount, bound);
     if (!b) return;
     // The pet may have ticked while the wallet was open; record against the latest copy.
     const current = readPet() ?? pet;
     const reason = signing ? `You signed. ${b.qty.toFixed(4)} ${sp.ticker} — ${signing.reason}.` : undefined;
-    const { pet: next, fresh } = recordBuy(current, { ...b, fromCash: Boolean(signing), reason });
+    const { pet: next, fresh } = recordBuy(current, { hash: b.hash, qty: b.qty, spent: b.usdt, fromCash: Boolean(signing), reason });
     void syncPet(next, fresh);
   };
 

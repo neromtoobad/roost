@@ -62,6 +62,12 @@ create table if not exists pets (
 );
 -- Added after the first deploy; the worker must not trade past an unanswered question.
 alter table pets add column if not exists proposal jsonb;
+-- Added when a Fledgling could hatch from any tokenized stock rather than its species' signature
+-- one. Null means the signature stock; one ticker can have two tokens, so the address is the key.
+alter table pets add column if not exists token_address text;
+alter table pets add column if not exists token_symbol text;
+-- USDT taken off the table by releasing shares, less what they cost.
+alter table pets add column if not exists realized numeric not null default 0;
 create index if not exists pets_owner_hash_idx on pets (owner_hash);
 create index if not exists pets_updated_idx    on pets (updated_at desc);
 

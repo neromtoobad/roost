@@ -1,17 +1,19 @@
 import { NextResponse } from 'next/server';
-import { SPECIES, type Species } from '@/lib/pets';
-import { quoteFor } from '@/lib/quote';
+import { quoteForStock, resolveStock } from '@/lib/quote';
 
-// Price for a species' home stock, plus the number the product is actually about: how far the
-// token has drifted from the share it stands for. See lib/quote.ts for why that needs two
-// sources rather than the two prices the RWA row appears to hand you.
+// Price for a Fledgling's stock — a species id for the six signature stocks, or any token address
+// — plus the number the product is actually about: how far the token has drifted from the share it
+// stands for. See lib/quote.ts for why that needs two sources rather than the two prices the RWA
+// row appears to hand you.
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  if (!SPECIES[id as Species['id']]) return NextResponse.json({ error: 'unknown species' }, { status: 404 });
+  const stock = await resolveStock(id);
+  if (!stock) return NextResponse.json({ error: 'unknown stock' }, { status: 404 });
 
-  const q = await quoteFor(id as Species['id']);
+  const q = await quoteForStock(stock);
   return NextResponse.json(
     {
+      ticker: stock.ticker,
       price: q.price,
       pct24h: q.pct24h,
       source: q.source,

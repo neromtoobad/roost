@@ -13,7 +13,7 @@
 // the spread between those two is real. That spread is the Night Owl mood: the NYSE is shut,
 // the reference has not moved since Friday, and the token is still trading.
 
-import { SPECIES, CHAIN_ID, USDT, speciesByTicker, type Species } from './pets';
+import { SPECIES, CHAIN_ID, USDT, speciesByTicker, isAddress, type Species, type Stock, type Platform } from './pets';
 import { request } from './binance';
 
 const TTL = 60_000;
@@ -22,6 +22,11 @@ type RwaRow = {
   tokenContractAddress: string;
   tokenSymbol: string;
   underlyingTicker: string;
+  underlyingName?: string;
+  platformId?: string;
+  decimals?: string;
+  assetType?: number | null;
+  volume24H?: string;
   referencePrice: string;
   tokenPrice: string;
   tokenToShareRatio: string;
@@ -77,6 +82,12 @@ async function rwaRows(): Promise<Map<string, RwaRow>> {
   return rows;
 }
 
+/** How many underlying shares one token stands for — over 1 as dividends are reinvested. */
+export async function shareRatio(address: string): Promise<number | null> {
+  const v = Number((await rwaRows()).get(addr(address))?.tokenToShareRatio);
+  return Number.isFinite(v) && v > 0 ? v : null;
+}
+
 /**
  * What one token is worth at its own issuer's reference price, ratio applied. Null when the RWA
  * list has no usable row for it. Per issuer on purpose: bStock and Ondo publish different
@@ -119,9 +130,46 @@ async function dexRows(addresses: string[]): Promise<Map<string, DexRow>> {
   return out;
 }
 
+// ── any stock ──────────────────────────────────────────────────────────────────────────
+
+function toStock(r: RwaRow): Stock | null {
+  if (!isAddress(r.tokenContractAddress)) return null;
+  const platform: Platform = r.platformId === 'ondo' ? 'ondo' : 'bstock';
+  return {
+    ticker: (r.underlyingTicker ?? '').toUpperCase(),
+    company: r.underlyingName ?? r.underlyingTicker,
+    tokenSymbol: r.tokenSymbol,
+    platform,
+    address: r.tokenContractAddress,
+    decimals: Number(r.decimals) || 18,
+    assetType: r.assetType ?? undefined,
+  };
+}
+
+/** Every tokenized stock on BSC, most traded first — what a Fledgling can hatch from. */
+export async function listStocks(): Promise<(Stock & { volume24h: number })[]> {
+  const out: (Stock & { volume24h: number })[] = [];
+  for (const r of (await rwaRows()).values()) {
+    const s = toStock(r);
+    if (s) out.push({ ...s, volume24h: Number(r.volume24H) || 0 });
+  }
+  return out.sort((a, b) => b.volume24h - a.volume24h);
+}
+
+/**
+ * A species id or a token address, as the stock it names. Routes take either: the six classic
+ * Fledglings keep their short URLs, and any other stock is addressed by its contract.
+ */
+export async function resolveStock(idOrAddress: string): Promise<Stock | null> {
+  if (SPECIES[idOrAddress as Species['id']]) return SPECIES[idOrAddress as Species['id']];
+  if (!isAddress(idOrAddress)) return null;
+  const row = (await rwaRows()).get(addr(idOrAddress));
+  return row ? toStock(row) : null;
+}
+
 // ── the quote ──────────────────────────────────────────────────────────────────────────
 
-function build(sp: Species, rwa: RwaRow | undefined, dex: DexRow | undefined): Quote {
+function build(sp: Pick<Stock, 'ticker'>, rwa: RwaRow | undefined, dex: DexRow | undefined): Quote {
   // One token is worth `referencePrice * tokenToShareRatio` of underlying. For a 10:1 token
   // that ratio is 10, and skipping it invents a 900% spread out of nothing.
   const ref = rwa ? Number(rwa.referencePrice) * Number(rwa.tokenToShareRatio) : NaN;
@@ -156,19 +204,51 @@ function build(sp: Species, rwa: RwaRow | undefined, dex: DexRow | undefined): Q
   };
 }
 
+/** Quotes for several stocks at once, keyed by lower-cased address — two upstream calls total. */
+export async function quotesForStocks(stocks: Pick<Stock, 'ticker' | 'address'>[]): Promise<Record<string, Quote>> {
+  if (!stocks.length) return {};
+  const [rwa, dex] = await Promise.all([rwaRows(), dexRows(stocks.map((s) => s.address))]);
+  return Object.fromEntries(stocks.map((s) => [addr(s.address), build(s, rwa.get(addr(s.address)), dex.get(addr(s.address)))]));
+}
+
+export async function quoteForStock(s: Pick<Stock, 'ticker' | 'address'>): Promise<Quote> {
+  return (await quotesForStocks([s]))[addr(s.address)];
+}
+
 /** Quotes for several species at once — two upstream calls total, however many are asked for. */
 export async function quotesFor(ids: Species['id'][]): Promise<Record<string, Quote>> {
-  const uniq = [...new Set(ids)].filter((id) => SPECIES[id]);
-  if (!uniq.length) return {};
-  const species = uniq.map((id) => SPECIES[id]);
-  const [rwa, dex] = await Promise.all([rwaRows(), dexRows(species.map((s) => s.address))]);
-  return Object.fromEntries(
-    species.map((sp) => [sp.id, build(sp, rwa.get(addr(sp.address)), dex.get(addr(sp.address)))]),
-  );
+  const species = [...new Set(ids)].filter((id) => SPECIES[id]).map((id) => SPECIES[id]);
+  const byAddress = await quotesForStocks(species);
+  return Object.fromEntries(species.map((sp) => [sp.id, byAddress[addr(sp.address)]]));
 }
 
 export async function quoteFor(id: Species['id']): Promise<Quote> {
   return (await quotesFor([id]))[id];
+}
+
+/**
+ * Traded prices by token address, for the leaderboard and duels. They only need the print, so this
+ * reads the DEX feed alone (~0.4s) and falls back to the RWA row's token price — the same fallback
+ * `build` uses — only for a token the feed has no price for.
+ */
+export async function pricesByAddress(addresses: string[]): Promise<Record<string, number | null>> {
+  const uniq = [...new Set(addresses.map(addr))];
+  const dex = await dexRows(uniq);
+  const out: Record<string, number | null> = {};
+  const missing: string[] = [];
+  for (const a of uniq) {
+    const v = Number(dex.get(a)?.price);
+    if (Number.isFinite(v) && v > 0) out[a] = v;
+    else { out[a] = null; missing.push(a); }
+  }
+  if (missing.length) {
+    const rwa = await rwaRows();
+    for (const a of missing) {
+      const v = Number(rwa.get(a)?.tokenPrice);
+      out[a] = Number.isFinite(v) && v > 0 ? v : null;
+    }
+  }
+  return out;
 }
 
 /**
@@ -234,7 +314,11 @@ type QuoteRow = {
 export async function fillFor(id: Species['id'], wallet: `0x${string}`): Promise<Fill> {
   const sp = SPECIES[id];
   if (!sp) return { ticker: '?', perToken: null, priceImpactPct: null, vendor: null, spreadPct: null, error: 'unknown species' };
+  return fillForStock(sp, wallet);
+}
 
+/** The same for any stock. */
+export async function fillForStock(sp: Pick<Stock, 'ticker' | 'address' | 'decimals'>, wallet: `0x${string}`): Promise<Fill> {
   const base: Fill = { ticker: sp.ticker, perToken: null, priceImpactPct: null, vendor: null, spreadPct: null };
   try {
     const r = await request('GET', '/api/v1/dex/aggregator/quote', {
@@ -254,7 +338,7 @@ export async function fillFor(id: Species['id'], wallet: `0x${string}`): Promise
     }
 
     const perToken = Number(row.toTokenAmount) / 10 ** USDT_DECIMALS;
-    const { reference } = await quoteFor(id);
+    const { reference } = await quoteForStock(sp);
     return {
       ...base,
       perToken: Number.isFinite(perToken) && perToken > 0 ? perToken : null,

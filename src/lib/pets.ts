@@ -20,10 +20,27 @@ export type Mood = (typeof MOODS)[number];
 
 export type Platform = 'bstock' | 'ondo';
 
+/**
+ * A tokenized stock a Fledgling can hold — any of the ~450 on BSC, not only the six below.
+ * Keyed by `address`: one ticker can have two tokens (bStock and Ondo), and they are different
+ * things with different prices and different reference prices.
+ */
+export type Stock = {
+  ticker: string;
+  company: string;
+  tokenSymbol: string;
+  platform: Platform;
+  address: `0x${string}`;
+  decimals: number;
+  /** As the RWA list marks it: 1 a stock, 3 an ETF. */
+  assetType?: number;
+};
+
 export type Species = {
   id: 'nova' | 'volt' | 'pip' | 'booster' | 'nimbus' | 'lurk';
   name: string;           // default pet name
   species: string;        // what it is
+  company: string;        // its signature stock's company — a Species is also a Stock
   ticker: string;         // underlying ticker — how the API and the UI name the stock
   tokenSymbol: string;    // the BSC token, platform suffix and all
   platform: Platform;     // how it trades
@@ -37,25 +54,25 @@ export type Species = {
 export const SPECIES: Record<Species['id'], Species> = {
   nova: {
     id: 'nova', name: 'Nova', species: 'Robot cat', wrongDetail: 'left ear bent',
-    ticker: 'NVDA', tokenSymbol: 'NVDAB', platform: 'bstock',
+    company: 'Nvidia', ticker: 'NVDA', tokenSymbol: 'NVDAB', platform: 'bstock',
     address: '0x02fca66c1d1afb4e2a7884261eb00f63598a7436', decimals: 18, preIpo: false,
     greeting: { chill: 'Sideways. Vibing.', nightowl: "Wall Street sleeps. I don't.", hungry: "Feed me and I'll buy the dip." },
   },
   volt: {
     id: 'volt', name: 'Volt', species: 'Lightning dog', wrongDetail: 'right ear folded',
-    ticker: 'TSLA', tokenSymbol: 'TSLAB', platform: 'bstock',
+    company: 'Tesla', ticker: 'TSLA', tokenSymbol: 'TSLAB', platform: 'bstock',
     address: '0x5b1910eaad6450e50f816082aa078c41f10c292f', decimals: 18, preIpo: false,
     greeting: { ecstatic: 'WE ARE SO BACK.', sulking: "Don't look at me." },
   },
   pip: {
     id: 'pip', name: 'Pip', species: 'Earbud hedgehog', wrongDetail: 'one bent spine',
-    ticker: 'AAPL', tokenSymbol: 'AAPLon', platform: 'ondo',
+    company: 'Apple', ticker: 'AAPL', tokenSymbol: 'AAPLon', platform: 'ondo',
     address: '0x390a684ef9cade28a7ad0dfa61ab1eb3842618c4', decimals: 18, preIpo: false,
     greeting: { happy: 'Green day. I bought a hat.', pajamas: 'Markets closed. Snacks open.' },
   },
   booster: {
     id: 'booster', name: 'Booster', species: 'Space frog', wrongDetail: 'mismatched eyes, crooked patch',
-    ticker: 'SPCX', tokenSymbol: 'SPCXB', platform: 'bstock',
+    company: 'SpaceX', ticker: 'SPCX', tokenSymbol: 'SPCXB', platform: 'bstock',
     address: '0xbe9d156892e55e7154bcd3cb0fea677f9d3103e1', decimals: 18, preIpo: true,
     greeting: { nervous: "It's a dip. It's a healthy dip. Right?", chill: 'No closing bell for a private company.' },
   },
@@ -63,13 +80,13 @@ export const SPECIES: Record<Species['id'], Species> = {
     // Was OpenAI on Solana. OpenAI is listed by neither bStock nor Ondo, so the cloud keeps
     // its meaning by renting out compute instead of making the model.
     id: 'nimbus', name: 'Nimbus', species: 'Cloud', wrongDetail: 'drooping puff',
-    ticker: 'CRWV', tokenSymbol: 'CRWVB', platform: 'bstock',
+    company: 'CoreWeave', ticker: 'CRWV', tokenSymbol: 'CRWVB', platform: 'bstock',
     address: '0x33e7317e17838fee56b10fe8d0b9ca6ca3090c95', decimals: 18, preIpo: false,
     greeting: { chill: 'I rent out the thunder.', nightowl: "The GPUs don't sleep either." },
   },
   lurk: {
     id: 'lurk', name: 'Lurk', species: 'Night owl', wrongDetail: 'one eye half closed',
-    ticker: 'RDDT', tokenSymbol: 'RDDTon', platform: 'ondo',
+    company: 'Reddit', ticker: 'RDDT', tokenSymbol: 'RDDTon', platform: 'ondo',
     address: '0x4da12f47578ef89c76179b760c778e70b668f80b', decimals: 18, preIpo: false,
     greeting: { nightowl: 'This is my hour.', chill: 'Reading. Not posting.' },
   },
@@ -87,3 +104,29 @@ export const speciesByTicker = (ticker: string): Species | undefined =>
   ALL_SPECIES.find((s) => s.ticker.toUpperCase() === ticker.toUpperCase());
 
 export const petImage = (id: Species['id'], mood: Mood | 'hero') => `/pets/${id}/${mood}.png`;
+
+export const isAddress = (s: string): s is `0x${string}` => /^0x[a-fA-F0-9]{40}$/.test(s);
+
+/**
+ * Which Fledgling hatches from a stock, by the sector Binance's RWA profile gives its company.
+ * Each creature keeps its signature stock and takes in the sector it stands for:
+ *
+ *   Nova, the robot cat         Technology
+ *   Volt, the lightning dog     Energy, Utilities, Basic Materials — things that carry a charge
+ *   Pip, the earbud hedgehog    Consumer (cyclical and defensive), Healthcare, Real Estate
+ *   Booster, the space frog     Industrials — aerospace, space and defence live here
+ *   Nimbus, the cloud           ETFs — a cloud of many stocks — and anything the profile leaves blank
+ *   Lurk, the night owl         Communication Services, Financial Services
+ *
+ * The profile's industry list, sampled across 163 tokens, is exactly those eleven values plus ETF.
+ */
+export function speciesFor(industry: string | null | undefined, assetType?: number | null): Species['id'] {
+  if (assetType === 3) return 'nimbus';
+  const s = (industry ?? '').toLowerCase();
+  if (s.includes('tech')) return 'nova';
+  if (s.includes('energy') || s.includes('utilit') || s.includes('material')) return 'volt';
+  if (s.includes('consumer') || s.includes('health') || s.includes('real estate')) return 'pip';
+  if (s.includes('industrial')) return 'booster';
+  if (s.includes('communication') || s.includes('financial')) return 'lurk';
+  return 'nimbus';
+}

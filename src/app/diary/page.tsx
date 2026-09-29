@@ -4,7 +4,7 @@ import { TxLink } from '@/components/Report';
 import { petImage } from '@/lib/pets';
 import { usePet, type EntryKind } from '@/lib/store';
 
-const ICON: Record<EntryKind, string> = { feed: '🍽', buy: '📈', lend: '🏦', yield: '✨', hold: '🤚', ask: '🙋', system: '🔔' };
+const ICON: Record<EntryKind, string> = { feed: '🍽', buy: '📈', sell: '🕊', lend: '🏦', yield: '✨', hold: '🤚', ask: '🙋', system: '🔔' };
 
 export default function Diary() {
   const pet = usePet();

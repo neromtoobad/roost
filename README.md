@@ -57,9 +57,11 @@ Everything below was found by running against the live Binance Web3 API, and eac
 
 **Lending has no venue.** The DeFi API lists ten protocols on BSC, but none is confirmed to take a tokenized equity as collateral. Rather than emit a command that would fail on-chain, a Fledgling that wants to lend reports `blocked` and says why. Its shares sit idle rather than pretend to earn.
 
-## The six
+## Any stock, six Fledglings
 
-The home stock decides the species. Each carries one deliberate wrong detail — the Pop Mart principle: a face that resolves instantly is a face you forget.
+A Fledgling can hatch from **any of the ~450 tokenized stocks and ETFs on BSC** — search by ticker or company name, read its company card (sector, CEO, 52-week range, P/E, dividend, the issuer's collateral report, and how far the token trades from the share), and hatch it. The sector decides which of the six hatches: Technology a Nova, Energy and Materials a Volt, Consumer and Healthcare a Pip, Industrials (aerospace lives there) a Booster, ETFs a Nimbus, Communication and Financials a Lurk. You can keep a **nest** of several, one portfolio across them, and **release** shares back to USDT through the same simulation and price guard as feeding.
+
+The six each have a signature stock, and one deliberate wrong detail — the Pop Mart principle: a face that resolves instantly is a face you forget.
 
 | Fledgling | Species | Home stock | Token | Platform | Wrong detail |
 |---|---|---|---|---|---|
@@ -130,6 +132,6 @@ npm run worker
 
 ## Status
 
-**Working and verified against the live API:** adoption and hatching, the feed loop with live pricing, the mood engine, the strategy engine and its diary, the two-source spread with real aggregator fills, hourly candles on both platforms, the wallet layer, the agent intent layer, the seller agent's deliverable across 448 tickers, the cross-issuer comparison across the 40 both issuers list, and the pre-flight simulation — run against live wallets in all four outcomes (would succeed, needs approval, would fail, not simulated). Its path through `/api/agent` fires only when a rule does, which needs a market-hours bar; `npm run check:agent -- 0xYourAddress` shows it then.
+**Working and verified against the live API:** hatching from any of the ~450 listed stocks with a company card, a nest of several Fledglings with one portfolio view, releasing shares with FIFO cost and realized P&L, on-chain holdings from the Wallet API, adoption and hatching, the feed loop with live pricing, the mood engine, the strategy engine and its diary, the two-source spread with real aggregator fills, hourly candles on both platforms, the wallet layer, the agent intent layer, the seller agent's deliverable across 448 tickers, the cross-issuer comparison across the 40 both issuers list, and the pre-flight simulation — run against live wallets in all four outcomes (would succeed, needs approval, would fail, not simulated). Its path through `/api/agent` fires only when a rule does, which needs a market-hours bar; `npm run check:agent -- 0xYourAddress` shows it then.
 
 **Honest gaps.** Nothing has executed on-chain yet — the web app's real feed, the `baw` hop and the Agent Studio deploy are all built, and the web feed's build-and-simulate step is verified against live wallets, but none has signed a transaction, because each needs the owner's wallet. The web feed handles swap-mode fills; an Ondo name routed as request-for-quote (typically Pip and Lurk on a weekday) stops with that reason rather than attempting it. `DATABASE_URL` is unset locally, so the Board, duels and the hourly worker are inert until Postgres is attached. Lending is `blocked` for `diamond` and `quant` until a BSC venue exists. And `/api/holidays` still reads the NYSE closure calendar from Backpack's public API — a Solana-ecosystem venue, and the next thing to replace.

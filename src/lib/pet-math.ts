@@ -1,4 +1,4 @@
-import type { Species } from './pets';
+import { SPECIES, type Species, type Stock } from './pets';
 
 // The shape of a Fledgling and the arithmetic over it. Deliberately free of React and of
 // localStorage: the browser, the API routes and the hourly worker all reason about the same pet,
@@ -7,13 +7,19 @@ import type { Species } from './pets';
 export type Personality = 'diamond' | 'degen' | 'boomer' | 'quant';
 
 export type Lot = { ts: number; qty: number; price: number };
-export type EntryKind = 'feed' | 'buy' | 'lend' | 'yield' | 'hold' | 'ask' | 'system';
+export type EntryKind = 'feed' | 'buy' | 'sell' | 'lend' | 'yield' | 'hold' | 'ask' | 'system';
 export type Entry = { ts: number; text: string; kind: EntryKind; qty?: number; price?: number; usd?: number; sig?: string; paper?: boolean };
 export type Proposal = { ts: number; usd: number; reason: string };
 export type Launch = { pool: string; baseMint: string; config: string; quote: string; sig: string; ts: number };
 
 export type PetState = {
+  /** This device's handle for the pet, so a nest of several can tell them apart. */
+  uid?: string;
+  /** The server row it mirrors to, once synced. */
+  remoteId?: string;
   species: Species['id'];
+  /** What it holds, when that is not its species' signature stock. */
+  stock?: Stock;
   name: string;
   personality: Personality;
   adoptedAt: number;
@@ -30,7 +36,12 @@ export type PetState = {
   wallet?: string;     // the bound Agentic Wallet address — its presence means execution is live
   agentId?: string;    // Agent Studio agent id, once the pet runs autonomously
   launch?: Launch;
+  /** USDT taken off the table when the owner released shares, minus what those shares cost. */
+  realized?: number;
 };
+
+/** The stock a pet holds: its own if it hatched from one, else its species' signature stock. */
+export const stockOf = (p: Pick<PetState, 'species' | 'stock'>): Stock => p.stock ?? SPECIES[p.species];
 
 /** No wallet bound means the trades are simulated, and every surface says so. */
 export const isPaper = (p: PetState) => !p.wallet;

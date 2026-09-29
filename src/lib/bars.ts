@@ -1,6 +1,6 @@
-import { SPECIES, CHAIN_ID, type Species } from './pets';
+import { SPECIES, CHAIN_ID, type Species, type Stock } from './pets';
 import { request } from './binance';
-import { quoteFor } from './quote';
+import { quoteForStock } from './quote';
 import type { Bar } from './strategy';
 
 // Hourly bars for a Fledgling's home stock, shared by the history route and the hourly worker so
@@ -18,8 +18,9 @@ export type BarSet = { bars: Bar[]; source: 'dex' | 'flat' | 'none' };
 
 type Candle = [number, number, number, number, number, number, number];
 
-export async function fetchBars(id: Species['id'], days = 7): Promise<BarSet> {
-  const sp = SPECIES[id];
+/** A species id for its signature stock, or any stock. */
+export async function fetchBars(target: Species['id'] | Pick<Stock, 'ticker' | 'address'>, days = 7): Promise<BarSet> {
+  const sp = typeof target === 'string' ? SPECIES[target] : target;
   if (!sp) return { bars: [], source: 'none' };
 
   try {
@@ -44,7 +45,7 @@ export async function fetchBars(id: Species['id'], days = 7): Promise<BarSet> {
   // No candles — a thin book, or a listing too new to have any. The engine still runs; it just
   // has nothing to react to, which is honest rather than invented movement.
   try {
-    const q = await quoteFor(id);
+    const q = await quoteForStock(sp);
     if (q.price) {
       const now = Date.now();
       const bars = Array.from({ length: days * 24 }, (_, k) => {

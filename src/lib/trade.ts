@@ -3,15 +3,16 @@ import { useCallback, useState } from 'react';
 import { getConnection, sendTransaction, switchChain, waitForTransactionReceipt } from 'wagmi/actions';
 import { erc20Abi, formatUnits, parseEventLogs, type Hex } from 'viem';
 import { config, BSC_CHAIN_ID } from './chain';
-import { SPECIES, USDT, type Species } from './pets';
+import { USDT, type Species, type Stock } from './pets';
 import type { BuyPlan, Preflight, UnsignedTx } from './preflight';
 
-// Feeding a live Fledgling for real, from the browser.
+// Feeding a live Fledgling for real, or releasing some of what it holds, from the browser.
 //
 // Roost holds no keys, so the owner's own wallet signs every step, in this order:
 //
 //   1. POST /api/trade      the aggregator's transaction for this wallet, simulated first
-//   2. approve (if needed)  USDT for exactly this amount, to exactly the router that will spend it
+//   2. approve (if needed)  exactly this amount — USDT for a buy, the stock token for a sale — to
+//                           exactly the router that will spend it
 //   3. swap                 the transaction that was simulated, unchanged
 //   4. receipt              what actually arrived, read from the swap's own Transfer logs
 //
@@ -24,18 +25,25 @@ export type BuyStep =
   | { at: 'approving'; hash: string }
   | { at: 'buy'; preflight: Preflight }
   | { at: 'buying'; hash: string }
-  | { at: 'done'; hash: string; qty: number; spent: number }
+  | { at: 'done'; hash: string; qty: number; usdt: number }
   | { at: 'stopped'; reason: string; hash?: string };
 
-export type Bought = { hash: string; qty: number; spent: number };
+/** What the receipt says moved: tokens in and USDT out for a buy, the other way for a sale. */
+export type Traded = { hash: string; side: 'buy' | 'sell'; qty: number; usdt: number };
+
+/** Whose stock, and which Fledgling asks: the species decides nothing about the price. */
+export type Target = { species: Species['id']; stock: Stock };
 
 const lower = (a: string | undefined) => (a ?? '').toLowerCase();
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-async function plan(species: Species['id'], usd: number, wallet: string): Promise<BuyPlan> {
+async function plan(t: Target, side: 'buy' | 'sell', amount: number, wallet: string): Promise<BuyPlan> {
   const r = await fetch('/api/trade', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ species, usd, wallet }),
+    body: JSON.stringify({
+      species: t.species, token: t.stock.address, side, wallet,
+      ...(side === 'sell' ? { qty: amount } : { usd: amount }),
+    }),
   });
   const j = (await r.json()) as BuyPlan & { error?: string };
   if (!r.ok) throw new Error(j.error ?? `Roost answered HTTP ${r.status}`);
@@ -66,8 +74,11 @@ export function useBuy() {
   const [step, setStep] = useState<BuyStep>({ at: 'idle' });
   const reset = useCallback(() => setStep({ at: 'idle' }), []);
 
-  const run = useCallback(async (species: Species['id'], usd: number, wallet: string): Promise<Bought | null> => {
-    const sp = SPECIES[species];
+  /** `amount` is USDT for a buy, tokens of the stock for a sale. */
+  const run = useCallback(async (t: Target, amount: number, wallet: string, side: 'buy' | 'sell' = 'buy'): Promise<Traded | null> => {
+    const sp = t.stock;
+    const selling = side === 'sell';
+    const deal = selling ? 'sale' : 'buy';
     const stop = (reason: string, hash?: string) => { setStep({ at: 'stopped', reason, hash }); return null; };
     let approved = false;
     // What has already left for the chain. After that point "nothing was spent" stops being true.
@@ -82,22 +93,22 @@ export function useBuy() {
       if (c.chainId !== BSC_CHAIN_ID) await switchChain(config, { chainId: BSC_CHAIN_ID });
 
       setStep({ at: 'checking' });
-      let p = await plan(species, usd, wallet);
+      let p = await plan(t, side, amount, wallet);
 
       if (p.preflight.status === 'needs-approval') {
-        if (!p.approval) return stop('Roost could not build an approval that matches this buy exactly, so it is not asking you to sign one.');
+        if (!p.approval) return stop(`Roost could not build an approval that matches this ${deal} exactly, so it is not asking you to sign one.`);
         setStep({ at: 'approve', preflight: p.preflight });
         const ah = await send(p.approval, wallet);
         sent = { hash: ah, what: 'approval' };
         setStep({ at: 'approving', hash: ah });
         const ar = await waitForTransactionReceipt(config, { hash: ah, chainId: BSC_CHAIN_ID });
-        if (ar.status !== 'success') return stop('The approval reverted on-chain. Nothing was bought.', ah);
+        if (ar.status !== 'success') return stop(`The approval reverted on-chain. Nothing was ${selling ? 'sold' : 'bought'}.`, ah);
         approved = true;
 
         // The simulator's node can trail the one that mined the approval by a block or two.
         setStep({ at: 'checking' });
         for (let i = 0; i < 4; i++) {
-          p = await plan(species, usd, wallet);
+          p = await plan(t, side, amount, wallet);
           if (p.preflight.status !== 'needs-approval') break;
           await sleep(2500);
         }
@@ -110,22 +121,27 @@ export function useBuy() {
       sent = { hash: h, what: 'buy' };
       setStep({ at: 'buying', hash: h });
       const rc = await waitForTransactionReceipt(config, { hash: h, chainId: BSC_CHAIN_ID });
-      if (rc.status !== 'success') return stop('The swap reverted on-chain. The gas is spent; the USDT is not.', h);
+      if (rc.status !== 'success') return stop(`The swap reverted on-chain. The gas is spent; the ${selling ? sp.tokenSymbol : 'USDT'} is not.`, h);
 
       // What actually moved, from the receipt — the only number the diary should carry.
       const transfers = parseEventLogs({ abi: erc20Abi, eventName: 'Transfer', logs: rc.logs });
       const total = (token: string, mine: (a: { from: string; to: string }) => boolean) => transfers
         .filter((l) => lower(l.address) === lower(token) && mine(l.args))
         .reduce((s, l) => s + l.args.value, BigInt(0));
-      const qty = Number(formatUnits(total(sp.address, (a) => lower(a.to) === lower(wallet)), sp.decimals));
-      const spent = Number(formatUnits(total(USDT, (a) => lower(a.from) === lower(wallet)), 18));
-      if (!(qty > 0)) return stop(`The swap confirmed, but no ${sp.tokenSymbol} transfer to your wallet appears in its logs. Check it on BscScan before trusting any number here.`, h);
+      const toMe = (a: { to: string }) => lower(a.to) === lower(wallet);
+      const fromMe = (a: { from: string }) => lower(a.from) === lower(wallet);
+      const qty = Number(formatUnits(total(sp.address, selling ? fromMe : toMe), sp.decimals));
+      const usdt = Number(formatUnits(total(USDT, selling ? toMe : fromMe), 18));
+      const landed = selling ? usdt : qty;
+      if (!(landed > 0)) {
+        return stop(`The swap confirmed, but no ${selling ? 'USDT' : sp.tokenSymbol} transfer to your wallet appears in its logs. Check it on BscScan before trusting any number here.`, h);
+      }
 
-      setStep({ at: 'done', hash: h, qty, spent });
-      return { hash: h, qty, spent: spent || usd };
+      setStep({ at: 'done', hash: h, qty, usdt });
+      return { hash: h, side, qty: qty || (selling ? amount : 0), usdt: usdt || (selling ? 0 : amount) };
     } catch (e) {
       const reason = why(e);
-      if (sent?.what === 'buy') return stop(`${reason} The buy was already sent — check it on BscScan before trying again.`, sent.hash);
+      if (sent?.what === 'buy') return stop(`${reason} The ${deal} was already sent — check it on BscScan before trying again.`, sent.hash);
       if (sent && !approved) return stop(`${reason} The approval was sent but not confirmed here — check it on BscScan.`, sent.hash);
       return stop(approved ? `${reason} The approval stays in place, so the next try skips it.` : `${reason} Nothing was spent.`);
     }

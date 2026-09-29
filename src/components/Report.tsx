@@ -4,7 +4,7 @@ import { petImage } from '@/lib/pets';
 import { awayLabel } from '@/lib/engine';
 import { isPaper, type Entry, type PetState } from '@/lib/store';
 
-const ICON: Record<string, string> = { buy: '📈', lend: '🏦', yield: '✨', hold: '🤚', ask: '🙋', feed: '🍽', system: '🔔' };
+const ICON: Record<string, string> = { buy: '📈', sell: '🕊', lend: '🏦', yield: '✨', hold: '🤚', ask: '🙋', feed: '🍽', system: '🔔' };
 
 /** A BSC transaction on BscScan. Signatures from the Solana era still resolve on Solscan. */
 export function TxLink({ sig }: { sig: string }) {

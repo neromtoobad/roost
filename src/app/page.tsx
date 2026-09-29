@@ -10,13 +10,13 @@ import { Confetti } from '@/components/Confetti';
 import { Report, Ask } from '@/components/Report';
 import { Sparkline } from '@/components/Sparkline';
 import { DuelCard, type Duel } from '@/components/Duel';
-import { SPECIES, type Mood } from '@/lib/pets';
+import { petImage, type Mood } from '@/lib/pets';
 import { computeMood, moodLine } from '@/lib/mood';
 import { isNight, nyseSession, sessionLabel } from '@/lib/session';
-import { useLocal, useNow, useSearch } from '@/lib/client';
+import { useNow, useSearch } from '@/lib/client';
 import { runEngine } from '@/lib/engine';
 import { pullPet, syncPet } from '@/lib/sync';
-import { answerProposal, heldQty, isPaper, mergeEntries, pnl, readPet, savePet, touchVisit, usePet, waitingLine, type Entry } from '@/lib/store';
+import { answerProposal, heldQty, isPaper, mergeEntries, pnl, readPet, savePet, setCurrentPet, stockOf, touchVisit, usePet, usePets, waitingLine, type Entry } from '@/lib/store';
 import type { Bar } from '@/lib/strategy';
 
 type Price = { price: number | null; pct24h: number; source: string };
@@ -25,7 +25,8 @@ type Fill = { perToken: number | null; spreadPct: number | null; vendor: string 
 export default function Home() {
   const router = useRouter();
   const pet = usePet();
-  const hasStore = useLocal('roost.pet') !== null;
+  const { pets } = usePets();
+  const hasStore = pets.length > 0;
   const now = useNow();
   const q = useSearch();
   const [price, setPrice] = useState<Price>({ price: null, pct24h: 0, source: 'none' });
@@ -33,11 +34,15 @@ export default function Home() {
   const [holidays, setHolidays] = useState<Set<string>>();
   const [report, setReport] = useState<{ fresh: Entry[]; awayMs: number } | null>(null);
   const [duel, setDuel] = useState<Duel | null>(null);
-  const remoteId = useLocal('roost.remoteId');
+  const remoteId = pet?.remoteId ?? null;
+  const [holding, setHolding] = useState<{ key: string; qty: number } | null>(null);
   const { address, isConnected, onBsc } = useWallet();
-  const [fill, setFill] = useState<Fill | null>(null);
+  const [fill_, setFill] = useState<{ key: string; value: Fill } | null>(null);
 
   const species = pet?.species ?? 'nova';
+  // The pet's own stock — any of ~450, not only its species' signature one. Routes take the address.
+  const stock = pet ? stockOf(pet) : null;
+  const stockId = stock?.address ?? species;
   const celebrate = Boolean(q.get('hatched') || q.get('fed') || q.get('public'));
 
   useEffect(() => { if (now && !pet) router.replace('/adopt'); }, [now, pet, router]);
@@ -47,14 +52,34 @@ export default function Home() {
     const t = setTimeout(() => { window.history.replaceState(null, '', '/'); window.dispatchEvent(new PopStateEvent('popstate')); }, 1400);
     return () => clearTimeout(t);
   }, [celebrate]);
-  // The traded leg only becomes honest once there is a taker to price against.
+  // The traded leg only becomes honest once there is a taker to price against. Each answer is kept
+  // with the wallet and stock it was for, and shown only while those still hold — so switching pets
+  // or wallets never shows the last one's numbers, without resetting state inside the effect.
+  const fillKey = isConnected && onBsc && address ? `${address}:${stockId}` : null;
   useEffect(() => {
-    if (!isConnected || !onBsc || !address) { setFill(null); return; }
+    if (!fillKey) return;
     let alive = true;
-    fetch(`/api/fill/${species}?wallet=${address}`)
-      .then((r) => r.json()).then((f: Fill) => { if (alive) setFill(f); }).catch(() => {});
+    fetch(`/api/fill/${stockId}?wallet=${address}`)
+      .then((r) => r.json()).then((f: Fill) => { if (alive) setFill({ key: fillKey, value: f }); }).catch(() => {});
     return () => { alive = false; };
-  }, [isConnected, onBsc, address, species]);
+  }, [fillKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const fill = fill_ && fill_.key === fillKey ? fill_.value : null;
+
+  // What the bound wallet actually holds of this pet's token — the check on the diary's own numbers.
+  const holdingKey = pet?.wallet && stock ? `${pet.wallet}:${stock.address}` : null;
+  useEffect(() => {
+    if (!holdingKey || !pet?.wallet || !stock) return;
+    let alive = true;
+    fetch(`/api/holdings?wallet=${pet.wallet}&tokens=${stock.address}`)
+      .then((r) => r.json())
+      .then((h: { tokens?: Record<string, number> }) => {
+        const v = h.tokens?.[stock.address.toLowerCase()];
+        if (alive && typeof v === 'number') setHolding({ key: holdingKey, qty: v });
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [holdingKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const onChain = holding && holding.key === holdingKey ? holding.qty : null;
 
   useEffect(() => {
     let alive = true;
@@ -65,8 +90,8 @@ export default function Home() {
   // Price, history, and the catch-up tick all hang off one load.
   useEffect(() => {
     let alive = true;
-    fetch(`/api/price/${species}`).then((r) => r.json()).then((p: Price) => { if (alive) setPrice(p); }).catch(() => {});
-    fetch(`/api/history/${species}`).then((r) => r.json()).then(async (j: { bars: Bar[] }) => {
+    fetch(`/api/price/${stockId}`).then((r) => r.json()).then((p: Price) => { if (alive) setPrice(p); }).catch(() => {});
+    fetch(`/api/history/${stockId}`).then((r) => r.json()).then(async (j: { bars: Bar[] }) => {
       if (!alive || !j.bars?.length) return;
       setBars(j.bars);
       let current = readPet();
@@ -91,7 +116,7 @@ export default function Home() {
       void syncPet(res.pet, res.fresh); // only what happened here; the worker's lines are already stored
     }).catch(() => {});
     return () => { alive = false; };
-  }, [species]);
+  }, [stockId, pet?.uid]);
 
   // An open duel belongs on the screen you actually look at, not only on the Board.
   useEffect(() => {
@@ -108,7 +133,7 @@ export default function Home() {
   const night = isNight(session);
   useEffect(() => { document.documentElement.dataset.session = night ? 'night' : 'day'; }, [night]);
 
-  const sp = SPECIES[species];
+  const ticker = stock?.ticker ?? '';
   const lastFed = pet?.lastFed ?? now;
   const hunger = now ? Math.max(0, 1 - (now - lastFed) / (72 * 3600 * 1000)) : 1;
   const energy = session === 'regular' ? 0.95 : session === 'pre' || session === 'post' ? 0.7 : 0.4;
@@ -117,7 +142,7 @@ export default function Home() {
   const mood = celebrate ? 'ecstatic' : ((q.get('mood') as Mood | null) ?? computed);
   const line = celebrate
     ? (q.get('hatched') ? 'Hi. I live here now.' : q.get('public') ? 'We rang the bell.' : 'CHOMP. Thank you.')
-    : moodLine(mood, price.pct24h, sp.ticker);
+    : moodLine(mood, price.pct24h, ticker);
 
   const qty = pet ? heldQty(pet) : 0;
   const perf = pet && price.price ? pnl(pet, price.price) : null;
@@ -132,10 +157,29 @@ export default function Home() {
         </span>
         <div className="shrink-0"><ConnectPill /></div>
       </div>
-      <p className="mt-1 text-right text-[13px] font-semibold" style={{ color: 'var(--muted)' }}>{pet?.name ?? sp.name} · day {pet?.streak ?? 1}</p>
+      {/* The nest: every pet on this device, and a way to hatch another. */}
+      {pets.length > 0 && (
+        <div className="mt-2 flex items-center gap-1.5 overflow-x-auto pb-1" role="tablist" aria-label="Your Fledglings">
+          {pets.map((p) => {
+            const on = p.uid === pet?.uid;
+            return (
+              <button key={p.uid ?? p.adoptedAt} role="tab" aria-selected={on}
+                onClick={() => { if (p.uid && !on) { setReport(null); setCurrentPet(p.uid); } }}
+                className="flex shrink-0 items-center gap-1.5 rounded-full border py-1 pl-1 pr-2.5 text-[12px] font-semibold"
+                style={{ borderColor: on ? 'var(--accent)' : 'var(--line)', background: on ? 'color-mix(in srgb, var(--accent) 18%, var(--surface))' : 'var(--surface)' }}>
+                <img src={petImage(p.species, 'hero')} alt="" className="h-6 w-6 rounded-full object-cover object-top" style={{ background: 'var(--canvas)' }} />
+                {p.name}<span className="num" style={{ color: 'var(--muted)' }}>{stockOf(p).ticker}</span>
+              </button>
+            );
+          })}
+          <Link href="/adopt" aria-label="Hatch another Fledgling" className="grid h-8 w-8 shrink-0 place-items-center rounded-full border text-[18px] font-bold"
+            style={{ borderColor: 'var(--line)', background: 'var(--surface)' }}>+</Link>
+        </div>
+      )}
+      <p className="mt-1 text-right text-[13px] font-semibold" style={{ color: 'var(--muted)' }}>{pet?.name} · {ticker}{stock && stock.company !== ticker ? ` · ${stock.company}` : ''} · day {pet?.streak ?? 1}</p>
       {fill?.spreadPct != null && (
         <p className="mt-0.5 text-right text-[11.5px] num" style={{ color: 'var(--muted)' }}>
-          {sp.ticker} on-chain{' '}
+          {ticker} on-chain{' '}
           <b style={{ color: fill.spreadPct >= 0 ? 'var(--up)' : 'var(--down)' }}>
             {fill.spreadPct >= 0 ? '+' : ''}{fill.spreadPct.toFixed(3)}%
           </b>{' '}
@@ -188,9 +232,24 @@ export default function Home() {
         <Ring label="Bond" value={bond} icon="♥" />
       </div>
 
-      <Link href="/feed" className="pill mt-5 grid w-full place-items-center text-[18px] active:scale-[0.98]" style={{ transition: 'transform .1s' }}>Feed $5</Link>
+      {/* Feeding and letting go: a pet you can only feed is a pet you can only lose money into. */}
+      <div className={`mt-5 grid gap-2 ${qty > 0 ? 'grid-cols-[1fr_auto]' : 'grid-cols-1'}`}>
+        <Link href="/feed" className="pill grid place-items-center text-[18px] active:scale-[0.98]" style={{ transition: 'transform .1s' }}>Feed</Link>
+        {qty > 0 && (
+          <Link href="/release" className="grid place-items-center rounded-full border px-6 text-[15px] font-bold active:scale-[0.98]"
+            style={{ borderColor: 'var(--line)', background: 'var(--surface)', fontFamily: 'var(--font-display)', transition: 'transform .1s' }}>Release</Link>
+        )}
+      </div>
       <p className="mt-3 text-center text-[13px]" style={{ color: 'var(--muted)' }}>
-        holds <span className="num" style={{ color: 'var(--ink)' }}>{qty.toFixed(4)} {sp.ticker}</span>
+        holds <span className="num" style={{ color: 'var(--ink)' }}>{qty.toFixed(4)} {ticker}</span>
+        {onChain !== null && (
+          <> · <span className="num" title="What the bound wallet holds of this token, read from Binance's Wallet API">{onChain.toFixed(4)} in wallet</span></>
+        )}
+        {pet && (pet.realized ?? 0) !== 0 && (
+          <> · <span className="num" style={{ color: (pet.realized ?? 0) >= 0 ? 'var(--up)' : 'var(--down)' }}>
+            {(pet.realized ?? 0) >= 0 ? '+' : '−'}${Math.abs(pet.realized ?? 0).toFixed(2)} realized
+          </span></>
+        )}
         {pet && pet.lentQty > 0 && <> · <span className="num">{pet.lentQty.toFixed(3)} lent</span></>}
         {pet && pet.cash > 0 && <> · <span className="num">${pet.cash.toFixed(0)} idle</span></>}
       </p>

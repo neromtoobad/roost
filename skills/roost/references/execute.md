@@ -93,6 +93,27 @@ here the owner is the one acting.
 Ondo names (Pip, Lurk) have a $5 minimum and refuse to quote while their market is `closed` — the
 pre-flight says so in its summary. Report it rather than retrying in another size.
 
+### Releasing
+
+"Sell half of Nova's NVDA", "take $20 out of my pet": the owner releasing some of what it holds.
+
+```bash
+curl -s -X POST "$ROOST_URL/api/agent" \
+  -H 'Content-Type: application/json' \
+  -d '{ "action": "release", "qty": 0.05, "species": "pip", "personality": "degen",
+        "token": "0x405f38b90bebf1259062cf29da299f3398662bcb",
+        "wallet": "0xYourAgenticWalletAddress" }'
+```
+
+`qty` is in tokens of the stock, not dollars — convert with `market.perToken` if the owner spoke in
+dollars, and never ask to sell more than `baw` reports the wallet holding. The instruction is a
+`swap` with `side: "sell"`, its `cli` sells that many tokens for USDT, and the pre-flight simulates
+the sale the same way: it refuses a fill more than 3% under the token's reference price, and an
+Ondo sale under $5 is refused by Ondo itself. Show it, get a yes, run it, poll it — as below.
+
+`token` is the stock's contract address. Pass it whenever the pet hatched from a stock other than
+its species' signature one (the web app shows it); without it, the signature stock is assumed.
+
 ---
 
 ## 2. Show the user, before anything moves

@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { dbEnabled, ensureSchema, pool } from '@/lib/db';
 import { nyseSession } from '@/lib/session';
-import { pricesFor } from '@/lib/quote';
-import { ALL_SPECIES } from '@/lib/pets';
+import { pricesByAddress } from '@/lib/quote';
+import { SPECIES, type Species } from '@/lib/pets';
 import { cached } from '@/lib/swr';
 
 // Ranked by real, unrealised P&L: quantity and cost basis come from the database, and the live
@@ -33,14 +33,14 @@ async function board() {
   const ms: Record<string, number> = {};
   const start = Date.now();
   await timed(ms, 'schema', ensureSchema());
-  // Three independent reads, so none waits on another: the two queries cross to the database's
-  // region, and every pet's ticker is one of the six, so the prices need not wait for the rows.
-  const [{ rows }, acts, prices] = await Promise.all([
+  // The two queries cross to the database's region, so they run together. Prices follow the rows:
+  // a pet can hold any of ~450 stocks now, so which prints are needed is only known once they land.
+  const [{ rows }, acts] = await Promise.all([
     timed(ms, 'pets', pool().query<{
-      id: string; name: string; species: string; ticker: string; personality: string;
+      id: string; name: string; species: string; ticker: string; token_address: string | null; token_symbol: string | null; personality: string;
       streak: number; paper: boolean; is_public: boolean; held_qty: string; cost_basis: string; lent_qty: string;
     }>(
-      `select p.id, p.name, p.species, p.ticker, p.personality, p.streak, p.paper,
+      `select p.id, p.name, p.species, p.ticker, p.token_address, p.token_symbol, p.personality, p.streak, p.paper,
               (p.launch is not null) as is_public,
               coalesce((select sum((l->>'qty')::numeric) from jsonb_array_elements(p.lots) l), 0) + p.yield_qty as held_qty,
               coalesce((select sum((l->>'qty')::numeric * (l->>'price')::numeric) from jsonb_array_elements(p.lots) l), 0) as cost_basis,
@@ -56,8 +56,10 @@ async function board() {
         where ts > now() - interval '24 hours' and kind in ('buy','lend','ask')
         order by ts desc limit 1000`,
     )),
-    timed(ms, 'prices', pricesFor(ALL_SPECIES.map((s) => s.ticker))),
   ]);
+  const addressOf = (r: { species: string; token_address: string | null }) =>
+    (r.token_address ?? SPECIES[r.species as Species['id']]?.address ?? '').toLowerCase();
+  const prices = await timed(ms, 'prices', pricesByAddress(rows.map(addressOf).filter(Boolean)));
   const total = Date.now() - start;
   if (total > 1000) console.log(`[board] slow load ${total}ms — ${Object.entries(ms).map(([k, v]) => `${k} ${v}ms`).join(', ')}`);
   const pulse = {
@@ -67,13 +69,14 @@ async function board() {
 
   const ranked = rows
     .map((r) => {
-      const px = prices[r.ticker] ?? null;
+      const px = prices[addressOf(r)] ?? null;
       const qty = Number(r.held_qty) || 0;
       const basis = Number(r.cost_basis) || 0;
       const value = px ? qty * px : null;
       const abs = value !== null ? value - basis : null;
       return {
         id: r.id, name: r.name, species: r.species, ticker: r.ticker, personality: r.personality,
+        tokenSymbol: r.token_symbol ?? SPECIES[r.species as Species['id']]?.tokenSymbol ?? null,
         streak: r.streak, paper: r.paper, isPublic: r.is_public,
         qty, basis, value, price: px,
         pnlAbs: abs, pnlPct: abs !== null && basis > 0 ? (abs / basis) * 100 : null,

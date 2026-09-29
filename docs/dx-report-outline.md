@@ -74,6 +74,21 @@ Evidence: the error catalogue and latency table in `dx-evidence.md`. Strongest i
   `allowanceChanges`. ~1.5–2s. The successful one matched the quote to 0.005%.
 - **Ondo's minimum order is enforced at the quote**: `Minimum order amount is 5 USD.` — for an
   order of exactly $5.
+- **The token list's sector filter is ignored.** `rwa/tokens` documents `tabId` with thirteen
+  sectors (AI Chips, Magnificent 7, ETF, Upcoming Earnings, Buffett Portfolio…). Every value —
+  and none — returns the same 448 tickers. Sector has to come from `underlying-profile`, one call per
+  token (median ~420ms; 163 profiles took 111s).
+- **`dividendYield` changes units by issuer, in one response shape.** For Microsoft, bStock's MSFTB
+  says `0.007` and Ondo's MSFTon says `0.69` — a fraction and a percent for the same 0.7%. (Same
+  class of bug as `priceImpactPercent`.)
+- **Stock tokens revert without a reason when the allowance is short.** USDT says
+  `transfer amount exceeds allowance`; NVDAB says only `execution reverted`. Code that looks for
+  "allowance" in the revert tells a first-time seller the sale "would fail" when it only needs an
+  approval. What works: simulate the `approve` itself — its `allowanceChanges[].preAmount` is the
+  current allowance, read without a node.
+- **No earnings date anywhere** — not in `underlying-profile`, `underlying-market`, nor the
+  (ignored) "Upcoming Earnings" tab — though the agentic-wallet docs' own example strategy is an
+  earnings watcher.
 
 **The one that cost the most, and could not be found locally.** Deploying to Railway's default
 `sfo` region, every RWA call returned:

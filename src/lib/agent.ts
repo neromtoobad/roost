@@ -14,7 +14,7 @@
 // The pet proposes. The wallet's rules constrain. The human stays in the loop by construction —
 // which is the same permission rule the engine already honours when nobody is watching.
 
-import { SPECIES, USDT, CHAIN_ID, type Species } from './pets';
+import { SPECIES, USDT, CHAIN_ID, type Species, type Stock } from './pets';
 import type { Intent } from './strategy';
 import type { Personality } from './pet-math';
 
@@ -27,8 +27,9 @@ export const PERSONA: Record<Personality, string> = {
 };
 
 export type Instruction =
-  /** Ready to run through the user's Agentic Wallet. */
-  | { kind: 'swap'; summary: string; reason: string; cli: string; usd: number; fromToken: string; toToken: string; chainId: string }
+  /** Ready to run through the user's Agentic Wallet. A buy spends `usd` of USDT; a sale (`side:
+   *  'sell'`) spends `qty` of the stock token and `usd` is only what that is worth at the print. */
+  | { kind: 'swap'; side?: 'buy' | 'sell'; summary: string; reason: string; cli: string; usd: number; qty?: number; fromToken: string; toToken: string; chainId: string }
   /** The pet wants more than it is allowed to decide alone. The owner answers first. */
   | { kind: 'ask'; summary: string; reason: string; usd: number }
   /** Nothing to do this hour, and that is a decision too. */
@@ -40,7 +41,7 @@ export type Instruction =
  * The exact `baw` invocation for a buy. Quantities are human units — the CLI takes
  * `--fromTokenQty 25`, not base units, which is the opposite of the REST aggregator.
  */
-export function bawSwap(sp: Species, usd: number, opts: { slippage?: string } = {}): string {
+export function bawSwap(sp: Pick<Stock, 'address'>, usd: number, opts: { slippage?: string } = {}): string {
   const parts = [
     'baw market-order swap',
     `--fromTokenQty ${usd.toFixed(2)}`,
@@ -61,8 +62,15 @@ export function bawSwap(sp: Species, usd: number, opts: { slippage?: string } = 
  * confirmed to accept a tokenized equity as collateral. Rather than emit a command that would
  * fail on-chain, the pet says what it wanted and why it cannot.
  */
-export function toInstruction(speciesId: Species['id'], intent: Intent | null): Instruction {
-  const sp = SPECIES[speciesId];
+/** The same for a sale: `qty` whole tokens of the stock back to USDT. */
+export function bawSell(sp: Pick<Stock, 'address'>, qty: number): string {
+  // Enough precision to sell a whole holding exactly; the CLI takes human units.
+  const q = Number(qty.toPrecision(12)).toString();
+  return `baw market-order swap --fromTokenQty ${q} --fromToken ${sp.address} --toToken ${USDT} --binanceChainId ${CHAIN_ID} --json`;
+}
+
+export function toInstruction(speciesId: Species['id'], intent: Intent | null, stock?: Stock): Instruction {
+  const sp = stock ?? SPECIES[speciesId];
 
   if (!intent) return { kind: 'hold', summary: 'Nothing to do.', reason: 'No rule fired this hour.' };
 
@@ -70,6 +78,7 @@ export function toInstruction(speciesId: Species['id'], intent: Intent | null): 
     case 'buy':
       return {
         kind: 'swap',
+        side: 'buy',
         summary: `Buy $${intent.usd.toFixed(2)} of ${sp.ticker} (${sp.tokenSymbol})`,
         reason: intent.reason,
         cli: bawSwap(sp, intent.usd),
@@ -102,11 +111,12 @@ export function toInstruction(speciesId: Species['id'], intent: Intent | null): 
  * personality's moment — the same as "Buy now" in the web app. Everything after this is identical:
  * the pre-flight simulates it against the wallet, the owner confirms, `baw` runs it.
  */
-export function feedInstruction(speciesId: Species['id'], usd: number): Instruction {
-  const sp = SPECIES[speciesId];
+export function feedInstruction(speciesId: Species['id'], usd: number, stock?: Stock, name?: string): Instruction {
+  const sp = stock ?? SPECIES[speciesId];
   return {
     kind: 'swap',
-    summary: `Feed ${sp.name}: buy $${usd.toFixed(2)} of ${sp.ticker} (${sp.tokenSymbol}) now`,
+    side: 'buy',
+    summary: `Feed ${name ?? SPECIES[speciesId].name}: buy $${usd.toFixed(2)} of ${sp.ticker} (${sp.tokenSymbol}) now`,
     reason: 'You fed it. A live Fledgling eats at once when its owner asks — it does not wait for its rule.',
     cli: bawSwap(sp, usd),
     usd,
@@ -117,10 +127,30 @@ export function feedInstruction(speciesId: Species['id'], usd: number): Instruct
 }
 
 /** What the agent needs to know about a Fledgling before it does anything on its behalf. */
-export function brief(speciesId: Species['id'], personality: Personality) {
-  const sp = SPECIES[speciesId];
+/**
+ * The owner releasing some of what the pet holds: `qty` tokens back to USDT, now. Like a feed, it
+ * is the owner acting, so it does not wait for any rule; like a feed, it is simulated first.
+ */
+export function releaseInstruction(speciesId: Species['id'], qty: number, priceNow: number | null, stock?: Stock, name?: string): Instruction {
+  const sp = stock ?? SPECIES[speciesId];
   return {
-    species: sp.id,
+    kind: 'swap',
+    side: 'sell',
+    summary: `Release from ${name ?? SPECIES[speciesId].name}: sell ${qty.toPrecision(4)} ${sp.tokenSymbol} (${sp.ticker}) for USDT now`,
+    reason: 'You asked it to let go of some. The USDT goes back to your wallet.',
+    cli: bawSell(sp, qty),
+    usd: priceNow ? qty * priceNow : 0,
+    qty,
+    fromToken: sp.address,
+    toToken: USDT,
+    chainId: CHAIN_ID,
+  };
+}
+
+export function brief(speciesId: Species['id'], personality: Personality, stock?: Stock) {
+  const sp = stock ?? SPECIES[speciesId];
+  return {
+    species: speciesId,
     stock: sp.ticker,
     token: sp.tokenSymbol,
     address: sp.address,
