@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { dbEnabled, ensureSchema, pool } from '@/lib/db';
 import type { Lot, Personality, Launch } from '@/lib/pet-math';
+import { isDue, stage, type Care, type Schedule } from '@/lib/care';
 
 // A Fledgling as a stranger sees it, for the backing page. Public by design — it is the thing you
 // send to a friend — so it carries nothing private: no owner hash, no agent id, no wallet.
@@ -15,9 +16,10 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       id: string; name: string; species: string; ticker: string; personality: Personality;
       adopted_at: Date; streak: number; paper: boolean; launch: Launch | null;
       lots: Lot[] | null; yield_qty: string; lent_qty: string; cash: string;
+      token_address: string | null; token_symbol: string | null; schedule: Schedule | null; care: Care | null;
     }>(
       `select id, name, species, ticker, personality, adopted_at, streak, paper, launch,
-              lots, yield_qty, lent_qty, cash
+              lots, yield_qty, lent_qty, cash, token_address, token_symbol, schedule, care
          from pets where id = $1`,
       [id],
     );
@@ -37,6 +39,10 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       qty: lots.reduce((s, l) => s + l.qty, 0) + Number(r.yield_qty),
       basis: lots.reduce((s, l) => s + l.qty * l.price, 0),
       lentQty: Number(r.lent_qty), cash: Number(r.cash),
+      token: r.token_address, tokenSymbol: r.token_symbol,
+      // A standing feed, and whether today is its day — what an agent keeping the schedule checks.
+      schedule: r.schedule, feedingDue: isDue(r.schedule ?? undefined),
+      stage: stage(r.care ?? undefined, r.schedule ?? undefined).name,
       recent: recent.rows.map((e) => ({ ts: e.ts.getTime(), kind: e.kind, text: e.body })),
     }, { headers: { 'Cache-Control': 's-maxage=20' } });
   } catch (e) {

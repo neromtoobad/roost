@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { quoteForStock, resolveStock } from '@/lib/quote';
+import { quoteForStock, resolveStock, shareRatio } from '@/lib/quote';
 
 // Price for a Fledgling's stock — a species id for the six signature stocks, or any token address
 // — plus the number the product is actually about: how far the token has drifted from the share it
@@ -10,7 +10,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   const stock = await resolveStock(id);
   if (!stock) return NextResponse.json({ error: 'unknown stock' }, { status: 404 });
 
-  const q = await quoteForStock(stock);
+  const [q, ratio] = await Promise.all([quoteForStock(stock), shareRatio(stock.address)]);
   return NextResponse.json(
     {
       ticker: stock.ticker,
@@ -21,6 +21,8 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       spreadPct: q.spreadPct,
       marketStatus: q.marketStatus,
       nextOpenTime: q.nextOpenTime,
+      // Shares one token stands for. It rises when a dividend is reinvested; the pet notices.
+      ratio,
     },
     { headers: { 'Cache-Control': 's-maxage=60' } },
   );

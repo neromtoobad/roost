@@ -16,10 +16,11 @@ import { isNight, nyseSession, sessionLabel } from '@/lib/session';
 import { useNow, useSearch } from '@/lib/client';
 import { runEngine } from '@/lib/engine';
 import { pullPet, syncPet } from '@/lib/sync';
-import { answerProposal, heldQty, isPaper, mergeEntries, pnl, readPet, savePet, setCurrentPet, stockOf, touchVisit, usePet, usePets, waitingLine, type Entry } from '@/lib/store';
+import { answerProposal, feedPet, feedingDay, heldQty, isPaper, markCelebrated, mergeEntries, noteRatio, pauseSchedule, petPet, pnl, readPet, savePet, setCurrentPet, stockOf, touchVisit, usePet, usePets, waitingLine, type Entry } from '@/lib/store';
+import { CADENCE_LABEL, bond as bondOf, canPet, isDue, milestone, stage } from '@/lib/care';
 import type { Bar } from '@/lib/strategy';
 
-type Price = { price: number | null; pct24h: number; source: string };
+type Price = { price: number | null; pct24h: number; source: string; ratio?: number | null };
 type Fill = { perToken: number | null; spreadPct: number | null; vendor: string | null; error?: string };
 
 export default function Home() {
@@ -43,7 +44,11 @@ export default function Home() {
   // The pet's own stock — any of ~450, not only its species' signature one. Routes take the address.
   const stock = pet ? stockOf(pet) : null;
   const stockId = stock?.address ?? species;
-  const celebrate = Boolean(q.get('hatched') || q.get('fed') || q.get('public'));
+  // Hatching is celebrated; feeding is not. Confetti belongs to care milestones, never to money moving
+  // (see lib/care for why).
+  const celebrate = Boolean(q.get('hatched') || q.get('public'));
+  const fed = Boolean(q.get('fed'));
+  const [petLine, setPetLine] = useState<{ text: string; at: number } | null>(null);
 
   useEffect(() => { if (now && !pet) router.replace('/adopt'); }, [now, pet, router]);
   useEffect(() => { if (pet) touchVisit(pet); }, [pet?.lastVisitDay]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -90,7 +95,15 @@ export default function Home() {
   // Price, history, and the catch-up tick all hang off one load.
   useEffect(() => {
     let alive = true;
-    fetch(`/api/price/${stockId}`).then((r) => r.json()).then((p: Price) => { if (alive) setPrice(p); }).catch(() => {});
+    // Only a real price is kept: an error body is not a price, and treating it as one crashed this
+    // screen the one time Binance could not be reached.
+    fetch(`/api/price/${stockId}`).then((r) => (r.ok ? r.json() : null)).then((p: Price | null) => {
+      if (!alive || !p || typeof p.pct24h !== 'number') return;
+      setPrice(p);
+      // A risen share ratio is a reinvested dividend: the pet grew without anyone buying anything.
+      const cur = readPet();
+      if (p.ratio && cur && stockOf(cur).address === stockId) noteRatio(cur, p.ratio);
+    }).catch(() => {});
     fetch(`/api/history/${stockId}`).then((r) => r.json()).then(async (j: { bars: Bar[] }) => {
       if (!alive || !j.bars?.length) return;
       setBars(j.bars);
@@ -137,12 +150,35 @@ export default function Home() {
   const lastFed = pet?.lastFed ?? now;
   const hunger = now ? Math.max(0, 1 - (now - lastFed) / (72 * 3600 * 1000)) : 1;
   const energy = session === 'regular' ? 0.95 : session === 'pre' || session === 'post' ? 0.7 : 0.4;
-  const bond = Math.min(1, 0.15 + (pet?.streak ?? 1) * 0.12);
+  const bond = bondOf(pet?.care, pet?.streak ?? 1, now);
+  const grown = stage(pet?.care, pet?.schedule);
+  // A milestone of care — a stage, a streak — celebrated once, then marked as done.
+  const ms = pet && !celebrate ? milestone(pet.streak, grown, pet.care) : null;
+  useEffect(() => {
+    if (!ms || !pet?.uid) return;
+    const t = setTimeout(() => markCelebrated(pet.uid!, ms.key), 4000);
+    return () => clearTimeout(t);
+  }, [ms?.key, pet?.uid]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Cleared by its own timer (see onPet), so showing it needs no clock read during render.
+  const justPetted = Boolean(petLine);
   const computed = useMemo(() => computeMood({ pct24h: price.pct24h, session, hunger }), [price.pct24h, session, hunger]);
-  const mood = celebrate ? 'ecstatic' : ((q.get('mood') as Mood | null) ?? computed);
+  const mood: Mood = celebrate || ms ? 'ecstatic' : justPetted || fed ? 'happy' : ((q.get('mood') as Mood | null) ?? computed);
   const line = celebrate
-    ? (q.get('hatched') ? 'Hi. I live here now.' : q.get('public') ? 'We rang the bell.' : 'CHOMP. Thank you.')
+    ? (q.get('hatched') ? 'Hi. I live here now.' : 'We rang the bell.')
+    : ms ? ms.line
+    : justPetted ? petLine!.text
+    : fed ? 'Thanks. That hit the spot.'
     : moodLine(mood, price.pct24h, ticker);
+
+  // The free daily action. Costs nothing, moves nothing, and is the one thing you can do for it every day.
+  const onPet = () => {
+    if (!pet) return;
+    const next = petPet(pet);
+    const lines = ['*leans in*', 'Again tomorrow?', 'Best part of my day.', 'Okay, okay. I like you.'];
+    setPetLine({ text: next ? lines[(next.care?.pets ?? 0) % lines.length] : 'I felt that earlier. Still good.', at: Date.now() });
+    setTimeout(() => setPetLine(null), 4000);
+    if (next) void syncPet(next);
+  };
 
   const qty = pet ? heldQty(pet) : 0;
   const perf = pet && price.price ? pnl(pet, price.price) : null;
@@ -192,10 +228,15 @@ export default function Home() {
           {line}
           <span className="absolute -bottom-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45" style={{ background: 'var(--surface)', borderRight: '1px solid var(--line)', borderBottom: '1px solid var(--line)' }} aria-hidden />
         </div>
-        <div className="relative">
-          {celebrate && <Confetti />}
-          <Pet id={species} mood={mood} night={night} size={300} />
-        </div>
+        <button type="button" onClick={onPet} className="relative" aria-label={pet && canPet(pet.care) ? `Pet ${pet.name}` : `${pet?.name} was petted recently`}>
+          {(celebrate || ms) && <Confetti />}
+          {/* It grows with care: a Hatchling is small, a Legend is not. Never with money. */}
+          <Pet id={species} mood={mood} night={night} size={Math.round(300 * grown.scale)} />
+        </button>
+        <p className="-mt-1 text-[11.5px] num" style={{ color: 'var(--muted)' }}>
+          {grown.name}{grown.next !== null ? ` · ${grown.points}/${grown.next} to grow` : ''}
+          {pet && canPet(pet.care) ? ' · tap to pet' : ''}
+        </p>
       </div>
 
       {/* Portfolio — the number that moves without you. */}
@@ -232,6 +273,34 @@ export default function Home() {
         <Ring label="Bond" value={bond} icon="♥" />
       </div>
 
+      {/* A standing feed. Due: sign it (live) or feed it (paper), or skip it. Not due: when, and a pause. */}
+      {pet?.schedule && (isDue(pet.schedule, now) ? (
+        <div className="card mt-3 px-4 py-3" style={{ outline: '3px solid var(--accent)' }}>
+          <p className="text-[15px] font-bold" style={{ fontFamily: 'var(--font-display)' }}>
+            It&rsquo;s feeding day — ${pet.schedule.usd} {CADENCE_LABEL[pet.schedule.every]}.
+          </p>
+          <p className="mt-0.5 text-[12.5px]" style={{ color: 'var(--muted)' }}>
+            Kept {pet.schedule.kept} so far{pet.schedule.missed ? `, missed ${pet.schedule.missed}` : ''}. Regular beats clever.
+          </p>
+          <div className="mt-3 flex gap-2">
+            {isPaper(pet) ? (
+              <button onClick={() => { const next = feedingDay(feedPet(pet, pet.schedule!.usd), 'kept'); void syncPet(next); }}
+                className="pill flex-1 text-[15px]">Feed ${pet.schedule.usd}</button>
+            ) : (
+              <Link href="/feed?due=1" className="pill grid flex-1 place-items-center text-[15px]">Sign it</Link>
+            )}
+            <button onClick={() => void syncPet(feedingDay(pet, 'skipped'))} className="flex-1 rounded-full border py-3 text-[15px] font-bold"
+              style={{ borderColor: 'var(--line)', background: 'var(--surface)', fontFamily: 'var(--font-display)' }}>Skip this one</button>
+          </div>
+        </div>
+      ) : (
+        <p className="mt-3 text-center text-[12.5px]" style={{ color: 'var(--muted)' }}>
+          {pet.schedule.paused ? 'Feeding days paused' : <>Feeds <span className="num" style={{ color: 'var(--ink)' }}>${pet.schedule.usd}</span> {CADENCE_LABEL[pet.schedule.every]} · next {new Date(pet.schedule.nextAt).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}</>}
+          {' · '}
+          <button className="underline" onClick={() => void syncPet(pauseSchedule(pet, !pet.schedule!.paused))}>{pet.schedule.paused ? 'resume' : 'pause'}</button>
+        </p>
+      ))}
+
       {/* Feeding and letting go: a pet you can only feed is a pet you can only lose money into. */}
       <div className={`mt-5 grid gap-2 ${qty > 0 ? 'grid-cols-[1fr_auto]' : 'grid-cols-1'}`}>
         <Link href="/feed" className="pill grid place-items-center text-[18px] active:scale-[0.98]" style={{ transition: 'transform .1s' }}>Feed</Link>
@@ -242,6 +311,9 @@ export default function Home() {
       </div>
       <p className="mt-3 text-center text-[13px]" style={{ color: 'var(--muted)' }}>
         holds <span className="num" style={{ color: 'var(--ink)' }}>{qty.toFixed(4)} {ticker}</span>
+        {qty > 0 && price.ratio && price.ratio > 1.0005 && (
+          <span className="num" title="Dividends are reinvested into the token, so one token stands for more than one share"> (≈{(qty * price.ratio).toFixed(4)} shares)</span>
+        )}
         {onChain !== null && (
           <> · <span className="num" title="What the bound wallet holds of this token, read from Binance's Wallet API">{onChain.toFixed(4)} in wallet</span></>
         )}

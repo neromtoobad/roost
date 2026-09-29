@@ -33,6 +33,8 @@ export const moodLines: Record<Mood, string[]> = {
 
 export function moodLine(mood: Mood, pct24h: number, ticker: string): string {
   const pool = moodLines[mood];
+  // No price yet, or the feed is down: say the line without a number rather than fail to render.
+  if (typeof pct24h !== 'number' || !Number.isFinite(pct24h)) return pool[0];
   const pick = pool[Math.abs(Math.round(pct24h * 100)) % pool.length];
   const sign = pct24h >= 0 ? '+' : '';
   return mood === 'nightowl' || mood === 'pajamas' || mood === 'hungry'

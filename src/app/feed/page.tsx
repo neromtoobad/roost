@@ -2,10 +2,10 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Confetti } from '@/components/Confetti';
 import { ConnectPill, useWallet } from '@/components/Wallet';
 import { petImage, type Mood } from '@/lib/pets';
-import { PERSONALITIES, feedPetRemote, isPaper, readPet, recordBuy, stockOf, usePet } from '@/lib/store';
+import { PERSONALITIES, feedPetRemote, feedingDay, isPaper, readPet, recordBuy, setSchedule, stockOf, usePet } from '@/lib/store';
+import { CADENCE_LABEL, isDue, type Cadence } from '@/lib/care';
 import { syncPet } from '@/lib/sync';
 import { nyseSession } from '@/lib/session';
 import { useSearch } from '@/lib/client';
@@ -45,8 +45,9 @@ function progress(step: BuyStep, name: string, ticker: string): { text: string; 
   }
 }
 
+// A fed pet is content, not ecstatic: feeding is not an event to celebrate, only care milestones are.
 function face(step: BuyStep, paperDone: boolean): Mood {
-  if (paperDone || step.at === 'done') return 'ecstatic';
+  if (paperDone || step.at === 'done') return 'happy';
   if (step.at === 'stopped') return 'sulking';
   if (busy(step)) return 'nervous';
   return 'hungry';
@@ -61,6 +62,8 @@ export default function FeedPage() {
   const [usd, setUsd] = useState<number | null>(null);
   const [price, setPrice] = useState<Price | null>(null);
   const [paperDone, setPaperDone] = useState(false);
+  // Make it a habit: the same feed on a schedule. Scheduled saving beats everything else (lib/care).
+  const [repeat, setRepeat] = useState<Cadence | null>(null);
 
   useEffect(() => {
     if (!pet) return;
@@ -76,21 +79,26 @@ export default function FeedPage() {
   // Arriving from "Sign it": the amount is the pet's own decision, not a choice on this screen.
   const signing = live && q.get('proposal') === '1' && pet.proposal ? pet.proposal : null;
   const amounts = AMOUNTS[sp.platform];
-  const amount = signing ? signing.usd : usd ?? amounts[0];
+  // Arriving from "Sign it" on a feeding day: the amount is the schedule's, and a success keeps it.
+  const due = q.get('due') === '1' && pet.schedule && isDue(pet.schedule) ? pet.schedule : null;
+  const amount = signing ? signing.usd : due ? due.usd : usd ?? amounts[0];
   const shares = price?.price ? amount / price.price : null;
   const bound = pet.wallet ?? '';
   const matches = Boolean(address && bound && address.toLowerCase() === bound.toLowerCase());
   const line = progress(step, pet.name, sp.ticker);
 
+  /** After any feed: a feeding day kept, or a new schedule set from the Repeat choice. */
+  const settle = (p: typeof pet) => (due ? feedingDay(p, 'kept') : repeat ? setSchedule(p, amount, repeat) : p);
+
   const feedPaper = () => {
-    void feedPetRemote(pet, amount, open).then((p) => syncPet(p));
+    void feedPetRemote(pet, amount, open).then((p) => syncPet(settle(p)));
     setPaperDone(true);
     setTimeout(() => router.push('/?fed=1'), 1100);
   };
 
   // Fund it and let its rule decide when — the engine will ask for a signature when it fires.
   const feedLater = () => {
-    void feedPetRemote(pet, amount, open).then((p) => syncPet(p));
+    void feedPetRemote(pet, amount, open).then((p) => syncPet(settle(p)));
     router.push('/?fed=1');
   };
 
@@ -101,8 +109,8 @@ export default function FeedPage() {
     // The pet may have ticked while the wallet was open; record against the latest copy.
     const current = readPet() ?? pet;
     const reason = signing ? `You signed. ${b.qty.toFixed(4)} ${sp.ticker} — ${signing.reason}.` : undefined;
-    const { pet: next, fresh } = recordBuy(current, { hash: b.hash, qty: b.qty, spent: b.usdt, fromCash: Boolean(signing), reason });
-    void syncPet(next, fresh);
+    const { pet: bought, fresh } = recordBuy(current, { hash: b.hash, qty: b.qty, spent: b.usdt, fromCash: Boolean(signing), reason });
+    void syncPet(settle(bought), fresh);
   };
 
   return (
@@ -115,22 +123,41 @@ export default function FeedPage() {
       </div>
 
       <div className="relative mx-auto mt-4 grid h-56 w-56 place-items-center">
-        {(paperDone || step.at === 'done') && <Confetti />}
         <motion.img src={petImage(pet.species, face(step, paperDone))} alt="" className="h-52 w-52 object-contain"
-          animate={paperDone || step.at === 'done' ? { scale: [1, 1.15, 1], rotate: [0, -4, 4, 0] } : {}} transition={{ duration: 0.5 }} />
+          animate={paperDone || step.at === 'done' ? { y: [0, -6, 0] } : {}} transition={{ duration: 0.4 }} />
       </div>
 
       <h1 className="mt-1 text-center text-[24px] font-bold" style={{ fontFamily: 'var(--font-display)' }}>
-        {signing ? `${pet.name} wants $${signing.usd.toFixed(2)} in.` : `How much do you want to feed ${pet.name}?`}
+        {signing ? `${pet.name} wants $${signing.usd.toFixed(2)} in.` : due ? `Feeding day: $${due.usd} ${CADENCE_LABEL[due.every]}.` : `How much do you want to feed ${pet.name}?`}
       </h1>
 
-      {!signing && (
+      {!signing && !due && (
         <div className="mt-5 grid grid-cols-4 gap-2">
           {amounts.map((a) => (
             <button key={a} onClick={() => { setUsd(a); if (step.at === 'stopped') reset(); }} disabled={busy(step) || step.at === 'done'}
               className="rounded-full py-3 text-[16px] font-bold num"
               style={amount === a ? { background: 'var(--accent)', color: 'var(--on-accent)', boxShadow: 'var(--glow)' } : { background: 'var(--surface)', border: '1px solid var(--line)' }}>${a}</button>
           ))}
+        </div>
+      )}
+
+      {!signing && !due && (
+        <div className="mt-3">
+          <p className="text-[12px] font-semibold" style={{ color: 'var(--muted)' }}>Repeat</p>
+          <div className="mt-1.5 grid grid-cols-4 gap-2">
+            {([null, 'week', 'fortnight', 'month'] as (Cadence | null)[]).map((c) => (
+              <button key={c ?? 'once'} onClick={() => setRepeat(c)} disabled={busy(step) || step.at === 'done'}
+                className="rounded-full py-2 text-[12.5px] font-bold"
+                style={repeat === c ? { background: 'var(--ink)', color: 'var(--canvas)' } : { background: 'var(--surface)', border: '1px solid var(--line)' }}>
+                {c === null ? 'Once' : c === 'week' ? 'Weekly' : c === 'fortnight' ? '2 weeks' : 'Monthly'}
+              </button>
+            ))}
+          </div>
+          {repeat && (
+            <p className="mt-1.5 text-[12px]" style={{ color: 'var(--muted)' }}>
+              ${amount} {CADENCE_LABEL[repeat]} from today. {live ? 'You still sign each one — Roost never holds your keys.' : 'On paper, it feeds itself.'}
+            </p>
+          )}
         </div>
       )}
 

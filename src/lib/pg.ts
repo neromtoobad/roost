@@ -68,6 +68,9 @@ alter table pets add column if not exists token_address text;
 alter table pets add column if not exists token_symbol text;
 -- USDT taken off the table by releasing shares, less what they cost.
 alter table pets add column if not exists realized numeric not null default 0;
+-- A standing feed, and the care that grows a pet (see lib/care). The worker keeps paper schedules.
+alter table pets add column if not exists schedule jsonb;
+alter table pets add column if not exists care jsonb;
 create index if not exists pets_owner_hash_idx on pets (owner_hash);
 create index if not exists pets_updated_idx    on pets (updated_at desc);
 

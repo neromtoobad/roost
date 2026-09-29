@@ -1,4 +1,5 @@
 import { SPECIES, type Species, type Stock } from './pets';
+import type { Care, Schedule } from './care';
 
 // The shape of a Fledgling and the arithmetic over it. Deliberately free of React and of
 // localStorage: the browser, the API routes and the hourly worker all reason about the same pet,
@@ -38,6 +39,10 @@ export type PetState = {
   launch?: Launch;
   /** USDT taken off the table when the owner released shares, minus what those shares cost. */
   realized?: number;
+  /** A standing feed: so much, so often. See lib/care. */
+  schedule?: Schedule;
+  /** Visits, pets, the forgiven day, the dividend ratio last seen. See lib/care. */
+  care?: Care;
 };
 
 /** The stock a pet holds: its own if it hatched from one, else its species' signature stock. */

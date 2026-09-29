@@ -93,6 +93,19 @@ here the owner is the one acting.
 Ondo names (Pip, Lurk) have a $5 minimum and refuse to quote while their market is `closed` — the
 pre-flight says so in its summary. Report it rather than retrying in another size.
 
+### Feeding days
+
+An owner can give a Fledgling a standing feed — "$10 every Monday". In the app it becomes a
+schedule; a paper pet is fed on the day by Roost's hourly worker, but a live one only ever by its
+owner's signature, so on its day it waits. `GET {ROOST_URL}/api/pet/<id>` answers `feedingDue:
+true` then, with the amount in `schedule.usd`.
+
+When the owner has asked you to keep it — the Agentic Wallet's automated strategies are made for
+exactly this — check on the cadence, and when it is due run a feed for `schedule.usd` as in
+[Feeding now](#feeding-now): pre-flight, show, yes, run, poll. Inside the daily limit the owner set
+in the Binance App, never above it. Missed days are skipped, not caught up: never buy two weeks'
+worth because a week went by.
+
 ### Releasing
 
 "Sell half of Nova's NVDA", "take $20 out of my pet": the owner releasing some of what it holds.

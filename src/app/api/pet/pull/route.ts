@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { dbEnabled, ensureSchema, ownerHash, pool } from '@/lib/db';
 import type { Entry, Lot, Proposal } from '@/lib/pet-math';
+import type { Schedule } from '@/lib/care';
 
 // What the Fledgling did while the app was closed.
 //
@@ -24,9 +25,9 @@ export async function POST(req: Request) {
     const db = pool();
     const { rows } = await db.query<{
       cash: string; lots: Lot[]; lent_qty: string; yield_qty: string;
-      last_tick_at: Date | null; proposal: Proposal | null;
+      last_tick_at: Date | null; proposal: Proposal | null; schedule: Schedule | null;
     }>(
-      `select cash, lots, lent_qty, yield_qty, last_tick_at, proposal
+      `select cash, lots, lent_qty, yield_qty, last_tick_at, proposal, schedule
          from pets where id=$1 and owner_hash=$2`,
       [id, ownerHash(ownerKey)],
     );
@@ -52,6 +53,8 @@ export async function POST(req: Request) {
         yieldQty: Number(row.yield_qty),
         lastTickAt,
         proposal: row.proposal,
+        // Only when there is one: a schedule set in this browser and not yet synced is not undone.
+        ...(row.schedule ? { schedule: row.schedule } : {}),
       },
       entries: entries.rows.map((e): Entry => ({
         ts: e.ts.getTime(),

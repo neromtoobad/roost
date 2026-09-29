@@ -55,6 +55,8 @@ export function syncPet(pet: PetState, fresh: Entry[] = []): Promise<void> {
             proposal: pet.proposal ?? null,
             paper: isPaper(pet),
             realized: pet.realized ?? 0,
+            schedule: pet.schedule ?? null,
+            care: pet.care ?? null,
           },
           entries: fresh.map((e) => ({ ts: e.ts, kind: e.kind, text: e.text, qty: e.qty ?? null, price: e.price ?? null, usd: e.usd ?? null, sig: e.sig ?? null, paper: e.paper ?? true })),
         }),
@@ -73,7 +75,7 @@ export function syncPet(pet: PetState, fresh: Entry[] = []): Promise<void> {
 }
 
 export type Pulled = {
-  pet: { cash: number; lots: PetState['lots']; lentQty: number; yieldQty: number; lastTickAt: number; proposal: Proposal | null };
+  pet: { cash: number; lots: PetState['lots']; lentQty: number; yieldQty: number; lastTickAt: number; proposal: Proposal | null; schedule?: PetState['schedule'] };
   entries: Entry[];
 };
 

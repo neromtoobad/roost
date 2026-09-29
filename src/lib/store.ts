@@ -1,7 +1,8 @@
 'use client';
 import { useMemo } from 'react';
 import { setLocal, useLocal } from './client';
-import { isPaper, stockOf, type Entry, type Launch, type Lot, type PetState, type Personality } from './pet-math';
+import { heldQty, isPaper, stockOf, type Entry, type Launch, type Lot, type PetState, type Personality } from './pet-math';
+import { CADENCE_LABEL, canPet, celebrated, kept, newSchedule, pet, skipped, visit, type Cadence } from './care';
 import type { Species, Stock } from './pets';
 
 // Pet state as the browser holds it. Feeding adds cash; the strategy engine decides what to do with
@@ -142,10 +143,89 @@ export function adoptPet(init: { species: Species['id']; name: string; personali
 }
 
 export function touchVisit(p: PetState): PetState {
-  const today = day(Date.now());
-  if (p.lastVisitDay === today) return p;
-  const yesterday = day(Date.now() - 86_400_000);
-  const next = { ...p, streak: p.lastVisitDay === yesterday ? p.streak + 1 : 1, lastVisitDay: today };
+  const t = Date.now();
+  if (p.lastVisitDay === day(t)) return p;
+  const v = visit(p.streak, p.lastVisitDay, p.care, t);
+  const next: PetState = {
+    ...p, streak: v.streak, care: v.care, lastVisitDay: day(t),
+    diary: v.forgiven
+      ? [...p.diary, { ts: t, text: `You missed a day. I kept the streak anyway — I can do that once a week.`, kind: 'system' }]
+      : p.diary,
+  };
+  savePet(next);
+  return next;
+}
+
+/** The free daily action: no money, no trade, just attention. Twelve hours between. */
+export function petPet(p: PetState): PetState | null {
+  if (!canPet(p.care)) return null;
+  const next = { ...p, care: pet(p.care) };
+  savePet(next);
+  return next;
+}
+
+/** A standing feed. Set from the feed screen; changing it starts the rhythm again from now. */
+export function setSchedule(p: PetState, usd: number, every: Cadence): PetState {
+  const t = Date.now();
+  const next: PetState = {
+    ...p, schedule: newSchedule(usd, every, t),
+    diary: [...p.diary, { ts: t, text: `Feeding day set: $${usd} ${CADENCE_LABEL[every]}. I'll remind you.`, kind: 'system' }],
+  };
+  savePet(next);
+  return next;
+}
+
+export function stopSchedule(p: PetState): PetState {
+  const next: PetState = { ...p, schedule: undefined, diary: [...p.diary, { ts: Date.now(), text: 'No more feeding days. Feed me when you like.', kind: 'system' }] };
+  savePet(next);
+  return next;
+}
+
+export function pauseSchedule(p: PetState, paused: boolean): PetState {
+  if (!p.schedule) return p;
+  const t = Date.now();
+  // Resuming starts from the next slot after now, not from a feeding day already gone by.
+  const schedule = paused ? { ...p.schedule, paused: true } : { ...p.schedule, paused: false, nextAt: Math.max(p.schedule.nextAt, t) };
+  const next = { ...p, schedule };
+  savePet(next);
+  return next;
+}
+
+/** A feeding day honoured or passed over. The feed itself is recorded by whoever did it. */
+export function feedingDay(p: PetState, outcome: 'kept' | 'skipped'): PetState {
+  if (!p.schedule) return p;
+  const next = { ...p, schedule: outcome === 'kept' ? kept(p.schedule) : skipped(p.schedule) };
+  savePet(next);
+  return next;
+}
+
+export function markCelebrated(uid: string, key: string) {
+  const p = loadNest().pets.find((x) => x.uid === uid);
+  if (p) patchPet(uid, { care: celebrated(p.care, key) });
+}
+
+/**
+ * The token's share ratio, as it is now. When it has risen since last seen, a dividend was
+ * reinvested into the token — the pet holds more of the company without anyone buying anything,
+ * and it says so. The first sighting only sets the baseline.
+ */
+export function noteRatio(p: PetState, ratio: number): PetState {
+  const seen = p.care?.ratioSeen;
+  const care = { days: 0, pets: 0, ...p.care, ratioSeen: ratio };
+  if (seen === undefined || !(ratio > seen * (1 + 1e-7))) {
+    if (seen === ratio) return p;
+    const next = { ...p, care };
+    savePet(next);
+    return next;
+  }
+  const held = heldQty(p);
+  const t = Date.now();
+  const ticker = stockOf(p).ticker;
+  const grewPct = (ratio / seen - 1) * 100;
+  const text = held > 0
+    ? `${ticker} paid a dividend. Each token now stands for ${ratio.toFixed(4)} shares (+${grewPct.toFixed(2)}%), so I hold ${(held * (ratio - seen)).toFixed(5)} more shares than when I last looked — reinvested, nobody bought anything.`
+    : `${ticker} paid a dividend: each token now stands for ${ratio.toFixed(4)} shares. I'll grow with it once I hold some.`;
+  const next: PetState = { ...p, care, diary: [...p.diary, { ts: t, text, kind: 'yield' }] };
   savePet(next);
   return next;
 }

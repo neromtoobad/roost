@@ -61,6 +61,8 @@ Everything below was found by running against the live Binance Web3 API, and eac
 
 A Fledgling can hatch from **any of the ~450 tokenized stocks and ETFs on BSC** — search by ticker or company name, read its company card (sector, CEO, 52-week range, P/E, dividend, the issuer's collateral report, and how far the token trades from the share), and hatch it. The sector decides which of the six hatches: Technology a Nova, Energy and Materials a Volt, Consumer and Healthcare a Pip, Industrials (aerospace lives there) a Booster, ETFs a Nimbus, Communication and Financials a Lurk. You can keep a **nest** of several, one portfolio across them, and **release** shares back to USDT through the same simulation and price guard as feeding.
 
+**Habits, not hype.** A Fledgling can have a **feeding day** — $10 every week, fortnight or month. A paper one is fed on the day by the hourly worker; a live one waits for its owner's signature (or an Agentic Wallet keeping the schedule), and missed days are skipped, never stacked into a catch-up buy. There is a free daily **pet** (once every 12 hours), a streak that **forgives one missed day a week**, and **growth stages** — Hatchling, Fledgling, Flyer, Legend — earned by days visited, pets given and feeding days kept, never by returns or deposit size. When a token's share ratio rises, a dividend was reinvested, and the pet says it grew. Confetti is kept for hatching and care milestones; nothing that moves money gets a celebration — the thing Robinhood removed in 2021 and settled over in 2024.
+
 The six each have a signature stock, and one deliberate wrong detail — the Pop Mart principle: a face that resolves instantly is a face you forget.
 
 | Fledgling | Species | Home stock | Token | Platform | Wrong detail |

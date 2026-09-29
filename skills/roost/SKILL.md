@@ -47,6 +47,7 @@ do not attempt to work around it.
 |---|---|---|
 | What does my pet want to do? | `POST {ROOST_URL}/api/agent` | [execute.md](references/execute.md) |
 | Feed my pet $X (it buys now) | `POST {ROOST_URL}/api/agent` with `"action": "feed", "usd": X`, then `baw market-order swap` | [execute.md](references/execute.md#feeding-now) |
+| Feed my pet $X every week / fortnight / month | set it in the app, or keep the cadence yourself: `GET {ROOST_URL}/api/pet/<id>` says `feedingDue`, then feed as above | [execute.md](references/execute.md#feeding-days) |
 | Sell / release some of my pet's stock | `POST {ROOST_URL}/api/agent` with `"action": "release", "qty": N`, then `baw market-order swap` | [execute.md](references/execute.md#releasing) |
 | Did it actually trade? | `baw market-order list --orderId <id> --json` | [execute.md](references/execute.md) |
 | What is my pet holding / how is it doing? | `GET {ROOST_URL}/api/pet/<id>` | — |
