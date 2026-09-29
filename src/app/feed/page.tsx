@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { ConnectPill, useWallet } from '@/components/Wallet';
 import { petImage, type Mood } from '@/lib/pets';
-import { PERSONALITIES, feedPetRemote, feedingDay, isPaper, readPet, recordBuy, setSchedule, stockOf, usePet } from '@/lib/store';
+import { PERSONALITIES, feedPetRemote, feedingDay, isPaper, readPet, recordBuy, setSchedule, stockOf, useFocusPet, usePet } from '@/lib/store';
 import { CADENCE_LABEL, isDue, type Cadence } from '@/lib/care';
 import { syncPet } from '@/lib/sync';
 import { nyseSession } from '@/lib/session';
@@ -57,6 +57,8 @@ export default function FeedPage() {
   const router = useRouter();
   const pet = usePet();
   const q = useSearch();
+  // From the Telegram pet: "Sign it" names the pet, which may not be the one last on screen.
+  const elsewhere = useFocusPet(q);
   const { address, isConnected } = useWallet();
   const { step, run, reset } = useBuy();
   const [usd, setUsd] = useState<number | null>(null);
@@ -121,6 +123,12 @@ export default function FeedPage() {
           {signing ? `${pet.name} asks` : `Feed ${pet.name}`}{live ? '' : ' · paper'}
         </span>
       </div>
+
+      {elsewhere && (
+        <p className="card mt-3 px-3 py-2 text-[12.5px]" style={{ color: 'var(--down)' }}>
+          That link is for a Fledgling that lives in another browser. This is {pet.name} — the one hatched here.
+        </p>
+      )}
 
       <div className="relative mx-auto mt-4 grid h-56 w-56 place-items-center">
         <motion.img src={petImage(pet.species, face(step, paperDone))} alt="" className="h-52 w-52 object-contain"

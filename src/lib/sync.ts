@@ -122,3 +122,18 @@ export async function challengeRival(rivalId: string): Promise<{ ok: boolean; re
     return { ok: false, reason: 'Offline.' };
   }
 }
+
+/** The Telegram pet, for one Fledgling: is it on, and a t.me link that binds a chat to it. */
+export async function telegram(id: string, action: 'status' | 'link' | 'unlink'): Promise<{ enabled: boolean; linked?: boolean; url?: string; error?: string } | null> {
+  const key = ownerKey();
+  if (!key) return null;
+  try {
+    const r = await fetch('/api/telegram/link', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ownerKey: key, id, action }),
+    });
+    return (await r.json()) as { enabled: boolean; linked?: boolean; url?: string; error?: string };
+  } catch {
+    return null;
+  }
+}

@@ -14,7 +14,7 @@ async function main() {
   const s = await runTick();
   console.log(`tick ${new Date(s.at).toISOString()} — ${s.pets} pets`);
   for (const l of s.lines) console.log(`  ${l}`);
-  console.log(`done — ${s.acted} acted, ${s.fedOnSchedule} fed on schedule, ${s.waiting} waiting on their owner`);
+  console.log(`done — ${s.acted} acted, ${s.fedOnSchedule} fed on schedule, ${s.waiting} waiting on their owner, ${s.told} told on Telegram`);
   await pool().end();
 }
 

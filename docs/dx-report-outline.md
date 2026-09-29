@@ -86,6 +86,16 @@ Evidence: the error catalogue and latency table in `dx-evidence.md`. Strongest i
   "allowance" in the revert tells a first-time seller the sale "would fail" when it only needs an
   approval. What works: simulate the `approve` itself — its `allowanceChanges[].preAmount` is the
   current allowance, read without a node.
+- **The rate limit is not the documented one.** "5 requests/sec per endpoint" — measured on
+  2026-09-29, the RWA Data endpoints share one budget of about three a second: `underlying-profile`
+  and `underlying-market` each at 2.9/s together drew `42900`s, either alone did not. The aggregator
+  took eight quotes at four a second cleanly. Seven company lookups fired together (a themed basket
+  of seven) came back as seven `42900`s.
+- **A burst of identical requests is a "replay".** Seven identical signed `GET rwa/tokens` in the
+  same millisecond: one answered, the rest got `HTTP 401 code=40103 "Duplicate request detected"`
+  — an auth-family code and status for what is a concurrency problem, undocumented on the auth
+  page's error table. Fix on our side: single-flight the load. Fix on theirs: document it, or
+  dedupe server-side and answer all of them.
 - **No earnings date anywhere** — not in `underlying-profile`, `underlying-market`, nor the
   (ignored) "Upcoming Earnings" tab — though the agentic-wallet docs' own example strategy is an
   earnings watcher.
@@ -167,6 +177,12 @@ This is the section our evidence is strongest on. See the slippage ladder and sp
     liquidity at $100, 4 quoted from broken pools. bStock quoted 39 of 40 both ways.
   - Ondo's `marketStatus` distinguishes `offhours` (quotes) from `closed` (refuses) — the field is
     useful where it exists.
+- **The price feed and a real fill disagree about which issuer is cheaper.** Tuesday 2026-09-29
+  ~09:00 UTC (pre-market), $25 per ticker, per share with the ratio applied: `price-info` put GOOGL
+  and QQQ within 0.04% across issuers; real aggregator buy quotes for one wallet made `GOOGLB`
+  1.26% cheaper than `GOOGLon`, and `QQQB` 1.40% cheaper than `QQQon`. NVDA, META and TSLA were
+  within 0.03% either way. `MSFTon` was still quoting from its broken pool (a buy ~200 million
+  percent over its reference) — the third sighting, across four days.
 - **The aggregator routes into broken pools, and they stay broken.** Monday 2026-09-28 ~07:45 UTC,
   Ondo's overnight session: a $10 buy of `MSFTon` quoted 197 million percent over its reference —
   the same pool was broken on Saturday — `SNDKon` +809%, `AMDon` +3.5%. Each would have gone

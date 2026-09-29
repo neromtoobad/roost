@@ -127,6 +127,30 @@ Ondo sale under $5 is refused by Ondo itself. Show it, get a yes, run it, poll i
 `token` is the stock's contract address. Pass it whenever the pet hatched from a stock other than
 its species' signature one (the web app shows it); without it, the signature stock is assumed.
 
+### The cheaper issuer
+
+"Which NVDA should I buy?" Two issuers sell most big names — bStock's `NVDAB` and Ondo's `NVDAon` —
+at different prices per share. Ask Roost rather than guess:
+
+```bash
+curl -s "$ROOST_URL/api/issuer?ticker=NVDA&wallet=0xYourAgenticWalletAddress&usd=25"
+```
+
+`pick` is the token to use, `reason` is one sentence to show the owner, `options[]` carries each
+issuer's `perShare` and why any was left out. With a `wallet` the comparison is real aggregator fills
+at that size; without one it is the traded price. A request-for-quote route is passed over for a
+swap route even when slightly cheaper, and `reason` says so — keep that sentence when you relay it.
+
+### Feeding a litter
+
+A litter is several pups hatched from one theme (`mag7`, `chips`, `etf`, `buffett`) and fed as one.
+`GET {ROOST_URL}/api/litter/<id>` lists each pup's `stock` — the token its pet holds. Split the
+owner's amount the way the app does: top up the pups furthest below an equal share of the litter's
+value first, never sell one to feed another, and leave out any pup whose share would be $6 or less
+(Ondo refuses $5 and under) — its share goes to the others. Then run one [feed](#feeding-now) per
+pup that eats, each with its own pre-flight and its own yes. Stop at the first one the owner
+declines.
+
 ---
 
 ## 2. Show the user, before anything moves

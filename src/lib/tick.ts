@@ -3,9 +3,10 @@ import { fetchBars } from './bars';
 import { SPECIES, type Species } from './pets';
 import type { Bar } from './strategy';
 import type { Entry, Lot, PetState, Personality, Proposal } from './pet-math';
-import { isDue, kept, type Schedule } from './care';
+import { CADENCE_LABEL, isDue, kept, type Schedule } from './care';
 import { ensureSchema, pool } from './pg';
 import { settleDuels } from './duels';
+import { petLink, say, telegramEnabled } from './telegram';
 
 // One hour of the world happening to every Fledgling at once.
 //
@@ -13,13 +14,14 @@ import { settleDuels } from './duels';
 // localStorage, so a pet behaves identically whether or not its owner has the app open. Called by
 // the Railway cron service every hour, and by /api/tick on demand.
 
-export type TickSummary = { at: number; pets: number; acted: number; waiting: number; fedOnSchedule: number; lines: string[] };
+export type TickSummary = { at: number; pets: number; acted: number; waiting: number; fedOnSchedule: number; told: number; lines: string[] };
 
 type Row = {
   id: string; species: string; ticker: string; token_address: string | null; name: string; personality: Personality;
   adopted_at: Date; streak: number; cash: string; lots: Lot[] | null;
   lent_qty: string; yield_qty: string; last_tick_at: Date | null;
   agent_id: string | null; wallet: string | null; proposal: Proposal | null; schedule: Schedule | null;
+  tg_chat_id: string | null; tg_told_for: string | null;
 };
 
 export async function runTick(now = Date.now()): Promise<TickSummary> {
@@ -29,7 +31,7 @@ export async function runTick(now = Date.now()): Promise<TickSummary> {
 
   const { rows } = await db.query<Row>(
     `select id, species, ticker, token_address, name, personality, adopted_at, streak, cash, lots,
-            lent_qty, yield_qty, last_tick_at, agent_id, wallet, proposal, schedule
+            lent_qty, yield_qty, last_tick_at, agent_id, wallet, proposal, schedule, tg_chat_id, tg_told_for
        from pets order by updated_at desc limit 500`,
   );
 
@@ -46,7 +48,9 @@ export async function runTick(now = Date.now()): Promise<TickSummary> {
     lines.push(`${r.ticker}: ${b.length} bars (${source})`);
   }
 
-  let acted = 0, waiting = 0, fedOnSchedule = 0;
+  let acted = 0, waiting = 0, fedOnSchedule = 0, told = 0;
+  // The Telegram pet: messages go out after the hour's writes, so a failed send never costs a trade.
+  const outbox: { r: Row; text: string; path?: string; button?: string; toldFor?: number }[] = [];
   for (const r of rows) {
     const adoptedAt = r.adopted_at.getTime();
     const pet: PetState = {
@@ -85,10 +89,21 @@ export async function runTick(now = Date.now()): Promise<TickSummary> {
     // A pet holding an open question waits for its owner — the rule that matters most is the one
     // that still applies when nobody is watching. A feeding day still lands, and moves the
     // watermark, so the browser adopts it rather than pushing an older state over it.
+    // A live pet's feeding day waits for its owner's signature — so tell them, once per feeding day.
+    if (r.wallet && r.schedule && isDue(r.schedule, now) && Number(r.tg_told_for) !== r.schedule.nextAt) {
+      outbox.push({
+        r, toldFor: r.schedule.nextAt, path: '/feed?due=1', button: 'Sign it',
+        text: `It's feeding day for ${r.name} — $${r.schedule.usd} of ${r.ticker}, ${CADENCE_LABEL[r.schedule.every]}. Nothing moves until you sign it in Roost.`,
+      });
+    }
+
     const b = bars.get(stockKey(r));
     if (r.proposal || !b?.length) {
       if (r.proposal) waiting++;
-      if (fedToday.length) await write(r.id, { ...pet, lastTickAt: now }, fedToday);
+      if (fedToday.length) {
+        await write(r.id, { ...pet, lastTickAt: now }, fedToday);
+        outbox.push({ r, path: '/', button: `Open ${r.name}`, text: `Feeding day for ${r.name}: $${r.schedule!.usd} went in, on schedule (paper).` });
+      }
       continue;
     }
 
@@ -101,12 +116,38 @@ export async function runTick(now = Date.now()): Promise<TickSummary> {
       acted++;
       for (const e of res.fresh) lines.push(`${r.name} (${r.species}): ${e.kind} — ${e.text}`);
     }
+
+    // What it did on its own, in its own words: the feeding day kept, what it bought, what it asks.
+    const did = res.fresh.filter((e) => e.kind === 'buy' || e.kind === 'sell').map((e) => e.text);
+    if (fedToday.length || did.length) {
+      outbox.push({
+        r, path: '/', button: `Open ${r.name}`,
+        text: [fedToday.length ? `Feeding day for ${r.name}: $${r.schedule!.usd} went in, on schedule (paper).` : `${r.name} did something on its own${r.wallet ? '' : ' (paper)'}:`, ...did].join('\n'),
+      });
+    }
+    if (res.pet.proposal && !r.proposal) {
+      outbox.push({
+        r, path: '/feed?proposal=1', button: 'Look at it',
+        text: `${r.name} wants to buy $${res.pet.proposal.usd.toFixed(2)} of ${r.ticker}: ${res.pet.proposal.reason}. Nothing moves until you sign.`,
+      });
+    }
+  }
+
+  if (telegramEnabled()) {
+    for (const m of outbox) {
+      if (!m.r.tg_chat_id) continue;
+      const url = m.path ? petLink(m.path, m.r.id) : null;
+      const ok = await say(m.r.tg_chat_id, m.text, url && m.button ? { text: m.button, url } : undefined);
+      if (ok) told++;
+      if (ok && m.toldFor) await pool().query('update pets set tg_told_for=$2 where id=$1', [m.r.id, m.toldFor]);
+    }
+    if (told) lines.push(`telegram: ${told} message${told === 1 ? '' : 's'} sent`);
   }
 
   // Duels end on the hour they were due, whether or not either owner is around to watch.
   lines.push(...await settleDuels(now));
 
-  return { at: now, pets: rows.length, acted, waiting, fedOnSchedule, lines };
+  return { at: now, pets: rows.length, acted, waiting, fedOnSchedule, told, lines };
 }
 
 /** Only the engine-owned columns. Name, streak and feeding belong to the browser. */

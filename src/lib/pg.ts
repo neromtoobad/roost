@@ -71,6 +71,13 @@ alter table pets add column if not exists realized numeric not null default 0;
 -- A standing feed, and the care that grows a pet (see lib/care). The worker keeps paper schedules.
 alter table pets add column if not exists schedule jsonb;
 alter table pets add column if not exists care jsonb;
+-- The Telegram pet (lib/telegram): the chat a pet reports to, the one-time code that links it, and
+-- the feeding day it last sent a reminder for, so each one is sent once.
+alter table pets add column if not exists tg_chat_id bigint;
+alter table pets add column if not exists tg_link text;
+alter table pets add column if not exists tg_told_for bigint;
+create index if not exists pets_tg_link_idx on pets (tg_link) where tg_link is not null;
+create index if not exists pets_tg_chat_idx on pets (tg_chat_id) where tg_chat_id is not null;
 create index if not exists pets_owner_hash_idx on pets (owner_hash);
 create index if not exists pets_updated_idx    on pets (updated_at desc);
 

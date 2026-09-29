@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Nav } from '@/components/Nav';
 import { petImage } from '@/lib/pets';
+import { litterById } from '@/lib/litters';
 import { costBasis, heldQty, isPaper, setCurrentPet, stockOf, usePets, type PetState } from '@/lib/store';
 
 // Every Fledgling on this device as one portfolio: what each holds, what it is worth at the print,
@@ -20,12 +21,12 @@ export default function Nest() {
   const addresses = [...new Set(pets.map((p) => stockOf(p).address.toLowerCase()))];
   const key = addresses.join(',');
   useEffect(() => {
+    if (!key) return;
     let alive = true;
-    for (const a of key ? key.split(',') : []) {
-      fetch(`/api/price/${a}`).then((r) => r.json())
-        .then((j: { price: number | null }) => { if (alive) setPrices((p) => ({ ...p, [a]: j.price })); })
-        .catch(() => {});
-    }
+    // One call for the whole nest, however many pets — a litter alone is seven.
+    fetch(`/api/prices?tokens=${key}`).then((r) => (r.ok ? r.json() : null))
+      .then((j: { prices?: Priced } | null) => { if (alive && j?.prices) setPrices(j.prices); })
+      .catch(() => {});
     return () => { alive = false; };
   }, [key]);
 
@@ -41,6 +42,11 @@ export default function Nest() {
   const live = total(false), paper = total(true);
 
   const open = (p: PetState) => { if (p.uid) setCurrentPet(p.uid); router.push('/'); };
+
+  const byLitter = new Map<string, PetState[]>();
+  for (const p of pets) if (p.litter) byLitter.set(p.litter.key, [...(byLitter.get(p.litter.key) ?? []), p]);
+  const litters = [...byLitter];
+  const singles = pets.filter((p) => !p.litter);
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-[430px] flex-col px-4 pb-24 pt-[max(12px,env(safe-area-inset-top))]">
@@ -65,8 +71,31 @@ export default function Nest() {
         );
       })}
 
+      {/* Litters first, each as one card: hatched together, fed together. */}
+      {litters.map(([k, pups]) => {
+        const l = pups[0].litter!;
+        const v = pups.map(row).reduce((t, r) => ({ value: t.value + (r.value ?? 0) + r.cash, basis: t.basis + r.basis }), { value: 0, basis: 0 });
+        return (
+          <Link key={k} href={`/litter?key=${k}`} className="card mt-4 block px-3 py-2.5">
+            <div className="flex items-center justify-between gap-2">
+              <p className="truncate text-[15px] font-bold" style={{ fontFamily: 'var(--font-display)' }}>
+                {litterById(l.id)?.icon} {l.name} <span className="text-[12px] font-semibold" style={{ color: 'var(--muted)' }}>· {pups.length} pups · {isPaper(pups[0]) ? 'paper' : 'live'}</span>
+              </p>
+              <p className="num shrink-0 text-[15px] font-bold">${v.value.toFixed(2)}</p>
+            </div>
+            <div className="mt-1.5 flex -space-x-2">
+              {pups.map((p) => (
+                <img key={p.uid} src={petImage(p.species, 'hero')} alt={p.name} title={`${p.name} · ${stockOf(p).ticker}`}
+                  className="h-8 w-8 rounded-full border-2 object-cover object-top" style={{ background: 'var(--canvas)', borderColor: 'var(--surface)' }} />
+              ))}
+            </div>
+            <p className="mt-1 text-[11.5px]" style={{ color: 'var(--muted)' }}>{pups.map((p) => stockOf(p).ticker).join(' · ')} — feed them as one ›</p>
+          </Link>
+        );
+      })}
+
       <ul className="mt-4 grid gap-2">
-        {pets.map((p) => {
+        {singles.map((p) => {
           const s = stockOf(p), r = row(p), on = p.uid === current;
           return (
             <li key={p.uid ?? p.adoptedAt}>

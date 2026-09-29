@@ -10,13 +10,14 @@ import { Confetti } from '@/components/Confetti';
 import { Report, Ask } from '@/components/Report';
 import { Sparkline } from '@/components/Sparkline';
 import { DuelCard, type Duel } from '@/components/Duel';
+import { TelegramLink } from '@/components/Telegram';
 import { petImage, type Mood } from '@/lib/pets';
 import { computeMood, moodLine } from '@/lib/mood';
 import { isNight, nyseSession, sessionLabel } from '@/lib/session';
 import { useNow, useSearch } from '@/lib/client';
 import { runEngine } from '@/lib/engine';
 import { pullPet, syncPet } from '@/lib/sync';
-import { answerProposal, feedPet, feedingDay, heldQty, isPaper, markCelebrated, mergeEntries, noteRatio, pauseSchedule, petPet, pnl, readPet, savePet, setCurrentPet, stockOf, touchVisit, usePet, usePets, waitingLine, type Entry } from '@/lib/store';
+import { answerProposal, feedPet, feedingDay, heldQty, isPaper, markCelebrated, mergeEntries, noteRatio, pauseSchedule, petPet, pnl, readPet, savePet, setCurrentPet, stockOf, touchVisit, useFocusPet, usePet, usePets, waitingLine, type Entry } from '@/lib/store';
 import { CADENCE_LABEL, bond as bondOf, canPet, isDue, milestone, stage } from '@/lib/care';
 import type { Bar } from '@/lib/strategy';
 
@@ -30,6 +31,8 @@ export default function Home() {
   const hasStore = pets.length > 0;
   const now = useNow();
   const q = useSearch();
+  // A link from the Telegram pet names which Fledgling it is about.
+  const elsewhere = useFocusPet(q);
   const [price, setPrice] = useState<Price>({ price: null, pct24h: 0, source: 'none' });
   const [bars, setBars] = useState<Bar[]>([]);
   const [holidays, setHolidays] = useState<Set<string>>();
@@ -213,6 +216,16 @@ export default function Home() {
         </div>
       )}
       <p className="mt-1 text-right text-[13px] font-semibold" style={{ color: 'var(--muted)' }}>{pet?.name} · {ticker}{stock && stock.company !== ticker ? ` · ${stock.company}` : ''} · day {pet?.streak ?? 1}</p>
+      {pet?.litter && (
+        <p className="text-right text-[12px]">
+          <Link href={`/litter?key=${pet.litter.key}`} className="underline" style={{ color: 'var(--muted)' }}>one of the {pet.litter.name} litter ›</Link>
+        </p>
+      )}
+      {elsewhere && (
+        <p className="card mt-2 px-3 py-2 text-[12.5px]" style={{ color: 'var(--muted)' }}>
+          That link is for a Fledgling that lives in another browser — this one only knows the pets hatched here.
+        </p>
+      )}
       {fill?.spreadPct != null && (
         <p className="mt-0.5 text-right text-[11.5px] num" style={{ color: 'var(--muted)' }}>
           {ticker} on-chain{' '}
@@ -328,6 +341,7 @@ export default function Home() {
       {pet && pet.cash >= 1 && !pet.proposal && (
         <p className="mt-1 text-center text-[12px]" style={{ color: 'var(--muted)' }}>{waitingLine[pet.personality]}</p>
       )}
+      {pet && <TelegramLink pet={pet} />}
 
       {report && pet && <Report pet={pet} fresh={report.fresh} awayMs={report.awayMs} price={price.price} onClose={() => setReport(null)} />}
       <Nav />

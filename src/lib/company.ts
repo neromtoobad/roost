@@ -52,6 +52,9 @@ export async function companyFor(address: string, platform: Platform): Promise<C
   if (!profile && !market) {
     const msg = (p.json as { msg?: string } | null)?.msg ?? '(no msg)';
     console.error(`[company] no profile or market data for ${address} — code=${p.code} msg=${msg}`);
+    // Rate-limited is "ask again", not "this company has no profile": thrown, so no cache keeps it
+    // — a cached null here hatched Nvidia as a cloud for half an hour.
+    if (p.code === 42900 || m.code === 42900) throw new Error(`rate limited looking up ${address}`);
     return null;
   }
   const info = profile?.companyInfo;
@@ -72,4 +75,15 @@ export async function companyFor(address: string, platform: Platform): Promise<C
     dividendYieldPct: yieldFrac === null ? null : platform === 'bstock' ? yieldFrac * 100 : yieldFrac,
     latestDividend: num(market?.latestDividend),
   };
+}
+
+/**
+ * Only the sector, from the profile alone — half the calls of companyFor, for a litter that needs to
+ * know which Fledgling each pup hatches as and nothing else. Throws when rate-limited, like companyFor,
+ * so a cache never keeps "no sector" for a company that has one.
+ */
+export async function industryFor(address: string): Promise<string | null> {
+  const r = await request('GET', '/api/v1/dex/market/rwa/underlying-profile', { params: { binanceChainId: CHAIN_ID, tokenContractAddress: address } });
+  if (r.code === 42900) throw new Error(`rate limited looking up ${address}`);
+  return (r.json as { data?: Profile } | null)?.data?.companyInfo?.industry || null;
 }

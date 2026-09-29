@@ -68,8 +68,16 @@ let cache: { at: number; rows: RwaRow[] } | null = null;
 let lastUpstream: string | null = null;
 export const upstreamError = () => lastUpstream;
 
-async function rwaTokens(): Promise<RwaRow[]> {
-  if (cache && Date.now() - cache.at < TTL) return cache.rows;
+let loading: Promise<RwaRow[]> | null = null;
+
+/** One load at a time — concurrent identical signed requests are refused as replays (lib/quote). */
+function rwaTokens(): Promise<RwaRow[]> {
+  if (cache && Date.now() - cache.at < TTL) return Promise.resolve(cache.rows);
+  loading ??= loadRwaTokens().finally(() => { loading = null; });
+  return loading;
+}
+
+async function loadRwaTokens(): Promise<RwaRow[]> {
   const r = await request('GET', '/api/v1/dex/market/rwa/tokens');
   const rows = ((r.json as { data?: RwaRow[] } | null)?.data ?? []) as RwaRow[];
   if (rows.length) {

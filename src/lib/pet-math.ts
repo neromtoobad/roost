@@ -43,6 +43,8 @@ export type PetState = {
   schedule?: Schedule;
   /** Visits, pets, the forgiven day, the dividend ratio last seen. See lib/care. */
   care?: Care;
+  /** Hatched with others from one theme, and fed with them. `key` is the hatching; see lib/litters. */
+  litter?: { id: string; key: string; name: string };
 };
 
 /** The stock a pet holds: its own if it hatched from one, else its species' signature stock. */

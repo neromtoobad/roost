@@ -55,10 +55,21 @@ const addr = (a: string) => a.toLowerCase();
 // ── sources ────────────────────────────────────────────────────────────────────────────
 
 let rwaCache: { at: number; rows: Map<string, RwaRow> } | null = null;
+let rwaLoading: Promise<Map<string, RwaRow>> | null = null;
 
-/** Every listed RWA token in one call — cheaper than asking per species, and it is the same call. */
-async function rwaRows(): Promise<Map<string, RwaRow>> {
-  if (rwaCache && Date.now() - rwaCache.at < TTL) return rwaCache.rows;
+/**
+ * Every listed RWA token in one call — cheaper than asking per species, and it is the same call.
+ * One load at a time: callers that arrive while it is in flight share it. Seven litter pups asking
+ * at once sent seven identical signed requests, and the gateway refused all but one as a replay
+ * ("Duplicate request detected", 40103) and rate-limited the rest.
+ */
+function rwaRows(): Promise<Map<string, RwaRow>> {
+  if (rwaCache && Date.now() - rwaCache.at < TTL) return Promise.resolve(rwaCache.rows);
+  rwaLoading ??= loadRwaRows().finally(() => { rwaLoading = null; });
+  return rwaLoading;
+}
+
+async function loadRwaRows(): Promise<Map<string, RwaRow>> {
   const rows = new Map<string, RwaRow>();
   // Twice at most: the gateway answers some failures with HTTP 200 and an empty body, and the
   // overpay guard in lib/preflight should not skip its check over one transient empty answer.

@@ -57,6 +57,28 @@ function queryString(params?: Params): string {
 export const configured = () =>
   Boolean(process.env.BINANCE_W3_API_KEY && process.env.BINANCE_W3_API_SECRET);
 
+// The gateway rate-limits (42900) and refuses two identical signed requests in the same
+// millisecond as a replay ("Duplicate request detected", 40103) — which is what a burst looks like.
+// So calls leave in lanes, spaced, per process. Measured on 2026-09-29, not taken from the docs'
+// "5 requests/sec per endpoint":
+//
+//   RWA data   one budget for every /market/rwa/ path, about three a second: profile and market
+//              each at 2.9/s together drew 42900s; either alone at 2.9/s did not.
+//   the rest   per path. Eight aggregator quotes at four a second all answered.
+//
+// A litter of seven pricing itself turns from a wall of 42900s into a few seconds of queue.
+function lane(path: string): { key: string; gap: number } {
+  return path.includes('/market/rwa/') ? { key: 'rwa', gap: 350 } : { key: path, gap: 210 };
+}
+const nextAt = new Map<string, number>();
+async function pace(path: string) {
+  const { key, gap } = lane(path);
+  const now = Date.now();
+  const at = Math.max(now, nextAt.get(key) ?? 0);
+  nextAt.set(key, at + gap);
+  if (at > now) await new Promise((r) => setTimeout(r, at - now));
+}
+
 /**
  * One signed request. Returns the raw outcome without throwing, so callers (and the
  * connectivity check) can inspect status, code and headers for themselves.
@@ -76,6 +98,7 @@ export async function request(
     );
   }
 
+  await pace(path);
   const bodyStr = opts.body === undefined ? '' : JSON.stringify(opts.body);
   const wirePath = `${PREFIX}${path}${queryString(opts.params)}`;
   const timestamp = new Date().toISOString();

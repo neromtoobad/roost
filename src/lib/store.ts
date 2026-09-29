@@ -1,5 +1,5 @@
 'use client';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { setLocal, useLocal } from './client';
 import { heldQty, isPaper, stockOf, type Entry, type Launch, type Lot, type PetState, type Personality } from './pet-math';
 import { CADENCE_LABEL, canPet, celebrated, kept, newSchedule, pet, skipped, visit, type Cadence } from './care';
@@ -72,6 +72,20 @@ export function usePets(): Nest {
   }, [raw, legacy]);
 }
 
+/**
+ * A link that names a pet — `?pet=<server id>` from the Telegram pet — puts that pet on screen.
+ * Returns true when the link names a pet this device does not have (it lives in another browser).
+ */
+export function useFocusPet(q: URLSearchParams): boolean {
+  const want = q.get('pet');
+  const { pets, current } = usePets();
+  const found = want ? pets.find((x) => x.remoteId === want || x.uid === want) : undefined;
+  useEffect(() => {
+    if (found?.uid && found.uid !== current) setCurrentPet(found.uid);
+  }, [found?.uid, current]);
+  return Boolean(want && pets.length && !found);
+}
+
 /** The pet on screen. */
 export function usePet(): PetState | null {
   const { pets, current } = usePets();
@@ -106,6 +120,11 @@ export function readPet(): PetState | null {
   return nest.pets.find((p) => p.uid === nest.current) ?? nest.pets[0] ?? null;
 }
 
+/** One pet by its uid, as stored right now — for a queue of buys that each record against the latest copy. */
+export function readPetByUid(uid: string): PetState | null {
+  return loadNest().pets.find((p) => p.uid === uid) ?? null;
+}
+
 /** Look at a different pet. */
 export function setCurrentPet(uid: string) {
   const nest = loadNest();
@@ -129,18 +148,51 @@ export function mergeEntries(p: PetState, incoming: Entry[]): PetState {
 
 
 // ——— lifecycle ———
-export function adoptPet(init: { species: Species['id']; name: string; personality: Personality; stock?: Stock }): PetState {
-  const t = Date.now();
-  const p: PetState = {
+type Init = { species: Species['id']; name: string; personality: Personality; stock?: Stock; litter?: PetState['litter']; wallet?: string };
+
+function newPet({ issuerNote, ...init }: Init & { issuerNote?: string }, t: number): PetState {
+  return {
     ...init, uid: newUid(), adoptedAt: t, lastFed: t, streak: 1, lastVisitDay: day(t),
     cash: 0, lots: [], lentQty: 0, yieldQty: 0, lastTickAt: t, proposal: null,
-    diary: [{ ts: t, text: hatchLine(init.personality, init.name), kind: 'system' }],
+    diary: [
+      { ts: t, text: hatchLine(init.personality, init.name), kind: 'system' },
+      // Why this token and not the other issuer's: said once, at the start, where it can be checked.
+      ...(issuerNote ? [{ ts: t + 1, text: issuerNote, kind: 'system' as const }] : []),
+    ],
   };
+}
+
+export function adoptPet(init: Init & { issuerNote?: string }): PetState {
+  const p = newPet(init, Date.now());
   const nest = loadNest();
   // A new pet joins the nest and is the one on screen.
   writeNest({ pets: [...nest.pets, p], current: p.uid! });
   return p;
 }
+
+/**
+ * A litter: one pup per stock in the theme, hatched together, sharing a personality and a wallet.
+ * The first is the one on screen. Returns them all, for syncing.
+ */
+export function adoptLitter(
+  litter: { id: string; name: string },
+  pups: { species: Species['id']; name: string; stock: Stock; issuerNote?: string }[],
+  personality: Personality,
+  wallet?: string,
+): PetState[] {
+  const t = Date.now();
+  const key = newUid();
+  const bound = wallet && /^0x[a-fA-F0-9]{40}$/.test(wallet) ? wallet : undefined;
+  const born = pups.map((pup, i) => newPet({
+    ...pup, personality, litter: { ...litter, key }, ...(bound ? { wallet: bound } : {}),
+  }, t + i * 10)); // apart by a few ms: adoptedAt is how an unsynced pet is told apart
+  const nest = loadNest();
+  writeNest({ pets: [...nest.pets, ...born], current: born[0]?.uid ?? nest.current });
+  return born;
+}
+
+/** The pets of one litter, as stored. */
+export const litterOf = (pets: PetState[], key: string) => pets.filter((p) => p.litter?.key === key);
 
 export function touchVisit(p: PetState): PetState {
   const t = Date.now();
@@ -231,11 +283,11 @@ export function noteRatio(p: PetState, ratio: number): PetState {
 }
 
 /** Feeding only adds cash. What happens to it is the pet's call. */
-export function feedPet(p: PetState, usd: number): PetState {
+export function feedPet(p: PetState, usd: number, text?: string): PetState {
   const t = Date.now();
   const next: PetState = {
     ...p, lastFed: t, cash: p.cash + usd,
-    diary: [...p.diary, { ts: t, text: `Fed $${usd}.`, kind: 'feed', usd }],
+    diary: [...p.diary, { ts: t, text: text ?? `Fed $${usd}.`, kind: 'feed', usd }],
   };
   savePet(next);
   return next;
@@ -245,7 +297,7 @@ export function feedPet(p: PetState, usd: number): PetState {
 // the owner's own Binance Agentic Wallet, so the only thing that makes a pet live is a bound
 // wallet address. See lib/agent.ts for why Roost deliberately holds no keys.
 export async function adoptPetRemote(
-  init: { species: Species['id']; name: string; personality: Personality; stock?: Stock },
+  init: { species: Species['id']; name: string; personality: Personality; stock?: Stock; issuerNote?: string },
   wallet?: string,
 ): Promise<PetState> {
   const p = adoptPet(init);

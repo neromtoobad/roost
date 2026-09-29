@@ -53,6 +53,8 @@ do not attempt to work around it.
 | What is my pet holding / how is it doing? | `GET {ROOST_URL}/api/pet/<id>` | — |
 | What's the price / how far off the real stock is it? | `GET {ROOST_URL}/api/price/<species>` | — |
 | What would I actually get filled at? | `GET {ROOST_URL}/api/fill/<species>?wallet=<address>` | — |
+| Which issuer's NVDA is cheaper for me? | `GET {ROOST_URL}/api/issuer?ticker=NVDA&wallet=<address>&usd=25` — per share, real fills | [execute.md](references/execute.md#the-cheaper-issuer) |
+| Feed my litter $X | `GET {ROOST_URL}/api/litter/<id>` for its members, split with the rule below, one feed per pup | [execute.md](references/execute.md#feeding-a-litter) |
 
 ## The four instruction kinds
 

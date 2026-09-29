@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { getConnection, sendTransaction, switchChain, waitForTransactionReceipt } from 'wagmi/actions';
 import { erc20Abi, formatUnits, parseEventLogs, type Hex } from 'viem';
 import { config, BSC_CHAIN_ID } from './chain';
@@ -73,13 +73,18 @@ function why(e: unknown): string {
 export function useBuy() {
   const [step, setStep] = useState<BuyStep>({ at: 'idle' });
   const reset = useCallback(() => setStep({ at: 'idle' }), []);
+  // Why the last run stopped, readable right after it returns — a queue of buys (a litter) decides
+  // from it whether to go on to the next pup, and state set during the run has not rendered yet.
+  const stopped = useRef<{ reason: string; hash?: string } | null>(null);
+  const lastStop = useCallback(() => stopped.current, []);
 
   /** `amount` is USDT for a buy, tokens of the stock for a sale. */
   const run = useCallback(async (t: Target, amount: number, wallet: string, side: 'buy' | 'sell' = 'buy'): Promise<Traded | null> => {
     const sp = t.stock;
     const selling = side === 'sell';
     const deal = selling ? 'sale' : 'buy';
-    const stop = (reason: string, hash?: string) => { setStep({ at: 'stopped', reason, hash }); return null; };
+    const stop = (reason: string, hash?: string) => { stopped.current = { reason, hash }; setStep({ at: 'stopped', reason, hash }); return null; };
+    stopped.current = null;
     let approved = false;
     // What has already left for the chain. After that point "nothing was spent" stops being true.
     let sent: { hash: string; what: 'approval' | 'buy' } | null = null;
@@ -147,7 +152,7 @@ export function useBuy() {
     }
   }, []);
 
-  return { step, run, reset };
+  return { step, run, reset, lastStop };
 }
 
 export const bscscan = (hash: string) => `https://bscscan.com/tx/${hash}`;
