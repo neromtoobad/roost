@@ -4,6 +4,7 @@ import { setLocal, useLocal } from './client';
 import { heldQty, isPaper, stockOf, type Entry, type Launch, type Lot, type PetState, type Personality } from './pet-math';
 import { CADENCE_LABEL, canPet, celebrated, kept, newSchedule, pet, skipped, visit, type Cadence } from './care';
 import type { Species, Stock } from './pets';
+import { MANAGERS, managerById, managerForRule, type Manager } from './managers';
 
 // Pet state as the browser holds it. Feeding adds cash; the strategy engine decides what to do with
 // it. Those are separate on purpose — "you fed it" and "it bought something" are different events,
@@ -13,12 +14,10 @@ import type { Species, Stock } from './pets';
 
 export * from './pet-math';
 
-export const PERSONALITIES: Record<Personality, { name: string; tagline: string; icon: string }> = {
-  diamond: { name: 'Diamond Hands', tagline: 'deploys at every open, lends it all, never sells', icon: '💎' },
-  degen:   { name: 'Degen',         tagline: 'hunts 2% dips at any hour',                        icon: '⚡' },
-  boomer:  { name: 'Boomer',        tagline: 'regular hours only, keeps 20% in reserve',          icon: '🕰' },
-  quant:   { name: 'Quant',         tagline: 'weekly rebalance, cites basis points',              icon: '📊' },
-};
+/** Each rule, by the manager who trades it. */
+export const PERSONALITIES = Object.fromEntries(
+  MANAGERS.map((m) => [m.rule, { name: m.name, tagline: m.tagline, icon: '' }]),
+) as Record<Personality, { name: string; tagline: string; icon: string }>;
 
 // A nest: every Fledgling this device has adopted, and which one is on screen. It replaced a single
 // pet under 'roost.pet'; a device that still has one is moved into a nest of one on its first write,
@@ -92,16 +91,27 @@ export function usePet(): PetState | null {
   return pets.find((p) => p.uid === current) ?? pets[0] ?? null;
 }
 
-/** Pets adopted before the engine existed stored feeds instead of lots. */
-export function migrate(p: PetState & { feeds?: { ts: number; usd: number; price: number | null }[] }): PetState {
-  if (p.cash !== undefined) return p;
-  const feeds = p.feeds ?? [];
-  return {
-    ...p,
-    cash: feeds.filter((f) => !f.price).reduce((s, f) => s + f.usd, 0),
-    lots: feeds.filter((f) => f.price).map((f) => ({ ts: f.ts, qty: f.usd / f.price!, price: f.price! })),
-    lentQty: 0, yieldQty: 0, lastTickAt: p.adoptedAt, proposal: null,
-  };
+/**
+ * Older shapes, brought forward. Pets adopted before the engine existed stored feeds instead of
+ * lots; anything opened before the managers existed is filed under the manager whose rule it runs —
+ * a litter as one mandate, a lone pet as a mandate of one.
+ */
+export function migrate(raw: PetState & { feeds?: { ts: number; usd: number; price: number | null }[] }): PetState {
+  let p: PetState = raw;
+  if (raw.cash === undefined) {
+    const feeds = raw.feeds ?? [];
+    p = {
+      ...raw,
+      cash: feeds.filter((f) => !f.price).reduce((s, f) => s + f.usd, 0),
+      lots: feeds.filter((f) => f.price).map((f) => ({ ts: f.ts, qty: f.usd / f.price!, price: f.price! })),
+      lentQty: 0, yieldQty: 0, lastTickAt: raw.adoptedAt, proposal: null,
+    };
+  }
+  if (!p.mandate) {
+    const key = p.litter?.key ?? `solo-${p.uid ?? p.adoptedAt}`;
+    p = { ...p, mandate: { key, manager: managerForRule(p.personality).id } };
+  }
+  return p;
 }
 
 /** Write a pet back into the nest: the one with its uid, or a new one. */
@@ -148,7 +158,7 @@ export function mergeEntries(p: PetState, incoming: Entry[]): PetState {
 
 
 // ——— lifecycle ———
-type Init = { species: Species['id']; name: string; personality: Personality; stock?: Stock; litter?: PetState['litter']; wallet?: string };
+type Init = { species: Species['id']; name: string; personality: Personality; stock?: Stock; litter?: PetState['litter']; mandate?: PetState['mandate']; wallet?: string };
 
 function newPet({ issuerNote, ...init }: Init & { issuerNote?: string }, t: number): PetState {
   return {
@@ -193,6 +203,53 @@ export function adoptLitter(
 
 /** The pets of one litter, as stored. */
 export const litterOf = (pets: PetState[], key: string) => pets.filter((p) => p.litter?.key === key);
+
+/**
+ * Hire a manager: one position per stock in the mandate, all run by the manager's rule, bound to
+ * the connected wallet (or paper without one), each with its share of the standing contribution.
+ * The first is the one on screen. Returns them all, for syncing.
+ */
+export function hireManager(
+  manager: Manager,
+  stocks: { stock: Stock; issuerNote?: string }[],
+  plan: { usd: number; every: Cadence } | null,
+  wallet?: string,
+): PetState[] {
+  const t = Date.now();
+  const key = newUid();
+  const bound = wallet && /^0x[a-fA-F0-9]{40}$/.test(wallet) ? wallet : undefined;
+  const each = plan ? Math.floor((plan.usd / stocks.length) * 100) / 100 : 0;
+  const born = stocks.map(({ stock, issuerNote }, i) => {
+    const p = newPet({
+      species: manager.species, name: manager.name, personality: manager.rule, stock, issuerNote,
+      mandate: { key, manager: manager.id }, ...(bound ? { wallet: bound } : {}),
+    }, t + i * 10); // apart by a few ms: adoptedAt is how an unsynced position is told apart
+    return plan && each > 0 ? { ...p, schedule: newSchedule(each, plan.every, t) } : p;
+  });
+  const nest = loadNest();
+  writeNest({ pets: [...nest.pets, ...born], current: born[0]?.uid ?? nest.current });
+  return born;
+}
+
+/** A client's mandates: positions grouped by mandate, newest first. */
+export function mandatesOf(pets: PetState[]): { key: string; manager: Manager; positions: PetState[] }[] {
+  const by = new Map<string, PetState[]>();
+  for (const p of pets) {
+    const key = p.mandate?.key ?? `solo-${p.uid ?? p.adoptedAt}`;
+    by.set(key, [...(by.get(key) ?? []), p]);
+  }
+  return [...by].map(([key, positions]) => ({
+    key, positions,
+    manager: managerById(positions[0].mandate?.manager) ?? managerForRule(positions[0].personality),
+  })).sort((a, b) => Math.max(...b.positions.map((p) => p.adoptedAt)) - Math.max(...a.positions.map((p) => p.adoptedAt)));
+}
+
+/** End a mandate: its positions leave the book. Holdings in a live wallet stay in that wallet. */
+export function endMandate(key: string) {
+  const nest = loadNest();
+  const pets = nest.pets.filter((p) => p.mandate?.key !== key);
+  writeNest({ pets, current: pets.some((p) => p.uid === nest.current) ? nest.current : pets[0]?.uid ?? null });
+}
 
 export function touchVisit(p: PetState): PetState {
   const t = Date.now();
@@ -384,8 +441,11 @@ export function answerProposal(p: PetState, accept: boolean, price: number): Pet
   if (!p.proposal) return p;
   const t = Date.now();
   if (!accept) {
-    savePet({ ...p, proposal: null, diary: [...p.diary, { ts: t, text: 'Fine. Not today.', kind: 'hold' }] });
-    return p;
+    // Returned, not only saved: the caller syncs what this returns, and the old copy still carries
+    // the question — the server would keep asking it.
+    const declined: PetState = { ...p, proposal: null, diary: [...p.diary, { ts: t, text: 'You said not this time. Understood.', kind: 'hold' }] };
+    savePet(declined);
+    return declined;
   }
   const usd = Math.min(p.proposal.usd, p.cash);
   const qty = usd / price;
@@ -398,18 +458,8 @@ export function answerProposal(p: PetState, accept: boolean, price: number): Pet
 }
 
 // ——— voice ———
-function hatchLine(v: Personality, name: string) {
-  return {
-    diamond: `${name} online. I don't sell. I don't even know how.`,
-    degen: `${name} HAS ENTERED THE CHAT. where's the dip`,
-    boomer: `${name} here. Markets open at 9:30. I'll be ready at 9:00.`,
-    quant: `${name} initialized. Baseline: zero. Everything from here is alpha.`,
-  }[v];
+function hatchLine(v: Personality, _name: string) {
+  return managerForRule(v).voice.hired;
 }
 
-export const waitingLine: Record<Personality, string> = {
-  diamond: 'Holding it for the open. Every open, same thing.',
-  degen: 'Sitting on it. Waiting for something to break.',
-  boomer: 'It will be deployed during regular hours. Not before.',
-  quant: 'Queued for the next rebalance window.',
-};
+export const waitingLine = Object.fromEntries(MANAGERS.map((m) => [m.rule, m.voice.waiting])) as Record<Personality, string>;

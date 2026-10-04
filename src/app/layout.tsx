@@ -1,18 +1,19 @@
 import type { Metadata, Viewport } from 'next';
-import { Fredoka, Nunito, JetBrains_Mono } from 'next/font/google';
+import { Fraunces, Inter, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import './tokens.css';
 import { isNight, nyseSession } from '@/lib/session';
 import { Wallet } from '@/components/Wallet';
 import { SideNav } from '@/components/Nav';
 
-const display = Fredoka({ subsets: ['latin'], weight: ['500', '600', '700'], variable: '--font-display' });
-const body = Nunito({ subsets: ['latin'], weight: ['500', '600', '700'], variable: '--font-body' });
+// Editorial serif for headings, a plain grotesk for everything else: a fund's letterhead, not a toy box.
+const display = Fraunces({ subsets: ['latin'], weight: ['500', '600', '700'], variable: '--font-display' });
+const body = Inter({ subsets: ['latin'], weight: ['400', '500', '600', '700'], variable: '--font-body' });
 const mono = JetBrains_Mono({ subsets: ['latin'], weight: ['500'], variable: '--font-mono' });
 
 export const metadata: Metadata = {
   title: 'Roost',
-  description: 'Adopt a Fledgling — an AI with its own wallet that invests for you.',
+  description: 'Hire an AI fund manager for tokenized stocks. It trades 24/7 on BNB Chain, inside your limits, from your own wallet.',
 };
 export const viewport: Viewport = { themeColor: '#C8FF3D', viewportFit: 'cover' };
 

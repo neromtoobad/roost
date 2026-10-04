@@ -57,6 +57,8 @@ export function syncPet(pet: PetState, fresh: Entry[] = []): Promise<void> {
             realized: pet.realized ?? 0,
             schedule: pet.schedule ?? null,
             care: pet.care ?? null,
+            manager: pet.mandate?.manager ?? null,
+            mandateKey: pet.mandate?.key ?? null,
           },
           entries: fresh.map((e) => ({ ts: e.ts, kind: e.kind, text: e.text, qty: e.qty ?? null, price: e.price ?? null, usd: e.usd ?? null, sig: e.sig ?? null, paper: e.paper ?? true })),
         }),

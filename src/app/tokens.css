@@ -11,10 +11,10 @@
   --down: #D6403F;
   --glow: none;
   --grid: none;
-  --radius-card: 28px;
+  --radius-card: 20px;
   --radius-pill: 999px;
-  --font-display: "Fredoka", "Nunito", system-ui, sans-serif;
-  --font-body: "Nunito", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Fraunces", Georgia, serif;
+  --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
 }
 :root[data-session="night"] {
@@ -36,7 +36,7 @@ body {
   font-family: var(--font-body);
   transition: background-color .6s ease, color .6s ease;
 }
-.pill { border-radius: var(--radius-pill); background: var(--accent); color: var(--on-accent); font-family: var(--font-display); font-weight: 600; height: 56px; box-shadow: var(--glow); }
+.pill { border-radius: var(--radius-pill); background: var(--accent); color: var(--on-accent); font-family: var(--font-body); font-weight: 600; letter-spacing: -0.01em; height: 52px; box-shadow: var(--glow); }
 .card { border-radius: var(--radius-card); background: var(--surface); border: 1px solid var(--line); }
 .num  { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }

@@ -1,17 +1,19 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
+import Link from 'next/link';
 import { ConnectPill, useWallet } from '@/components/Wallet';
-import { petImage, type Mood } from '@/lib/pets';
-import { heldQty, isPaper, readPet, recordSell, stockOf, usePet } from '@/lib/store';
+import { ManagerAvatar } from '@/components/ManagerAvatar';
+import { managerById, managerForRule } from '@/lib/managers';
+import { heldQty, isPaper, readPetByUid, recordSell, stockOf, useFocusPet, usePet } from '@/lib/store';
+import { useSearch } from '@/lib/client';
 import { syncPet } from '@/lib/sync';
 import { bscscan, useBuy, type BuyStep } from '@/lib/trade';
 
-// Letting go of some of what a Fledgling holds. The other half of the loop: a pet you can only feed
-// is a pet you can only lose money into. Same checks as feeding, the other way round — simulated
-// against the wallet, priced against the reference, an exact approval of the token, and the diary
-// written from the receipt.
+// Withdrawing from one position of a mandate. The other half of the loop: money you can only put in
+// is money you can only lose. Same checks as buying, the other way round — simulated against the
+// wallet, priced against the reference, an exact approval of the token, and the journal written from
+// the receipt. A manager that never sells (Margo) still lets you withdraw: the mandate is yours.
 
 const PORTIONS = [0.25, 0.5, 1] as const;
 type Price = { price: number | null };
@@ -27,7 +29,7 @@ function progress(step: BuyStep, name: string, symbol: string): { text: string; 
     case 'approving': return { text: 'Approval confirming on BSC…', tone: 'var(--muted)', hash: step.hash };
     case 'buy': return { text: `Confirm the sale in your wallet. ${step.preflight.summary}`, tone: 'var(--ink)' };
     case 'buying': return { text: 'Sent. Waiting for BSC to confirm it…', tone: 'var(--muted)', hash: step.hash };
-    case 'done': return { text: `${name} let go of ${step.qty.toFixed(4)} ${symbol}. $${step.usdt.toFixed(2)} USDT is back in your wallet.`, tone: 'var(--up)', hash: step.hash };
+    case 'done': return { text: `Withdrawn: ${step.qty.toFixed(4)} ${symbol} sold for $${step.usdt.toFixed(2)} USDT, back in your wallet.`, tone: 'var(--up)', hash: step.hash };
     case 'stopped': return { text: step.reason, tone: 'var(--down)', hash: step.hash };
   }
 }
@@ -35,6 +37,7 @@ function progress(step: BuyStep, name: string, symbol: string): { text: string; 
 export default function ReleasePage() {
   const router = useRouter();
   const pet = usePet();
+  const elsewhere = useFocusPet(useSearch());
   const { address, isConnected } = useWallet();
   const { step, run, reset } = useBuy();
   const [portion, setPortion] = useState<number>(0.5);
@@ -62,6 +65,8 @@ export default function ReleasePage() {
   }, [pet?.wallet, stock?.address, step.at === 'done']); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!pet || !stock) return null;
+  const m = managerById(pet.mandate?.manager) ?? managerForRule(pet.personality);
+  const back = pet.mandate ? `/mandate?key=${pet.mandate.key}` : '/';
   const live = !isPaper(pet);
   const recorded = heldQty(pet);
   // Live: the smaller of what the diary says and what the wallet holds — never sell what is not there.
@@ -71,13 +76,12 @@ export default function ReleasePage() {
   const bound = pet.wallet ?? '';
   const matches = Boolean(address && bound && address.toLowerCase() === bound.toLowerCase());
   const line = progress(step, pet.name, stock.tokenSymbol);
-  const mood: Mood = paperDone || step.at === 'done' ? 'happy' : step.at === 'stopped' ? 'sulking' : busy(step) ? 'nervous' : 'chill';
 
   const releaseLive = async () => {
-    if (step.at === 'done') { router.push('/'); return; }
+    if (step.at === 'done') { router.push(back); return; }
     const t = await run({ species: pet.species, stock }, qty, bound, 'sell');
     if (!t) return;
-    const current = readPet() ?? pet;
+    const current = readPetByUid(pet.uid!) ?? pet;
     const { pet: next, fresh } = recordSell(current, { qty: t.qty, received: t.usdt, hash: t.hash });
     void syncPet(next, fresh);
   };
@@ -87,35 +91,42 @@ export default function ReleasePage() {
     const { pet: next, fresh } = recordSell(pet, { qty, received: qty * price, paper: true });
     void syncPet(next, fresh);
     setPaperDone(true);
-    setTimeout(() => router.push('/'), 1100);
+    setTimeout(() => router.push(back), 900);
   };
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-[430px] flex-col px-4 pb-10 pt-[max(12px,env(safe-area-inset-top))] lg:max-w-[1040px] lg:px-10 lg:pb-12 lg:pt-8">
-      <div className="grid grid-cols-[40px_1fr_40px] items-center">
-        <button onClick={() => router.back()} aria-label="Back" className="text-[22px]">‹</button>
-        <span className="justify-self-center rounded-full border px-3 py-1.5 text-[12px] num" style={{ borderColor: 'var(--ink)' }}>
-          Release from {pet.name}{live ? '' : ' · paper'}
-        </span>
+      <div className="flex items-center justify-between">
+        <Link href={back} className="text-[13px]" style={{ color: 'var(--muted)' }}>‹ {m.name}&rsquo;s mandate</Link>
+        <ConnectPill />
       </div>
+      {elsewhere && (
+        <p className="card mt-3 px-3 py-2 text-[12.5px]" style={{ color: 'var(--down)' }}>
+          That link is for a position held in another browser. This is the one held here.
+        </p>
+      )}
 
-      {/* Desktop: the pet and the question on the left, the choices on the right. */}
-      <div className="lg:mt-6 lg:grid lg:grid-cols-2 lg:items-center lg:gap-8 xl:gap-14">
-      <div className="lg:rounded-[28px] lg:border lg:border-[var(--line)] lg:bg-[var(--surface)] lg:px-6 lg:py-10">
-      <div className="mx-auto mt-4 grid h-52 w-52 place-items-center lg:mt-0 lg:h-64 lg:w-64 xl:h-80 xl:w-80">
-        <motion.img src={petImage(pet.species, mood)} alt="" className="h-48 w-48 object-contain lg:h-60 lg:w-60 xl:h-76 xl:w-76"
-          animate={paperDone || step.at === 'done' ? { y: [0, -8, 0] } : {}} transition={{ duration: 0.5 }} />
+      {/* Desktop: who and what on the left, the choices on the right. */}
+      <div className="mt-5 lg:grid lg:grid-cols-2 lg:items-start lg:gap-10">
+      <div>
+      <div className="flex items-center gap-3">
+        <ManagerAvatar manager={m} size={52} />
+        <div>
+          <p className="text-[12px] font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--muted)' }}>Withdraw{live ? '' : ' · paper'}</p>
+          <p className="text-[14px]" style={{ color: 'var(--muted)' }}>{m.name} · {m.title}</p>
+        </div>
       </div>
-
-      <h1 className="mt-1 text-center text-[24px] font-bold" style={{ fontFamily: 'var(--font-display)' }}>
-        How much should {pet.name} let go of?
+      <h1 className="mt-3 text-[28px] font-semibold leading-tight tracking-tight lg:text-[36px]" style={{ fontFamily: 'var(--font-display)' }}>
+        How much {stock.ticker} do you want back?
       </h1>
-
+      <p className="mt-2 text-[13.5px] leading-relaxed" style={{ color: 'var(--muted)' }}>
+        {m.rule === 'diamond' ? `${m.name} never sells on her own — but the mandate is yours, and so is the money.` : `Sold back to USDT. ${m.name} keeps running the rest of the mandate.`}
+      </p>
       </div>
       <div>
       <div className="card mt-4 grid grid-cols-2 gap-3 px-4 py-3 text-[13px] lg:mt-0">
         <div>
-          <p style={{ color: 'var(--muted)' }}>{pet.name} holds</p>
+          <p style={{ color: 'var(--muted)' }}>The mandate holds</p>
           <p className="num text-[16px] font-bold">{recorded.toFixed(4)} {stock.ticker}</p>
         </div>
         <div>
@@ -128,7 +139,7 @@ export default function ReleasePage() {
 
       {sellable <= 0 ? (
         <p className="card mt-4 px-4 py-3 text-center text-[14px]" style={{ color: 'var(--muted)' }}>
-          {recorded <= 0 ? `Nothing to release yet — ${pet.name} has not bought any ${stock.ticker}.` : `Your wallet holds no ${stock.tokenSymbol} right now, so there is nothing to release from it.`}
+          {recorded <= 0 ? `Nothing to withdraw yet — ${m.name} has not bought any ${stock.ticker} for this mandate.` : `Your wallet holds no ${stock.tokenSymbol} right now, so there is nothing to withdraw from it.`}
         </p>
       ) : (
         <>
@@ -159,23 +170,23 @@ export default function ReleasePage() {
       )}
 
       {sellable > 0 && !live && (
-        <button onClick={releasePaper} disabled={paperDone || !price} className="pill mt-4 w-full text-[18px]">{paperDone ? 'Released' : 'Release (paper)'}</button>
+        <button onClick={releasePaper} disabled={paperDone || !price} className="pill mt-4 w-full text-[18px]">{paperDone ? 'Withdrawn' : 'Withdraw (paper)'}</button>
       )}
       {sellable > 0 && live && !isConnected && (
         <div className="card mt-4 flex items-center justify-between gap-3 px-4 py-3 text-[13px]">
-          <span>Connect the wallet {pet.name} is bound to, <span className="num">{short(bound)}</span>.</span>
+          <span>Connect the wallet this mandate is bound to, <span className="num">{short(bound)}</span>.</span>
           <ConnectPill />
         </div>
       )}
       {sellable > 0 && live && isConnected && !matches && (
         <p className="card mt-4 px-4 py-3 text-[13px]" style={{ color: 'var(--down)' }}>
-          This wallet is <span className="num">{address ? short(address) : '—'}</span>. {pet.name} is bound to{' '}
+          This wallet is <span className="num">{address ? short(address) : '—'}</span>. The mandate is bound to{' '}
           <span className="num">{short(bound)}</span> — switch accounts in your wallet.
         </p>
       )}
       {sellable > 0 && live && matches && (
         <button onClick={releaseLive} disabled={busy(step)} className="pill mt-4 w-full text-[18px]">
-          {busy(step) ? 'Working…' : step.at === 'done' ? `Back to ${pet.name}` : step.at === 'stopped' ? 'Try again' : `Release ${qty.toFixed(4)} ${stock.ticker}`}
+          {busy(step) ? 'Working…' : step.at === 'done' ? `Back to ${m.name}` : step.at === 'stopped' ? 'Try again' : `Withdraw ${qty.toFixed(4)} ${stock.ticker}`}
         </button>
       )}
 

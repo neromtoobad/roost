@@ -1,4 +1,4 @@
-import { decide, HOURLY_YIELD, type Bar, type StrategyState } from './strategy';
+import { decide, type Bar, type StrategyState } from './strategy';
 import { isPaper, totalFed, type Entry, type PetState } from './pet-math';
 
 // Replays the hours since the pet last ticked and applies whatever its strategy decided.
@@ -30,20 +30,12 @@ export function runEngine(pet: PetState, bars: Bar[], now = Date.now()): TickRes
   const lots = [...pet.lots];
   const fresh: Entry[] = [];
   const paper = isPaper(pet);
-  let yieldQty = pet.yieldQty;
+  const yieldQty = pet.yieldQty;
   let proposal = pet.proposal ?? null;
-  let earnedThisRun = 0;
 
   for (let i = 0; i < window.length; i++) {
     const bar = window[i];
     const idx = bars.findIndex((b) => b.t === bar.t);
-
-    // Lending accrues every hour it sits, and compounds — earned shares stay lent rather than
-    // reappearing as idle and re-triggering a lend every hour.
-    if (s.lentQty > 0) {
-      const earned = s.lentQty * HOURLY_YIELD;
-      yieldQty += earned; s.heldQty += earned; s.lentQty += earned; earnedThisRun += earned;
-    }
 
     if (proposal) continue; // one open question at a time; the pet waits for an answer
 
@@ -78,10 +70,6 @@ export function runEngine(pet: PetState, bars: Bar[], now = Date.now()): TickRes
     } else if (intent.kind === 'hold' && !fresh.some((f) => f.kind === 'hold')) {
       fresh.push({ ts: bar.t, text: intent.reason, kind: 'hold' });
     }
-  }
-
-  if (earnedThisRun > 1e-9) {
-    fresh.push({ ts: now, text: `Earned ${earnedThisRun.toFixed(5)} from lending while you were away.`, kind: 'yield', qty: earnedThisRun, paper });
   }
 
   const next: PetState = {

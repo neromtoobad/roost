@@ -1,235 +1,208 @@
 'use client';
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
 import { ConnectPill, useWallet } from '@/components/Wallet';
-import { petImage, type Mood } from '@/lib/pets';
-import { PERSONALITIES, feedPetRemote, feedingDay, isPaper, readPet, recordBuy, setSchedule, stockOf, useFocusPet, usePet } from '@/lib/store';
-import { CADENCE_LABEL, isDue, type Cadence } from '@/lib/care';
+import { ManagerAvatar } from '@/components/ManagerAvatar';
+import { managerById, managerForRule } from '@/lib/managers';
+import { feedPetRemote, feedingDay, isPaper, readPetByUid, recordBuy, stockOf, useFocusPet, usePet } from '@/lib/store';
+import { CADENCE_LABEL, isDue } from '@/lib/care';
 import { syncPet } from '@/lib/sync';
 import { nyseSession } from '@/lib/session';
 import { useSearch } from '@/lib/client';
 import { bscscan, useBuy, type BuyStep } from '@/lib/trade';
+import { usd as money } from '@/lib/format';
 
-// Ondo refuses orders of exactly $5 ("Minimum order amount is 5 USD"), so its pets start higher.
-const AMOUNTS = { bstock: [5, 10, 25, 50], ondo: [10, 25, 50, 100] } as const;
-type Price = { price: number | null; pct24h: number; source: string };
+// One position, one buy. Three ways in:
+//
+//   ?proposal=1   a memo — the manager's rule fired and it is asking for a signature
+//   ?due=1        a contribution day for a live mandate, which only its owner can sign
+//   (neither)     a one-off top-up of this one stock
+//
+// A live buy is the aggregator's swap for this wallet, simulated first, approved for exactly this
+// amount, and recorded from the receipt — never from the quote. Paper credits the manager and lets
+// the rule place it.
 
-/** What the pet will actually do with the money — its strategy, not a generic "buy now". */
-function plan(personality: string, open: boolean, name: string): string {
-  if (personality === 'degen') return `${name} will hunt a 2% dip, at any hour.`;
-  if (personality === 'boomer') return open ? `${name} will deploy it now, keeping 20% in reserve.` : `${name} will wait for regular hours. Not before.`;
-  if (personality === 'quant') return `${name} will deploy it at the next weekly rebalance.`;
-  return open ? `${name} will deploy it now and lend it out.` : `${name} will deploy it at the open and lend it out.`;
-}
-
-/** The same rules for a live pet, which can only ask: Roost cannot sign, and it does not lend. */
-const later: Record<string, string> = {
-  diamond: 'buy at the open', degen: 'hunt a 2% dip', boomer: 'buy in regular hours', quant: 'buy at the weekly rebalance',
-};
+const AMOUNTS = { bstock: [10, 25, 50, 100], ondo: [10, 25, 50, 100] } as const;
+type Price = { price: number | null; pct24h: number; source: string; reference?: number | null };
 
 const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
 const busy = (s: BuyStep) => ['checking', 'approve', 'approving', 'buy', 'buying'].includes(s.at);
 
-/** One line for where the real buy has got to, in the order the wallet will see it. */
-function progress(step: BuyStep, name: string, ticker: string): { text: string; tone: string; hash?: string } | null {
+function progress(step: BuyStep, ticker: string): { text: string; tone: string; hash?: string } | null {
   switch (step.at) {
     case 'idle': return null;
     case 'checking': return { text: 'Simulating it against your wallet first…', tone: 'var(--muted)' };
     case 'approve': return { text: 'Approve exactly this much USDT in your wallet. Then the buy.', tone: 'var(--ink)' };
     case 'approving': return { text: 'Approval confirming on BSC…', tone: 'var(--muted)', hash: step.hash };
     case 'buy': return { text: `Confirm the buy in your wallet. ${step.preflight.summary}`, tone: 'var(--ink)' };
-    case 'buying': return { text: 'Bought. Waiting for BSC to confirm it…', tone: 'var(--muted)', hash: step.hash };
-    case 'done': return { text: `${name} ate. ${step.qty.toFixed(4)} ${ticker} is in your wallet.`, tone: 'var(--up)', hash: step.hash };
+    case 'buying': return { text: 'Sent. Waiting for BSC to confirm it…', tone: 'var(--muted)', hash: step.hash };
+    case 'done': return { text: `Done. ${step.qty.toFixed(4)} ${ticker} is in your wallet.`, tone: 'var(--up)', hash: step.hash };
     case 'stopped': return { text: step.reason, tone: 'var(--down)', hash: step.hash };
   }
-}
-
-// A fed pet is content, not ecstatic: feeding is not an event to celebrate, only care milestones are.
-function face(step: BuyStep, paperDone: boolean): Mood {
-  if (paperDone || step.at === 'done') return 'happy';
-  if (step.at === 'stopped') return 'sulking';
-  if (busy(step)) return 'nervous';
-  return 'hungry';
 }
 
 export default function FeedPage() {
   const router = useRouter();
   const pet = usePet();
   const q = useSearch();
-  // From the Telegram pet: "Sign it" names the pet, which may not be the one last on screen.
+  // From a memo, a mandate or Telegram: the link names the position.
   const elsewhere = useFocusPet(q);
   const { address, isConnected } = useWallet();
   const { step, run, reset } = useBuy();
-  const [usd, setUsd] = useState<number | null>(null);
+  const [pick, setPick] = useState<number | null>(null);
   const [price, setPrice] = useState<Price | null>(null);
   const [paperDone, setPaperDone] = useState(false);
-  // Make it a habit: the same feed on a schedule. Scheduled saving beats everything else (lib/care).
-  const [repeat, setRepeat] = useState<Cadence | null>(null);
 
   useEffect(() => {
     if (!pet) return;
     let alive = true;
-    fetch(`/api/price/${stockOf(pet).address}`).then((r) => r.json()).then((p: Price) => { if (alive) setPrice(p); }).catch(() => {});
+    fetch(`/api/price/${stockOf(pet).address}`).then((r) => (r.ok ? r.json() : null)).then((p: Price | null) => { if (alive && p) setPrice(p); }).catch(() => {});
     return () => { alive = false; };
-  }, [pet?.uid, pet?.species]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pet?.uid]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!pet) return null;
+  const m = managerById(pet.mandate?.manager) ?? managerForRule(pet.personality);
   const sp = stockOf(pet);
   const live = !isPaper(pet);
-  const open = nyseSession() === 'regular';
-  // Arriving from "Sign it": the amount is the pet's own decision, not a choice on this screen.
-  const signing = live && q.get('proposal') === '1' && pet.proposal ? pet.proposal : null;
-  const amounts = AMOUNTS[sp.platform];
-  // Arriving from "Sign it" on a feeding day: the amount is the schedule's, and a success keeps it.
+  const back = pet.mandate ? `/mandate?key=${pet.mandate.key}` : '/';
+  const signing = q.get('proposal') === '1' && pet.proposal ? pet.proposal : null;
   const due = q.get('due') === '1' && pet.schedule && isDue(pet.schedule) ? pet.schedule : null;
-  const amount = signing ? signing.usd : due ? due.usd : usd ?? amounts[0];
+  const amounts = AMOUNTS[sp.platform];
+  const amount = signing ? signing.usd : due ? due.usd : pick ?? amounts[1];
   const shares = price?.price ? amount / price.price : null;
   const bound = pet.wallet ?? '';
   const matches = Boolean(address && bound && address.toLowerCase() === bound.toLowerCase());
-  const line = progress(step, pet.name, sp.ticker);
+  const line = progress(step, sp.ticker);
+  const settle = (p: typeof pet) => (due ? feedingDay(p, 'kept') : p);
 
-  /** After any feed: a feeding day kept, or a new schedule set from the Repeat choice. */
-  const settle = (p: typeof pet) => (due ? feedingDay(p, 'kept') : repeat ? setSchedule(p, amount, repeat) : p);
-
-  const feedPaper = () => {
-    void feedPetRemote(pet, amount, open).then((p) => syncPet(settle(p)));
+  const addPaper = () => {
+    void feedPetRemote(pet, amount, nyseSession() === 'regular').then((p) => syncPet(settle(p)));
     setPaperDone(true);
-    setTimeout(() => router.push('/?fed=1'), 1100);
+    setTimeout(() => router.push(back), 900);
   };
-
-  // Fund it and let its rule decide when — the engine will ask for a signature when it fires.
-  const feedLater = () => {
-    void feedPetRemote(pet, amount, open).then((p) => syncPet(settle(p)));
-    router.push('/?fed=1');
+  /** Live, but let the manager time it: a pledge, which comes back as a memo when the rule fires. */
+  const pledge = () => {
+    void feedPetRemote(pet, amount, nyseSession() === 'regular').then((p) => syncPet(settle(p)));
+    router.push(back);
   };
-
   const buyNow = async () => {
-    if (step.at === 'done') { router.push('/?fed=1'); return; }
+    if (step.at === 'done') { router.push(back); return; }
     const b = await run({ species: pet.species, stock: sp }, amount, bound);
     if (!b) return;
-    // The pet may have ticked while the wallet was open; record against the latest copy.
-    const current = readPet() ?? pet;
-    const reason = signing ? `You signed. ${b.qty.toFixed(4)} ${sp.ticker} — ${signing.reason}.` : undefined;
+    // The position may have ticked while the wallet was open; record against the latest copy.
+    const current = readPetByUid(pet.uid!) ?? pet;
+    const reason = signing ? `You signed ${m.name}'s memo: ${b.qty.toFixed(4)} ${sp.ticker} — ${signing.reason}.` : undefined;
     const { pet: bought, fresh } = recordBuy(current, { hash: b.hash, qty: b.qty, spent: b.usdt, fromCash: Boolean(signing), reason });
     void syncPet(settle(bought), fresh);
   };
 
+  const heading = signing ? `${m.name} wants ${money(signing.usd)} in ${sp.ticker}.`
+    : due ? `Contribution day: ${money(due.usd)} into ${sp.ticker}, ${CADENCE_LABEL[due.every]}.`
+    : `Add to ${sp.ticker}`;
+
   return (
-    <main className="mx-auto flex min-h-dvh max-w-[430px] flex-col px-4 pb-10 pt-[max(12px,env(safe-area-inset-top))] lg:max-w-[1040px] lg:px-10 lg:pb-12 lg:pt-8">
-      <div className="grid grid-cols-[40px_1fr_40px] items-center">
-        <button onClick={() => router.back()} aria-label="Back" className="text-[22px]">‹</button>
-        <span className="justify-self-center rounded-full border px-3 py-1.5 text-[12px] num" style={{ borderColor: 'var(--ink)' }}>
-          {signing ? `${pet.name} asks` : `Feed ${pet.name}`}{live ? '' : ' · paper'}
-        </span>
+    <main className="mx-auto flex min-h-dvh max-w-[430px] flex-col px-4 pb-10 pt-[max(16px,env(safe-area-inset-top))] lg:max-w-[1000px] lg:px-10 lg:pb-12 lg:pt-8">
+      <div className="flex items-center justify-between">
+        <Link href={back} className="text-[13px]" style={{ color: 'var(--muted)' }}>‹ {m.name}&rsquo;s mandate</Link>
+        <ConnectPill />
       </div>
 
       {elsewhere && (
         <p className="card mt-3 px-3 py-2 text-[12.5px]" style={{ color: 'var(--down)' }}>
-          That link is for a Fledgling that lives in another browser. This is {pet.name} — the one hatched here.
+          That link is for a position held in another browser. This is the one held here.
         </p>
       )}
 
-      {/* Desktop: the pet and the question on the left, the choices on the right. */}
-      <div className="lg:mt-6 lg:grid lg:grid-cols-2 lg:items-center lg:gap-8 xl:gap-14">
-      <div className="lg:rounded-[28px] lg:border lg:border-[var(--line)] lg:bg-[var(--surface)] lg:px-6 lg:py-10">
-      <div className="relative mx-auto mt-4 grid h-56 w-56 place-items-center lg:mt-0 lg:h-64 lg:w-64 xl:h-80 xl:w-80">
-        <motion.img src={petImage(pet.species, face(step, paperDone))} alt="" className="h-52 w-52 object-contain lg:h-60 lg:w-60 xl:h-76 xl:w-76"
-          animate={paperDone || step.at === 'done' ? { y: [0, -6, 0] } : {}} transition={{ duration: 0.4 }} />
-      </div>
-
-      <h1 className="mt-1 text-center text-[24px] font-bold" style={{ fontFamily: 'var(--font-display)' }}>
-        {signing ? `${pet.name} wants $${signing.usd.toFixed(2)} in.` : due ? `Feeding day: $${due.usd} ${CADENCE_LABEL[due.every]}.` : `How much do you want to feed ${pet.name}?`}
-      </h1>
-
-      </div>
-      <div>
-      {!signing && !due && (
-        <div className="mt-5 grid grid-cols-4 gap-2 lg:mt-0">
-          {amounts.map((a) => (
-            <button key={a} onClick={() => { setUsd(a); if (step.at === 'stopped') reset(); }} disabled={busy(step) || step.at === 'done'}
-              className="rounded-full py-3 text-[16px] font-bold num"
-              style={amount === a ? { background: 'var(--accent)', color: 'var(--on-accent)', boxShadow: 'var(--glow)' } : { background: 'var(--surface)', border: '1px solid var(--line)' }}>${a}</button>
-          ))}
-        </div>
-      )}
-
-      {!signing && !due && (
-        <div className="mt-3">
-          <p className="text-[12px] font-semibold" style={{ color: 'var(--muted)' }}>Repeat</p>
-          <div className="mt-1.5 grid grid-cols-4 gap-2">
-            {([null, 'week', 'fortnight', 'month'] as (Cadence | null)[]).map((c) => (
-              <button key={c ?? 'once'} onClick={() => setRepeat(c)} disabled={busy(step) || step.at === 'done'}
-                className="rounded-full py-2 text-[12.5px] font-bold"
-                style={repeat === c ? { background: 'var(--ink)', color: 'var(--canvas)' } : { background: 'var(--surface)', border: '1px solid var(--line)' }}>
-                {c === null ? 'Once' : c === 'week' ? 'Weekly' : c === 'fortnight' ? '2 weeks' : 'Monthly'}
-              </button>
-            ))}
+      <div className="mt-5 lg:grid lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start lg:gap-10">
+        <section>
+          <div className="flex items-center gap-3">
+            <ManagerAvatar manager={m} size={52} />
+            <div>
+              <p className="text-[12px] font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--muted)' }}>{signing ? 'Memo' : due ? 'Contribution' : 'Top-up'}{live ? '' : ' · paper'}</p>
+              <p className="text-[14px]" style={{ color: 'var(--muted)' }}>{m.name} · {m.title}</p>
+            </div>
           </div>
-          {repeat && (
-            <p className="mt-1.5 text-[12px]" style={{ color: 'var(--muted)' }}>
-              ${amount} {CADENCE_LABEL[repeat]} from today. {live ? 'You still sign each one — Roost never holds your keys.' : 'On paper, it feeds itself.'}
-            </p>
+          <h1 className="mt-3 text-[28px] font-semibold leading-tight tracking-tight lg:text-[36px]" style={{ fontFamily: 'var(--font-display)' }}>{heading}</h1>
+
+          <div className="card mt-4 grid grid-cols-2 gap-3 px-4 py-3 text-[13px]">
+            <div>
+              <p style={{ color: 'var(--muted)' }}>Stock</p>
+              <p className="text-[15px] font-semibold">{sp.company}</p>
+              <p className="num text-[12px]" style={{ color: 'var(--muted)' }}>{sp.ticker} · {sp.tokenSymbol}</p>
+            </div>
+            <div>
+              <p style={{ color: 'var(--muted)' }}>Price now</p>
+              <p className="num text-[15px] font-semibold">{price?.price ? money(price.price) : '…'}</p>
+              {shares && <p className="num text-[12px]" style={{ color: 'var(--muted)' }}>≈ {shares.toFixed(4)} for {money(amount)}</p>}
+            </div>
+          </div>
+
+          <p className="mt-3 text-[14px] leading-relaxed">
+            {signing
+              ? <>The rule fired: <b>{signing.reason}</b>. {m.voice.asks}</>
+              : live
+                ? <>A real buy from your wallet. {m.name}&rsquo;s rule: {m.rules[0].toLowerCase()}</>
+                : <>Paper. {m.name} places it by the rule: {m.rules[0].toLowerCase()}</>}
+          </p>
+          {live && (
+            <ol className="mt-3 grid gap-1 text-[12.5px]" style={{ color: 'var(--muted)' }}>
+              <li>1 · Simulated against your wallet with Binance&rsquo;s Transaction API</li>
+              <li>2 · Refused if it costs more than 3% over {sp.ticker}&rsquo;s reference price</li>
+              <li>3 · An approval of exactly this much USDT, to exactly the router that spends it</li>
+              <li>4 · The swap you sign — then recorded from the receipt, not the quote</li>
+            </ol>
           )}
-        </div>
-      )}
+        </section>
 
-      <div className="card mt-4 flex items-start gap-3 px-4 py-3 text-[14px]">
-        <span aria-hidden>{PERSONALITIES[pet.personality].icon}</span>
-        <span>
-          {signing
-            ? <>Its rule fired: {signing.reason}. Nothing moves until you sign.</>
-            : live
-              ? <>{pet.name} buys it now, from your wallet — you sign each step.</>
-              : plan(pet.personality, open, pet.name)}
-          {shares && <> About <b className="num">{shares.toFixed(4)} {sp.ticker}</b> at today&rsquo;s price.</>}
-        </span>
-      </div>
+        <aside className="mt-5 lg:sticky lg:top-8 lg:mt-0">
+          <div className="card px-4 py-4">
+            {!signing && !due && (
+              <div className="grid grid-cols-4 gap-2">
+                {amounts.map((a) => (
+                  <button key={a} onClick={() => { setPick(a); if (step.at === 'stopped') reset(); }} disabled={busy(step) || step.at === 'done'}
+                    className="rounded-[12px] py-2.5 text-[14px] font-semibold num"
+                    style={amount === a ? { background: 'var(--ink)', color: 'var(--canvas)' } : { background: 'var(--canvas)', border: '1px solid var(--line)' }}>${a}</button>
+                ))}
+              </div>
+            )}
 
-      {line && (
-        <div className="card mt-3 px-4 py-3 text-[13.5px]" style={{ color: line.tone }}>
-          <p className="font-semibold leading-snug">{line.text}</p>
-          {line.hash && (
-            <a href={bscscan(line.hash)} target="_blank" rel="noreferrer" className="mt-1 inline-block text-[12px] num" style={{ color: 'var(--accent)' }}>
-              View on BscScan ↗
-            </a>
-          )}
-        </div>
-      )}
+            {line && (
+              <div className="mt-3 text-[13px]" style={{ color: line.tone }}>
+                <p className="font-semibold leading-snug">{line.text}</p>
+                {line.hash && <a href={bscscan(line.hash)} target="_blank" rel="noreferrer" className="mt-1 inline-block text-[12px] num underline">View on BscScan ↗</a>}
+              </div>
+            )}
 
-      {!live && (
-        <button onClick={feedPaper} disabled={paperDone} className="pill mt-4 w-full text-[18px]">{paperDone ? 'Fed!' : 'Confirm'}</button>
-      )}
-
-      {live && !isConnected && (
-        <div className="card mt-4 flex items-center justify-between gap-3 px-4 py-3 text-[13px]">
-          <span>Connect the wallet {pet.name} is bound to, <span className="num">{short(bound)}</span>.</span>
-          <ConnectPill />
-        </div>
-      )}
-      {live && isConnected && !matches && (
-        <p className="card mt-4 px-4 py-3 text-[13px]" style={{ color: 'var(--down)' }}>
-          This wallet is <span className="num">{address ? short(address) : '—'}</span>. {pet.name} is bound to{' '}
-          <span className="num">{short(bound)}</span> — switch accounts in your wallet.
-        </p>
-      )}
-      {live && matches && (
-        <button onClick={buyNow} disabled={busy(step)} className="pill mt-4 w-full text-[18px]">
-          {busy(step) ? 'Working…' : step.at === 'done' ? `Back to ${pet.name}` : step.at === 'stopped' ? 'Try again' : `Buy now · $${amount}`}
-        </button>
-      )}
-      {live && !signing && (step.at === 'idle' || step.at === 'stopped') && (
-        <button onClick={feedLater} className="mt-3 text-center text-[13px] underline" style={{ color: 'var(--muted)' }}>
-          Or just feed it — let {pet.name} {later[pet.personality]} and ask you to sign then
-        </button>
-      )}
-
-      <p className="mt-3 text-center text-[12px]" style={{ color: 'var(--muted)' }}>
-        {live
-          ? 'Roost never holds your keys. The diary records what the chain says, not the quote.'
-          : 'Paper: no wallet was bound at adoption, so nothing real moves.'}
-      </p>
-      </div>
+            {!live && (
+              <button onClick={addPaper} disabled={paperDone} className="pill mt-3 w-full text-[15px]">{paperDone ? 'Added' : `Add ${money(amount, 0)} (paper)`}</button>
+            )}
+            {live && !isConnected && (
+              <div className="mt-3 flex items-center justify-between gap-3 text-[12.5px]">
+                <span>Connect the wallet this mandate is bound to, <span className="num">{short(bound)}</span>.</span>
+                <ConnectPill />
+              </div>
+            )}
+            {live && isConnected && !matches && (
+              <p className="mt-3 text-[12.5px]" style={{ color: 'var(--down)' }}>
+                This wallet is <span className="num">{address ? short(address) : '—'}</span>; the mandate is bound to <span className="num">{short(bound)}</span>. Switch accounts in your wallet.
+              </p>
+            )}
+            {live && matches && (
+              <button onClick={() => void buyNow()} disabled={busy(step)} className="pill mt-3 w-full text-[15px]">
+                {busy(step) ? 'Working…' : step.at === 'done' ? `Back to ${m.name}` : step.at === 'stopped' ? 'Try again' : signing ? `Sign · ${money(amount)}` : `Buy now · ${money(amount)}`}
+              </button>
+            )}
+            {live && !signing && (step.at === 'idle' || step.at === 'stopped') && (
+              <button onClick={pledge} className="mt-2 w-full text-center text-[12.5px] underline" style={{ color: 'var(--muted)' }}>
+                Or let {m.name} time it — you will get a memo to sign when the rule fires
+              </button>
+            )}
+          </div>
+          <p className="mt-2 px-1 text-[11.5px] leading-snug" style={{ color: 'var(--muted)' }}>
+            {live ? 'Roost never holds your keys or your USDT.' : 'Paper: no wallet was bound when this manager was hired, so nothing real moves.'}
+          </p>
+        </aside>
       </div>
     </main>
   );

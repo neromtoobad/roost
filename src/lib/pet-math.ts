@@ -1,11 +1,13 @@
 import { SPECIES, type Species, type Stock } from './pets';
 import type { Care, Schedule } from './care';
+import type { ManagerId } from './managers';
 
 // The shape of a Fledgling and the arithmetic over it. Deliberately free of React and of
 // localStorage: the browser, the API routes and the hourly worker all reason about the same pet,
 // so the numbers a judge sees on the board are the numbers the engine acted on.
 
-export type Personality = 'diamond' | 'degen' | 'boomer' | 'quant';
+/** The rule a manager trades by. The first four predate the managers; `night` and `momentum` are theirs. */
+export type Personality = 'diamond' | 'degen' | 'boomer' | 'quant' | 'night' | 'momentum';
 
 export type Lot = { ts: number; qty: number; price: number };
 export type EntryKind = 'feed' | 'buy' | 'sell' | 'lend' | 'yield' | 'hold' | 'ask' | 'system';
@@ -45,6 +47,8 @@ export type PetState = {
   care?: Care;
   /** Hatched with others from one theme, and fed with them. `key` is the hatching; see lib/litters. */
   litter?: { id: string; key: string; name: string };
+  /** The mandate this position belongs to: which manager runs it, for one client. See lib/managers. */
+  mandate?: { key: string; manager: ManagerId };
 };
 
 /** The stock a pet holds: its own if it hatched from one, else its species' signature stock. */

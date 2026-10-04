@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { dbEnabled, ensureSchema, ownerHash, pool } from '@/lib/db';
 import { invalidate } from '@/lib/swr';
+import { managerById } from '@/lib/managers';
+
+/** Only a manager that exists is stored; anything else is dropped rather than trusted. */
+const known = (id: string | null | undefined) => (managerById(id) ? id! : null);
 
 // Mirror a Fledgling into Postgres. The browser posts its owner key here over same-origin HTTPS;
 // only the hash is stored, and an update that doesn't match the hash is refused rather than
@@ -14,6 +18,7 @@ type Body = {
     lastTickAt: number; agentId?: string | null; wallet?: string | null; launch?: unknown; proposal?: unknown; paper: boolean;
     tokenAddress?: string | null; tokenSymbol?: string | null; realized?: number;
     schedule?: unknown; care?: unknown;
+    manager?: string | null; mandateKey?: string | null;
   };
   entries?: { ts: number; kind: string; text: string; qty?: number | null; price?: number | null; usd?: number | null; sig?: string | null; paper?: boolean }[];
 };
@@ -39,7 +44,8 @@ export async function POST(req: Request) {
                          yield_qty=$9, last_tick_at=$10, agent_id=$11, wallet=$12, launch=$13::jsonb,
                          paper=$14, proposal=$15::jsonb, token_address=coalesce($16, token_address),
                          token_symbol=coalesce($17, token_symbol), realized=$18,
-                         schedule=$19::jsonb, care=$20::jsonb, updated_at=now()
+                         schedule=$19::jsonb, care=$20::jsonb,
+                         manager=coalesce($21, manager), mandate_key=coalesce($22, mandate_key), updated_at=now()
            where id=$1 and owner_hash=$2
              and (last_tick_at is null or last_tick_at <= $10) returning id`,
         [id, hash, pet.name, pet.personality, pet.streak, pet.cash, JSON.stringify(pet.lots), pet.lentQty,
@@ -47,7 +53,8 @@ export async function POST(req: Request) {
          pet.launch ? JSON.stringify(pet.launch) : null, pet.paper,
          pet.proposal ? JSON.stringify(pet.proposal) : null,
          pet.tokenAddress ?? null, pet.tokenSymbol ?? null, pet.realized ?? 0,
-         pet.schedule ? JSON.stringify(pet.schedule) : null, pet.care ? JSON.stringify(pet.care) : null],
+         pet.schedule ? JSON.stringify(pet.schedule) : null, pet.care ? JSON.stringify(pet.care) : null,
+         known(pet.manager), pet.mandateKey ?? null],
       );
       if (!r.rowCount) {
         // Either this isn't your pet, or the hourly worker has already ticked past the state the
@@ -61,14 +68,15 @@ export async function POST(req: Request) {
       const r = await db.query(
         `insert into pets (owner_hash, species, ticker, name, personality, adopted_at, streak, cash,
                            lots, lent_qty, yield_qty, last_tick_at, agent_id, wallet, launch, paper, proposal,
-                           token_address, token_symbol, realized, schedule, care)
-         values ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,$11,$12,$13,$14,$15::jsonb,$16,$17::jsonb,$18,$19,$20,$21::jsonb,$22::jsonb) returning id`,
+                           token_address, token_symbol, realized, schedule, care, manager, mandate_key)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,$11,$12,$13,$14,$15::jsonb,$16,$17::jsonb,$18,$19,$20,$21::jsonb,$22::jsonb,$23,$24) returning id`,
         [hash, pet.species, pet.ticker, pet.name, pet.personality, iso(pet.adoptedAt), pet.streak, pet.cash,
          JSON.stringify(pet.lots), pet.lentQty, pet.yieldQty, iso(pet.lastTickAt), pet.agentId ?? null,
          pet.wallet ?? null, pet.launch ? JSON.stringify(pet.launch) : null, pet.paper,
          pet.proposal ? JSON.stringify(pet.proposal) : null,
          pet.tokenAddress ?? null, pet.tokenSymbol ?? null, pet.realized ?? 0,
-         pet.schedule ? JSON.stringify(pet.schedule) : null, pet.care ? JSON.stringify(pet.care) : null],
+         pet.schedule ? JSON.stringify(pet.schedule) : null, pet.care ? JSON.stringify(pet.care) : null,
+         known(pet.manager), pet.mandateKey ?? null],
       );
       id = r.rows[0].id as string;
     }
@@ -88,7 +96,7 @@ export async function POST(req: Request) {
     }
 
     // What the board and the duel card show just changed; do not serve them from before it.
-    invalidate('leaderboard', 'duels');
+    invalidate('leaderboard', 'duels', 'managers');
     return NextResponse.json({ ok: true, id });
   } catch (e) {
     // The cloud is a mirror; never break the app because it's unreachable.

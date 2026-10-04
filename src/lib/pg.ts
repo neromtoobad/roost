@@ -78,6 +78,11 @@ alter table pets add column if not exists tg_link text;
 alter table pets add column if not exists tg_told_for bigint;
 create index if not exists pets_tg_link_idx on pets (tg_link) where tg_link is not null;
 create index if not exists pets_tg_chat_idx on pets (tg_chat_id) where tg_chat_id is not null;
+-- Which manager runs a position, and which client mandate it belongs to. A manager's
+-- public track record is every position filed under it, across all clients.
+alter table pets add column if not exists manager text;
+alter table pets add column if not exists mandate_key text;
+create index if not exists pets_manager_idx on pets (manager) where manager is not null;
 create index if not exists pets_owner_hash_idx on pets (owner_hash);
 create index if not exists pets_updated_idx    on pets (updated_at desc);
 
