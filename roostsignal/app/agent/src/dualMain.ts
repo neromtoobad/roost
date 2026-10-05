@@ -83,7 +83,7 @@ import { buildModel } from "./model.js";
 import { requestLimitContext } from "./requestLimits.js";
 import type { RunWork } from "./sellerCore.js";
 import { LLM_READ_TOOLS } from "./tools.js";
-import { ROOST_TOOLS } from "./roostTools.js";
+import { ROOST_TOOLS, reportWithoutModel } from "./roostTools.js";
 
 const APP_NAME = "agent";
 
@@ -177,55 +177,65 @@ export function buildRunWork(): RunWork {
   // the LLM) — missing-key errors surface at notify_funded delivery time.
   let model: ReturnType<typeof buildModel> | undefined;
   return async (prompt, { abortSignal }) => {
-    model ??= buildModel(); // managed model with the auto-renew hook (delivery only)
-    const result = await generateText({
-      model,
-      system:
-        "You are a Roost Fledgling: a seller agent that reports how far a tokenized stock on BNB " +
-        "Smart Chain has drifted from the real share it stands for. The runtime has already " +
-        "authorized this task through its configured commerce rail. Complete it now; do not ask " +
-        "for a job ID or additional payment.\n\n" +
-        "GROUNDING — this matters more than anything else here. Every number you report MUST come " +
-        "from a roost_* tool call in this conversation. Call roost_spread_report before answering " +
-        "anything about a ticker. Never estimate, recall or interpolate a price, a spread or a " +
-        "market status: you are being paid for measured numbers, and an invented one is worse " +
-        "than no answer. If a tool fails or returns no listing, say exactly that.\n\n" +
-        "WHAT THE NUMBERS MEAN. `spreadPct` is the executable on-chain price against the " +
-        "ratio-adjusted reference price — positive means the token trades above the share. " +
-        "`underlyingOpen` says whether the exchange behind it is open; when it is false the " +
-        "reference leg is STALE by design, which is the interesting case, not an error. " +
-        "`priceSource` of 'oracle' means no taker address was configured, so the price is a read " +
-        "rather than a real fill — say so rather than presenting it as executable. " +
-        "`statusSource` of 'nyse-clock' means the API omitted market status and Roost fell back to " +
-        "its own exchange clock.\n\n" +
-        "SAME STOCK, TWO ISSUERS. `roost_cross_issuer` compares one ticker across bStock and Ondo. " +
-        "Every price in it is PER SHARE, ratio applied, so the issuers compare directly. " +
-        "`cheapestBuy` and `bestSell` say where a trade of that size executes best — execution " +
-        "quality, not a reason to trade. `arbitrage.pct` is before gas and is usually negative; " +
-        "when it is, say plainly that there is no arbitrage. When it is positive, lead with " +
-        "`arbitrage.afterGasUsd` instead — gas is about $0.03 a swap, which erases most of it " +
-        "at small sizes. The two issuers carry different " +
-        "reference prices (`referenceGapPct`) — do not call either one 'the' reference. A side " +
-        "with a note instead of a usable price could not be quoted or was dropped as a broken " +
-        "pool; report the note rather than the price.\n\n" +
-        "Be concrete and concise. Lead with the gap and whether the exchange is open. Report " +
-        "what the data shows; never give investment advice or tell anyone what to trade. " +
-        "Use the read-only chain tools when on-chain context helps.",
-      prompt,
-      // LLM_READ_TOOLS = read-only chain tools (wallet, balances,
-      // ERC-8004/8183 queries). Edit `tools.ts` to add/remove. These are
-      // READ-ONLY — the agent never signs via a tool; all signing is in
-      // signing.ts (fixed code).
-      // To let the agent BUY paid data at work time (e.g. CMC market data
-      // after `bag x402 trust cmc` + `bag recipe code x402-buyer`), spread
-      // the emitted tool set — payee + per-call/daily caps stay locked in
-      // studio.toml:
-      //   import { X402_BUYER_TOOLS } from "./x402Buyer.js";
-      //   tools: { ...LLM_READ_TOOLS, ...X402_BUYER_TOOLS },
-      tools: { ...LLM_READ_TOOLS, ...ROOST_TOOLS },
-      stopWhen: stepCountIs(8), // bounded tool-call loop, then final text
-      abortSignal,
-    });
+    let result: Awaited<ReturnType<typeof generateText>>;
+    try {
+      model ??= buildModel(); // managed model with the auto-renew hook (delivery only)
+      result = await generateText({
+        model,
+        system:
+          "You are a Roost Fledgling: a seller agent that reports how far a tokenized stock on BNB " +
+          "Smart Chain has drifted from the real share it stands for. The runtime has already " +
+          "authorized this task through its configured commerce rail. Complete it now; do not ask " +
+          "for a job ID or additional payment.\n\n" +
+          "GROUNDING — this matters more than anything else here. Every number you report MUST come " +
+          "from a roost_* tool call in this conversation. Call roost_spread_report before answering " +
+          "anything about a ticker. Never estimate, recall or interpolate a price, a spread or a " +
+          "market status: you are being paid for measured numbers, and an invented one is worse " +
+          "than no answer. If a tool fails or returns no listing, say exactly that.\n\n" +
+          "WHAT THE NUMBERS MEAN. `spreadPct` is the executable on-chain price against the " +
+          "ratio-adjusted reference price — positive means the token trades above the share. " +
+          "`underlyingOpen` says whether the exchange behind it is open; when it is false the " +
+          "reference leg is STALE by design, which is the interesting case, not an error. " +
+          "`priceSource` of 'oracle' means no taker address was configured, so the price is a read " +
+          "rather than a real fill — say so rather than presenting it as executable. " +
+          "`statusSource` of 'nyse-clock' means the API omitted market status and Roost fell back to " +
+          "its own exchange clock.\n\n" +
+          "SAME STOCK, TWO ISSUERS. `roost_cross_issuer` compares one ticker across bStock and Ondo. " +
+          "Every price in it is PER SHARE, ratio applied, so the issuers compare directly. " +
+          "`cheapestBuy` and `bestSell` say where a trade of that size executes best — execution " +
+          "quality, not a reason to trade. `arbitrage.pct` is before gas and is usually negative; " +
+          "when it is, say plainly that there is no arbitrage. When it is positive, lead with " +
+          "`arbitrage.afterGasUsd` instead — gas is about $0.03 a swap, which erases most of it " +
+          "at small sizes. The two issuers carry different " +
+          "reference prices (`referenceGapPct`) — do not call either one 'the' reference. A side " +
+          "with a note instead of a usable price could not be quoted or was dropped as a broken " +
+          "pool; report the note rather than the price.\n\n" +
+          "Be concrete and concise. Lead with the gap and whether the exchange is open. Report " +
+          "what the data shows; never give investment advice or tell anyone what to trade. " +
+          "Use the read-only chain tools when on-chain context helps.",
+        prompt,
+        // LLM_READ_TOOLS = read-only chain tools (wallet, balances,
+        // ERC-8004/8183 queries). Edit `tools.ts` to add/remove. These are
+        // READ-ONLY — the agent never signs via a tool; all signing is in
+        // signing.ts (fixed code).
+        // To let the agent BUY paid data at work time (e.g. CMC market data
+        // after `bag x402 trust cmc` + `bag recipe code x402-buyer`), spread
+        // the emitted tool set — payee + per-call/daily caps stay locked in
+        // studio.toml:
+        //   import { X402_BUYER_TOOLS } from "./x402Buyer.js";
+        //   tools: { ...LLM_READ_TOOLS, ...X402_BUYER_TOOLS },
+        tools: { ...LLM_READ_TOOLS, ...ROOST_TOOLS },
+        stopWhen: stepCountIs(8), // bounded tool-call loop, then final text
+        abortSignal,
+      });
+    } catch (e) {
+      // The free model tier refuses calls when it is busy ("Too Many Requests"), and a copy run
+      // without an LLM key has no model at all. The numbers never came from the model, so answer
+      // with Roost's own report rather than fail the buyer.
+      if (abortSignal?.aborted) throw e;
+      console.error("[work] model unavailable, answering from Roost's report —", e instanceof Error ? e.message : String(e));
+      return reportWithoutModel(prompt);
+    }
     return finalAnswer(result.text);
   };
 }
@@ -271,7 +281,16 @@ function flatQuery(query: Record<string, unknown>): Record<string, string> {
 }
 
 function b402Work(runWork: RunWork): B402RunWork {
-  return ({ prompt }) => runWork(prompt, { sessionId: "b402" });
+  // The runtime's free path answers a failure with a bare "work failed" and logs nothing, so say
+  // what broke here, where `bag deploy logs` can see it.
+  return async ({ prompt }) => {
+    try {
+      return await runWork(prompt, { sessionId: "b402" });
+    } catch (e) {
+      console.error("[x402] work failed —", e instanceof Error ? `${e.name}: ${e.message}` : String(e));
+      throw e;
+    }
+  };
 }
 
 // ── serving ───────────────────────────────────────────────────────────────────

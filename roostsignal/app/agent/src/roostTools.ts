@@ -21,11 +21,17 @@
 import { tool, type ToolSet } from "ai";
 import { z } from "zod";
 
+// The live app by default: `bag deploy` ships only its own fixed list of secrets to the managed
+// runtime, never a project's other .env.local keys, so a deployed agent has no ROOST_URL of its
+// own. Locally, set ROOST_URL=http://localhost:3210 to point it at a dev server.
 const ROOST_URL = () =>
-  (process.env.ROOST_URL || "http://localhost:3210").replace(/\/+$/, "");
+  (process.env.ROOST_URL || "https://roost.nerom.site").replace(/\/+$/, "");
 
-/** The taker address quotes are priced against. Ondo refuses to quote without one. */
-const TAKER = () => process.env.ROOST_TAKER_ADDRESS || "";
+/**
+ * The taker address quotes are priced against. Ondo refuses to quote without one. Defaults to
+ * this agent's own wallet (a quote only — nothing is signed), for the same reason as above.
+ */
+const TAKER = () => process.env.ROOST_TAKER_ADDRESS || "0x33eeB13C4DF0aCC6efd57F3d5FD061c155E44dF7";
 
 async function getJson(path: string): Promise<unknown> {
   const url = `${ROOST_URL()}${path}`;
@@ -109,3 +115,46 @@ export const ROOST_TOOLS: ToolSet = {
       getJson(`/api/signal?widest=1&limit=${limit ?? 10}`),
   }),
 };
+
+// ── without the model ─────────────────────────────────────────────────────────
+
+/** The six Fledglings by name, so "what is Pango doing" finds NVDA. */
+const CREATURES: Record<string, string> = { pango: "NVDA", coil: "TSLA", bara: "AAPL", rivet: "SPCX", patch: "CRWV", fen: "RDDT" };
+const NOT_TICKERS = new Set(["I", "A", "AN", "THE", "US", "USA", "ETF", "NYSE", "BSC", "BNB", "AI", "OK", "USD", "USDT", "CEO", "IPO", "PM", "AM", "UTC"]);
+
+/** The stock a prompt asks about: an explicit ticker first, then a Fledgling's name. */
+export function tickerIn(prompt: string): string | null {
+  for (const w of prompt.match(/\b[A-Z]{1,5}\b/g) ?? []) if (!NOT_TICKERS.has(w)) return w;
+  for (const [name, t] of Object.entries(CREATURES)) if (new RegExp(`\\b${name}\\b`, "i").test(prompt)) return t;
+  return null;
+}
+
+type Signal = {
+  ticker: string; name?: string; tokenSymbol?: string; onChain?: number; reference?: number; spreadPct?: number;
+  underlyingOpen?: boolean; hoursUntilOpen?: number | null; pct24h?: number | null; priceSource?: string; verdict?: string; error?: string;
+};
+
+/**
+ * The answer when the language model cannot be reached: Roost's own measured report, said plainly.
+ * The numbers are the product and never came from the model, so a buyer still gets them — only
+ * the commentary is missing, and the answer says so.
+ */
+export async function reportWithoutModel(prompt: string): Promise<string> {
+  const ticker = tickerIn(prompt);
+  if (!ticker) return "Name a stock to report on: a ticker like NVDA, TSLA or AAPL, or a Fledgling (Pango, Coil, Bara, Rivet, Patch, Fen).";
+  const taker = TAKER();
+  const r = (await getJson(`/api/signal?ticker=${encodeURIComponent(ticker)}${taker ? `&wallet=${encodeURIComponent(taker)}` : ""}`)) as Signal | null;
+  if (!r || r.error || r.onChain == null || r.reference == null || r.spreadPct == null) {
+    return `No report for ${ticker}: ${r?.error ?? "Roost did not answer"}.`;
+  }
+  const usd = (n: number) => `$${n.toFixed(2)}`;
+  const signed = (n: number, dp: number) => `${n >= 0 ? "+" : ""}${n.toFixed(dp)}%`;
+  return [
+    `${r.name ?? ticker} (${r.tokenSymbol ?? ticker}) on BNB Smart Chain: ${usd(r.onChain)} a share on-chain against ${usd(r.reference)} for the real share, a ${signed(r.spreadPct, 3)} gap.`,
+    r.verdict ?? "",
+    !r.underlyingOpen && r.hoursUntilOpen != null ? `The exchange reopens in about ${Math.round(r.hoursUntilOpen)} hours.` : "",
+    r.pct24h != null ? `Over 24 hours the token moved ${signed(r.pct24h, 2)}.` : "",
+    r.priceSource === "oracle" ? "The on-chain price is a read, not an executable quote." : "",
+    "(Roost's measured report, without commentary: the language model was unavailable.)",
+  ].filter(Boolean).join(" ");
+}

@@ -28,6 +28,7 @@ destination = "platform"
 # Artifact channel: 'zip' (evm-local default — managed runtime, no Docker)
 # or 'container' (local Docker build → brokered ECR; forced for twak).
 platform_artifact = "zip"
+packaging = "zip"
 
 [wallet]
 # Local keystore signer. The Agent is the SOLE key-holder/signer.
@@ -38,6 +39,7 @@ signer = "local"
 keystore_dir = "../../.studio/wallets"
 # address = "0x..."   # filled by `bag wallet new`
 address = "0x33eeB13C4DF0aCC6efd57F3d5FD061c155E44dF7"
+platform_exposed_addresses = ["0x33eeB13C4DF0aCC6efd57F3d5FD061c155E44dF7"]
 
 [llm]
 provider = "pieverse-llm"
@@ -99,3 +101,17 @@ work_timeout_seconds = 60
 # Optional Bazaar metadata can be added later as scalar JSON fields under
 # [payments.b402_seller.bazaar]: info_json, schema_json, description,
 # and route_template.
+
+[deploy.platform]
+terms_accepted_at = "2026-10-05T16:24:48Z"
+slug = "roostsignal"
+deployment_id = "01M46F5HCX58HF5AS2K0RMM05P"
+backend = "aws"
+agent_id = "01M46E48D2M9ZZG1F8W48C3SWE"
+invoke_url = "https://bnbagent-api.bnbchain.world/v1/rt/01M46E48D2M9ZZG1F8W48C3SWE/.well-known/agent-card.json"
+last_deploy_at = "2026-10-05T16:43:38Z"
+
+[identity]
+endpoint = "https://bnbagent-api.bnbchain.world/v1/rt/01M46E48D2M9ZZG1F8W48C3SWE/.well-known/agent-card.json"
+registered_at = "2026-10-05T16:26:40.528Z"
+agent_id = 2565
