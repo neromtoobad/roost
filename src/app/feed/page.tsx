@@ -4,7 +4,8 @@ import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import NumberFlow from '@number-flow/react';
 import { ConnectPill, useWallet } from '@/components/Wallet';
-import { petImage, type Mood } from '@/lib/pets';
+import { Habitat } from '@/components/Habitat';
+import type { Mood } from '@/lib/pets';
 import { PERSONALITIES, feedPetRemote, feedingDay, isPaper, readPet, recordBuy, setSchedule, stockOf, useFocusPet, usePet } from '@/lib/store';
 import { CADENCE_LABEL, isDue, type Cadence } from '@/lib/care';
 import { syncPet } from '@/lib/sync';
@@ -162,17 +163,11 @@ export default function FeedPage() {
 
       {/* Desktop: the pet and the question on the left, the choices on the right. */}
       <div className="lg:mt-4 lg:grid lg:grid-cols-2 lg:items-center lg:gap-8 xl:gap-14">
-      <div className="lg:rounded-[var(--radius-card)] lg:border lg:border-[var(--line)] lg:bg-[var(--surface)] lg:px-6 lg:py-10">
-      <div className="relative mx-auto mt-4 grid h-56 w-56 place-items-center lg:mt-0 lg:h-64 lg:w-64 xl:tall:h-80 xl:tall:w-80">
-        <motion.img src={petImage(pet.species, face(step, paperDone))} alt="" className="h-52 w-52 object-contain lg:h-60 lg:w-60 xl:tall:h-76 xl:tall:w-76"
-          animate={paperDone || step.at === 'done' ? { y: [0, -6, 0] } : {}} transition={{ duration: 0.4 }} />
-      </div>
-
-      <h1 className="mt-1 text-center text-[24px] font-bold" style={{ fontFamily: 'var(--font-display)' }}>
-        {signing ? `${pet.name} wants $${signing.usd.toFixed(2)} in.` : due ? `Feeding day: $${due.usd} ${CADENCE_LABEL[due.every]}.` : `How much do you want to feed ${pet.name}?`}
-      </h1>
-
-      </div>
+      <Habitat id={pet.species} mood={face(step, paperDone)} bounce={paperDone || step.at === 'done'} className="mt-4 px-5 pb-6 pt-6 lg:mt-0 lg:py-8">
+        <h1 className="relative mt-1 text-center text-[24px] font-extrabold leading-tight tracking-[-0.02em] lg:text-[28px]" style={{ fontFamily: 'var(--font-display)' }}>
+          {signing ? `${pet.name} wants $${signing.usd.toFixed(2)} in.` : due ? `Feeding day: $${due.usd} ${CADENCE_LABEL[due.every]}.` : `How much do you want to feed ${pet.name}?`}
+        </h1>
+      </Habitat>
       {/* The tray: how much, how often, exactly what happens, and one button. */}
       <div className="card mt-5 px-4 pb-4 pt-4 lg:mt-0 lg:px-6 lg:pb-5 lg:pt-5">
         <div className="flex items-baseline justify-between gap-3">
@@ -181,7 +176,7 @@ export default function FeedPage() {
           </p>
           {held && <p className="num text-[12px]" style={{ color: 'var(--muted)' }}>Wallet {held.usdt.toFixed(2)} USDT</p>}
         </div>
-        <div className="mt-1 text-[44px] font-semibold leading-none tracking-[-0.02em]">
+        <div className="mt-1 text-[44px] font-extrabold leading-none tracking-[-0.03em] xl:tall:text-[52px]" style={{ fontFamily: 'var(--font-display)' }}>
           <NumberFlow value={amount} locales="en-US" format={{ style: 'currency', currency: 'USD', minimumFractionDigits: amount % 1 ? 2 : 0 }} className="dim-cents" />
         </div>
         <p className="mt-1.5 min-h-[18px] text-[12.5px] num" style={{ color: shortUsdt || shortGas ? 'var(--down)' : 'var(--muted)' }}>
@@ -194,8 +189,7 @@ export default function FeedPage() {
           <div className="mt-3 grid grid-cols-4 gap-2">
             {amounts.map((a) => (
               <button key={a} onClick={() => { setUsd(a); if (step.at === 'stopped') reset(); }} disabled={busy(step) || step.at === 'done'}
-                className="h-10 rounded-full text-[14.5px] font-semibold num transition-colors"
-                style={amount === a ? { background: 'var(--accent)', color: 'var(--on-accent)' } : { background: 'var(--surface-2)', border: '1px solid var(--line)' }}>${a}</button>
+                className={`${amount === a ? 'pill after:hidden' : 'btn-2'} h-10 !rounded-full text-[16px]`}>${a}</button>
             ))}
           </div>
         )}
@@ -207,7 +201,7 @@ export default function FeedPage() {
               {([null, 'week', 'fortnight', 'month'] as (Cadence | null)[]).map((c) => (
                 <button key={c ?? 'once'} role="radio" aria-checked={repeat === c} onClick={() => setRepeat(c)} disabled={busy(step) || step.at === 'done'}
                   className="rounded-full py-1.5 transition-colors"
-                  style={repeat === c ? { background: 'var(--surface)', color: 'var(--ink)', boxShadow: '0 1px 2px rgba(0,0,0,.2)' } : { color: 'var(--muted)' }}>
+                  style={repeat === c ? { background: 'linear-gradient(180deg, #FFE46B, #F0B90B)', color: 'var(--on-accent)', boxShadow: '0 2px 0 #B98900', fontFamily: 'var(--font-display)' } : { color: 'var(--muted)', fontFamily: 'var(--font-display)' }}>
                   {c === null ? 'Once' : c === 'week' ? 'Weekly' : c === 'fortnight' ? '2 weeks' : 'Monthly'}
                 </button>
               ))}

@@ -1,9 +1,9 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
 import { ConnectPill, useWallet } from '@/components/Wallet';
-import { petImage, type Mood } from '@/lib/pets';
+import { Habitat } from '@/components/Habitat';
+import type { Mood } from '@/lib/pets';
 import { heldQty, isPaper, readPet, recordSell, stockOf, usePet } from '@/lib/store';
 import { syncPet } from '@/lib/sync';
 import { bscscan, useBuy, type BuyStep } from '@/lib/trade';
@@ -101,17 +101,11 @@ export default function ReleasePage() {
 
       {/* Desktop: the pet and the question on the left, the choices on the right. */}
       <div className="lg:mt-6 lg:grid lg:grid-cols-2 lg:items-center lg:gap-8 xl:gap-14">
-      <div className="lg:rounded-[var(--radius-card)] lg:border lg:border-[var(--line)] lg:bg-[var(--surface)] lg:px-6 lg:py-10">
-      <div className="mx-auto mt-4 grid h-52 w-52 place-items-center lg:mt-0 lg:h-64 lg:w-64 xl:tall:h-80 xl:tall:w-80">
-        <motion.img src={petImage(pet.species, mood)} alt="" className="h-48 w-48 object-contain lg:h-60 lg:w-60 xl:tall:h-76 xl:tall:w-76"
-          animate={paperDone || step.at === 'done' ? { y: [0, -8, 0] } : {}} transition={{ duration: 0.5 }} />
-      </div>
-
-      <h1 className="mt-1 text-center text-[24px] font-bold" style={{ fontFamily: 'var(--font-display)' }}>
-        How much should {pet.name} let go of?
-      </h1>
-
-      </div>
+      <Habitat id={pet.species} mood={mood} bounce={paperDone || step.at === 'done'} sizes={[180, 230, 290]} className="mt-4 px-5 pb-6 pt-6 lg:mt-0 lg:py-8">
+        <h1 className="relative mt-1 text-center text-[24px] font-extrabold leading-tight tracking-[-0.02em] lg:text-[28px]" style={{ fontFamily: 'var(--font-display)' }}>
+          How much should {pet.name} let go of?
+        </h1>
+      </Habitat>
       <div>
       <div className="card mt-4 grid grid-cols-2 gap-3 px-4 py-3 text-[13px] lg:mt-0">
         <div>
@@ -135,8 +129,7 @@ export default function ReleasePage() {
           <div className="mt-4 grid grid-cols-3 gap-2">
             {PORTIONS.map((p) => (
               <button key={p} onClick={() => { setPortion(p); if (step.at === 'stopped') reset(); }} disabled={busy(step) || step.at === 'done'}
-                className="rounded-[var(--radius-btn)] py-3 text-[16px] font-semibold num"
-                style={portion === p ? { background: 'var(--accent)', color: 'var(--on-accent)', border: '1px solid var(--accent)' } : { background: 'var(--surface-2)', border: '1px solid var(--line)' }}>
+                className={`${portion === p ? 'pill after:hidden' : 'btn-2'} h-auto py-3 text-[17px]`}>
                 {p === 1 ? 'All' : `${p * 100}%`}
               </button>
             ))}

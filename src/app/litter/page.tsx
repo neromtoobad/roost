@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Nav } from '@/components/Nav';
 import { Confetti } from '@/components/Confetti';
+import { HUE, LITTER_LOOK } from '@/lib/look';
 import { ConnectPill, useWallet } from '@/components/Wallet';
 import { petImage } from '@/lib/pets';
 import { allocate, litterById } from '@/lib/litters';
@@ -144,8 +145,8 @@ export default function LitterPage() {
       </div>
       <div className="relative">
         {hatched && <Confetti count={30} />}
-        <h1 className="mt-2 text-center text-[28px] font-bold" style={{ fontFamily: 'var(--font-display)' }}>
-          {meta?.icon} {first.litter?.name}
+        <h1 className="mt-2 flex items-center justify-center gap-3 text-center text-[32px] font-extrabold tracking-[-0.02em] lg:text-[38px]" style={{ fontFamily: 'var(--font-display)' }}>
+          {first.litter && LITTER_LOOK[first.litter.id] ? <img src={LITTER_LOOK[first.litter.id].icon} alt="" className="h-12 w-12 object-contain" /> : meta?.icon} {first.litter?.name}
         </h1>
       </div>
       <p className="text-center text-[13px]" style={{ color: 'var(--muted)' }}>
@@ -154,12 +155,19 @@ export default function LitterPage() {
 
       <div className="lg:mt-4 lg:grid lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-8 xl:grid-cols-[minmax(0,1fr)_400px] xl:gap-10">
       <div className="lg:flex lg:min-h-0 lg:flex-col">
-      <div className="card mt-4 shrink-0 px-4 py-3 lg:mt-0">
-        <p className="text-[11.5px]" style={{ color: 'var(--muted)' }}>Together</p>
-        <p className="num text-[24px] font-bold leading-tight">${total.toFixed(2)}</p>
+      <div className="stage mt-4 flex shrink-0 items-end justify-between gap-4 rounded-[22px] px-4 pb-3 pt-3 lg:mt-0">
+        <div className="stage-rays" aria-hidden />
+        <div className="min-w-0">
+        <p className="text-[11.5px] font-semibold uppercase tracking-wide" style={{ color: 'var(--muted)' }}>Together</p>
+        <p className="text-[30px] font-extrabold leading-tight tracking-[-0.02em]" style={{ fontFamily: 'var(--font-display)' }}>${total.toFixed(2)}</p>
         <p className="text-[12px]" style={{ color: 'var(--muted)' }}>
           The line on each bar is an equal share. Feeding tops up whoever sits furthest under it.
         </p>
+        </div>
+        {/* The family portrait: every pup, shoulder to shoulder. */}
+        <div className="hidden shrink-0 -space-x-5 sm:flex" aria-hidden>
+          {pups.map((p) => <img key={p.uid} src={petImage(p.species, 'happy')} alt="" className="h-16 w-16 object-contain drop-shadow-[0_6px_6px_rgba(0,0,0,.3)]" />)}
+        </div>
       </div>
 
       <ul className="mt-3 grid gap-1.5 lg:min-h-0 lg:content-start lg:overflow-y-auto lg:pr-1">
@@ -169,14 +177,14 @@ export default function LitterPage() {
           return (
             <li key={p.uid}>
               <button onClick={() => open(p)} className="card flex w-full items-center gap-3 px-3 py-2 text-left">
-                <img src={petImage(p.species, 'hero')} alt="" className="h-10 w-10 shrink-0 rounded-full object-cover object-top" style={{ background: 'var(--canvas)' }} />
+                <img src={petImage(p.species, 'hero')} alt="" className="h-11 w-11 shrink-0 rounded-full object-cover object-top" style={{ background: `radial-gradient(circle at 50% 70%, ${HUE[p.species].main}, color-mix(in srgb, ${HUE[p.species].main} 25%, var(--surface)))` }} />
                 <div className="min-w-0 flex-1">
                   <p className="flex items-baseline justify-between gap-2 text-[14px] font-bold" style={{ fontFamily: 'var(--font-display)' }}>
                     <span className="truncate">{p.name} <span className="num text-[11.5px] font-semibold" style={{ color: 'var(--muted)' }}>{stockOf(p).tokenSymbol}</span></span>
                     <span className="num shrink-0 text-[13px]">${values[i].toFixed(2)}</span>
                   </p>
-                  <div className="relative mt-1 h-2 rounded-full" style={{ background: 'var(--line)' }} aria-hidden>
-                    <div className="h-2 rounded-full" style={{ width: `${Math.min(100, w * 100 * (pups.length / 2))}%`, background: 'var(--accent)' }} />
+                  <div className="relative mt-1 h-2.5 rounded-full" style={{ background: 'color-mix(in srgb, var(--ink) 9%, transparent)' }} aria-hidden>
+                    <div className="h-2.5 rounded-full" style={{ width: `${Math.min(100, w * 100 * (pups.length / 2))}%`, background: `linear-gradient(90deg, ${HUE[p.species].deep}, ${HUE[p.species].main})`, boxShadow: `0 0 8px color-mix(in srgb, ${HUE[p.species].main} 60%, transparent)` }} />
                     <div className="absolute top-[-2px] h-3 w-[2px]" style={{ left: '50%', background: 'var(--ink)' }} />
                   </div>
                   <p className="mt-0.5 text-[11px] num" style={{ color: 'var(--muted)' }}>
@@ -196,8 +204,7 @@ export default function LitterPage() {
       <div className="mt-2 grid grid-cols-4 gap-2">
         {(live ? AMOUNTS.live : AMOUNTS.paper).map((a) => (
           <button key={a} onClick={() => { setUsd(a); setOutcomes(null); }} disabled={running}
-            className="rounded-[var(--radius-btn)] py-3 text-[16px] font-semibold num"
-            style={usd === a ? { background: 'var(--accent)', color: 'var(--on-accent)', border: '1px solid var(--accent)' } : { background: 'var(--surface-2)', border: '1px solid var(--line)' }}>${a}</button>
+            className={`${usd === a ? 'pill after:hidden' : 'btn-2'} h-auto py-3 text-[17px]`}>${a}</button>
         ))}
       </div>
       <p className="card mt-3 px-4 py-3 text-[13.5px] leading-snug">

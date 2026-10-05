@@ -28,7 +28,7 @@ const HELP = [
   'I am your Fledgling on Telegram. I tell you when it is feeding day, when I want to buy, and what I did on my own.',
   'I never trade from here — anything with money opens Roost, where your own wallet signs.',
   '',
-  '/pets — how your Fledglings are doing',
+  '/buddies — how your Fledglings are doing',
   '/stop — no more messages',
 ].join('\n');
 
@@ -82,7 +82,7 @@ async function handle(chat: number, text: string) {
     await say(chat, `🐣 ${p.name} (${p.ticker}) will message you here — on feeding days, when it wants to buy, and when it does something on its own.\n\n${HELP.split('\n').slice(1).join('\n')}`, link(`Open ${p.name}`, '/', p.id));
     return;
   }
-  if (cmd === '/pets' || cmd === '/status') return status(chat);
+  if (cmd === '/buddies' || cmd === '/pets' || cmd === '/status') return status(chat); // /pets: the old name, kept working
   if (cmd === '/stop') {
     const r = await db.query('update pets set tg_chat_id=null where tg_chat_id=$1', [chat]);
     await say(chat, r.rowCount ? `Done — ${r.rowCount === 1 ? 'your Fledgling will' : `your ${r.rowCount} Fledglings will`} stop texting. They are fine; they just won't write.` : 'Nothing was bound to this chat.');

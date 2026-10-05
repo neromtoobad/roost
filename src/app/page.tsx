@@ -10,10 +10,11 @@ import { ConnectPill, useWallet } from '@/components/Wallet';
 import { Confetti } from '@/components/Confetti';
 import { ENTRY_ICON, Report, Ask } from '@/components/Report';
 import { PortfolioCard } from '@/components/PortfolioCard';
-import { GrowthRings } from '@/components/Stage';
+import { LevelBar, Motes } from '@/components/Stage';
 import { DuelCard, type Duel } from '@/components/Duel';
 import { TelegramLink } from '@/components/Telegram';
-import { petImage, type Mood } from '@/lib/pets';
+import { SPECIES, petImage, type Mood } from '@/lib/pets';
+import { HUE, STAT } from '@/lib/look';
 import { computeMood, moodLine, moodReason } from '@/lib/mood';
 import { SHORT, TALL, WIDE, WIDER, useMarketSession, useMedia, useNow, useSearch } from '@/lib/client';
 import { runEngine } from '@/lib/engine';
@@ -218,7 +219,8 @@ export default function Home() {
   }, [why]);
 
   const qty = pet ? heldQty(pet) : 0;
-  const petSize = Math.round((!wide ? 300 : short ? 250 : wider && tall ? 440 : 340) * grown.scale);
+  const petSize = Math.round((!wide ? 270 : short ? 220 : wider && tall ? 400 : 300) * grown.scale);
+  const hue = HUE[species];
   const perf = pet && price.price ? pnl(pet, price.price) : null;
 
   if (!hasStore && !pet) return <main className="min-h-dvh" />;
@@ -238,9 +240,9 @@ export default function Home() {
             return (
               <button key={p.uid ?? p.adoptedAt} role="tab" aria-selected={on}
                 onClick={() => { if (p.uid && !on) { setReport(null); setCurrentPet(p.uid); } }}
-                className="flex shrink-0 items-center gap-1.5 rounded-full border py-1 pl-1 pr-2.5 text-[12px] font-semibold"
-                style={{ borderColor: on ? 'var(--accent)' : 'var(--line)', background: on ? 'color-mix(in srgb, var(--accent) 18%, var(--surface))' : 'var(--surface)' }}>
-                <img src={petImage(p.species, 'hero')} alt="" className="h-6 w-6 rounded-full object-cover object-top" style={{ background: 'var(--canvas)' }} />
+                className="flex shrink-0 items-center gap-1.5 rounded-full border py-1 pl-1 pr-2.5 text-[12px] font-semibold transition-transform active:scale-95"
+                style={{ borderColor: on ? HUE[p.species].main : 'var(--line)', background: on ? `color-mix(in srgb, ${HUE[p.species].main} 20%, var(--surface))` : 'var(--surface)', boxShadow: on ? `0 0 0 3px color-mix(in srgb, ${HUE[p.species].main} 22%, transparent)` : undefined, fontFamily: 'var(--font-display)' }}>
+                <img src={petImage(p.species, 'hero')} alt="" className="h-6 w-6 rounded-full object-cover object-top" style={{ background: `color-mix(in srgb, ${HUE[p.species].main} 35%, var(--canvas))` }} />
                 {p.name}<span className="num" style={{ color: 'var(--muted)' }}>{stockOf(p).ticker}</span>
               </button>
             );
@@ -257,7 +259,7 @@ export default function Home() {
       )}
       {elsewhere && (
         <p className="card mt-2 px-3 py-2 text-[12.5px]" style={{ color: 'var(--muted)' }}>
-          That link is for a Fledgling that lives in another browser — this one only knows the pets hatched here.
+          That link is for a Fledgling that lives in another browser — this one only knows the buddies hatched here.
         </p>
       )}
       {fill?.spreadPct != null && (
@@ -272,11 +274,16 @@ export default function Home() {
 
       {/* Desktop: the pet gets a stage of its own on the left, and the numbers sit beside it. */}
       <div className="lg:mt-3 lg:grid lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(360px,420px)] xl:gap-10">
-      <section className="lg:relative lg:flex lg:min-h-0 lg:flex-col lg:items-center lg:justify-center lg:overflow-hidden lg:rounded-[var(--radius-card)] lg:border lg:border-[var(--line)] lg:bg-[var(--surface)] lg:py-6 lg:[background-image:var(--grain)]">
+      <section className="stage mt-3 flex flex-col items-center rounded-[28px] px-4 pb-5 pt-2 lg:mt-0 lg:min-h-0 lg:justify-center lg:py-6"
+        style={{ ['--pet' as string]: hue.main }}>
+      {/* The room around it: slow light rays, motes drifting up, the night's grain. */}
+      <div className="stage-rays" aria-hidden />
+      <div className="pointer-events-none absolute inset-0 -z-10" style={{ backgroundImage: 'var(--grain)' }} aria-hidden />
+      <Motes color={hue.glow} />
       {/* Desktop: the stock rides on the stage as one chip, the way a price tag sits by a toy. */}
       {stock && (
         <div className="absolute left-4 top-4 z-10 hidden items-center gap-2.5 rounded-full border px-3 py-1.5 text-[12px] num lg:flex"
-          style={{ borderColor: 'var(--line)', background: 'color-mix(in srgb, var(--surface-2) 85%, transparent)' }}>
+          style={{ borderColor: 'color-mix(in srgb, var(--ink) 12%, transparent)', background: 'color-mix(in srgb, var(--surface) 70%, transparent)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)' }}>
           <span className="font-semibold" style={{ color: 'var(--ink)' }}>{stock.tokenSymbol}</span>
           <span style={{ color: 'var(--ink)' }}>{price.price ? `$${price.price.toFixed(2)}` : '—'}</span>
           <span style={{ color: price.pct24h >= 0 ? 'var(--up)' : 'var(--down)' }}>{price.pct24h >= 0 ? '+' : ''}{price.pct24h.toFixed(2)}%</span>
@@ -285,17 +292,21 @@ export default function Home() {
           )}
         </div>
       )}
-      <div className="relative mt-5 flex flex-col items-center lg:mt-0">
-        <div className="card relative z-10 mb-2 max-w-[264px] px-4 py-2.5 text-center text-[15px] font-semibold lg:max-w-[360px] lg:px-5 lg:py-3 lg:text-[18px]" style={{ fontFamily: 'var(--font-display)' }}>
+      <span className="absolute right-4 top-4 z-10 hidden items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-bold lg:inline-flex"
+        style={{ background: `color-mix(in srgb, ${hue.main} 22%, transparent)`, color: 'var(--ink)', border: `1px solid color-mix(in srgb, ${hue.main} 45%, transparent)`, fontFamily: 'var(--font-display)' }}>
+        <span className="h-2 w-2 rounded-full" style={{ background: hue.main, boxShadow: `0 0 8px ${hue.main}` }} aria-hidden />{SPECIES[species].species}
+      </span>
+      <div className="relative mt-3 flex w-full flex-col items-center lg:mt-0">
+        <motion.div key={line} initial={{ scale: 0.85, opacity: 0, y: 6 }} animate={{ scale: 1, opacity: 1, y: 0 }} transition={{ type: 'spring', stiffness: 420, damping: 22 }}
+          className="bubble relative z-10 mb-1 max-w-[270px] px-4 py-2.5 text-center text-[15px] font-bold lg:max-w-[380px] lg:px-5 lg:py-3 lg:text-[19px]" style={{ fontFamily: 'var(--font-display)' }}>
           {line}
-          <span className="absolute -bottom-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45" style={{ background: 'var(--surface)', borderRight: '1px solid var(--line)', borderBottom: '1px solid var(--line)' }} aria-hidden />
-        </div>
+          <span className="absolute -bottom-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 rounded-[3px]" style={{ background: 'var(--bubble)' }} aria-hidden />
+        </motion.div>
         <button type="button" onClick={tapPet} onPointerDown={strokeStart} onPointerMove={strokeMove} onPointerUp={strokeEnd} onPointerLeave={strokeEnd}
-          className="relative touch-pan-y select-none rounded-full outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-4 focus-visible:ring-offset-[var(--surface)]" aria-label={`${pet?.name}: ${wide ? 'click' : 'tap'} for its mood, press Enter to pet`}>
+          className="relative touch-pan-y select-none rounded-full outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-4 focus-visible:ring-offset-[var(--surface)]" aria-label={`${pet?.name}: ${wide ? 'click' : 'tap'} for its mood, press Enter to give it a scratch`}>
           {(celebrate || ms) && <Confetti />}
           {/* It grows with care: a Hatchling is small, a Legend is not. Never with money. */}
-          <GrowthRings size={petSize} grown={grown} spread={wide ? 1.45 : 1.04} labels={wide} pulse={stageUp} />
-          <Pet id={species} mood={mood} night={night} size={petSize} />
+          <Pet id={species} mood={mood} night={night} size={petSize} base />
           <AnimatePresence>
             {hearts.map((h) => (
               <motion.span key={h.id} className="pointer-events-none absolute z-20 text-[24px] leading-none" style={{ left: h.x - 12, top: h.y - 16, color: 'var(--accent)', textShadow: '0 0 10px color-mix(in srgb, var(--accent) 70%, transparent)' }}
@@ -305,18 +316,20 @@ export default function Home() {
           </AnimatePresence>
         </button>
         {/* The caption: growth, or why it looks like this (after a tap), or that it just grew. */}
-        <p className="relative z-10 -mt-1 max-w-[340px] text-center text-[11.5px] num lg:text-[13px]" style={{ color: why || stageUp !== undefined ? 'var(--ink)' : 'var(--muted)' }} aria-live="polite">
-          {stageUp !== undefined ? <span style={{ color: 'var(--accent-ink)' }}>✦ Grew into a {grown.name}</span>
+        <p className="relative z-10 mt-1 min-h-[18px] max-w-[360px] text-center text-[12px] lg:text-[13px]" style={{ color: why || stageUp !== undefined ? 'var(--ink)' : 'var(--muted)' }} aria-live="polite">
+          {stageUp !== undefined ? <span className="font-bold" style={{ color: 'var(--accent-ink)' }}>✦ Grew into a {grown.name}</span>
             : why ? moodReason(computed, { pct24h: price.pct24h, session, hunger }, ticker)
-            : <>{grown.name}{grown.next !== null ? ` · ${grown.points}/${grown.next} to grow` : ''} · {pet && canPet(pet.care) ? 'stroke to pet · ' : ''}{wide ? 'click' : 'tap'} for its mood</>}
+            : <>{pet && canPet(pet.care) ? 'Stroke it for a scratch · ' : ''}{wide ? 'click' : 'tap'} for its mood</>}
         </p>
+        {/* Growth as a level: care only, never money. */}
+        <LevelBar grown={grown} pulse={stageUp !== undefined} className="relative z-10 mt-3 w-full max-w-[340px]" />
       </div>
       </section>
 
       <section className="lg:flex lg:min-h-0 lg:flex-col lg:overflow-y-auto lg:pr-1">
       {/* Desktop: the name as a heading, where the phone has a caption above the pet. */}
       <div className="mb-3 hidden lg:block">
-        <h1 className="text-[36px] font-bold leading-tight" style={{ fontFamily: 'var(--font-display)' }}>{pet?.name}</h1>
+        <h1 className="text-[44px] font-extrabold leading-[1.02] tracking-[-0.03em]" style={{ fontFamily: 'var(--font-display)' }}>{pet?.name}</h1>
         <p className="text-[14px] font-semibold" style={{ color: 'var(--muted)' }}>
           <span className="num" style={{ color: 'var(--ink)' }}>{ticker}</span>{stock && stock.company !== ticker ? ` · ${stock.company}` : ''} · day {pet?.streak ?? 1}
           {pet?.litter && <> · <Link href={`/litter?key=${pet.litter.key}`} className="underline">{pet.litter.name} litter</Link></>}
@@ -342,9 +355,9 @@ export default function Home() {
       )}
 
       <div className="mt-3 grid grid-cols-3 gap-2">
-        <Ring label="Hunger" value={hunger} icon="🍽" />
-        <Ring label="Energy" value={energy} icon="⚡" />
-        <Ring label="Bond" value={bond} icon="♥" />
+        <Ring label="Hunger" value={hunger} {...STAT.hunger} />
+        <Ring label="Energy" value={energy} {...STAT.energy} />
+        <Ring label="Bond" value={bond} {...STAT.bond} />
       </div>
 
       {/* A standing feed. Due: sign it (live) or feed it (paper), or skip it. Not due: when, and a pause. */}

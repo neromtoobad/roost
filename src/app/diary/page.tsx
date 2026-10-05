@@ -2,6 +2,7 @@
 import { Nav } from '@/components/Nav';
 import { TxLink } from '@/components/Report';
 import { petImage } from '@/lib/pets';
+import { HUE } from '@/lib/look';
 import { usePet, type EntryKind, type PetState } from '@/lib/store';
 import { useNow } from '@/lib/client';
 import { nextBell, nyseSession } from '@/lib/session';
@@ -64,7 +65,7 @@ export default function Diary() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-[430px] flex-col px-4 pb-24 pt-[max(12px,env(safe-area-inset-top))] lg:h-full lg:min-h-0 lg:max-w-[1200px] lg:px-10 lg:pb-6 lg:pt-6">
       <div className="lg:mx-auto lg:flex lg:min-h-0 lg:w-full lg:max-w-[860px] lg:flex-1 lg:flex-col">
-      <h1 className="text-center text-[28px] font-bold lg:text-left lg:text-[36px]" style={{ fontFamily: 'var(--font-display)' }}>Diary</h1>
+      <h1 className="text-center text-[32px] font-extrabold tracking-[-0.03em] lg:text-left lg:text-[40px]" style={{ fontFamily: 'var(--font-display)' }}>{pet ? <>{pet.name}&rsquo;s <span className="text-gold">diary</span></> : 'Diary'}</h1>
       <p className="text-center text-[13px] lg:text-left lg:text-[14px]" style={{ color: 'var(--muted)' }}>
         {pet ? `Every decision ${pet.name} made, in its own words.` : 'Adopt a Fledgling to start a diary.'}
       </p>
@@ -73,7 +74,7 @@ export default function Diary() {
       <ul className="mt-3 grid gap-2 lg:mt-3 lg:min-h-0 lg:flex-1 lg:content-start lg:gap-0 lg:overflow-y-auto lg:rounded-[var(--radius-card)] lg:border lg:border-[var(--line)] lg:bg-[var(--surface)]">
         {entries.map((e, i) => (
           <li key={`${e.ts}-${i}`} className="card flex items-start gap-3 px-3 py-3 lg:rounded-none lg:border-0 lg:border-b lg:px-5 lg:py-4 lg:last:border-b-0">
-            {pet && <img src={petImage(pet.species, 'chill')} alt="" className="h-10 w-10 shrink-0 rounded-full object-cover object-top" style={{ background: 'var(--canvas)' }} />}
+            {pet && <img src={petImage(pet.species, 'chill')} alt="" className="h-10 w-10 shrink-0 rounded-full object-cover object-top" style={{ background: `radial-gradient(circle at 50% 70%, ${HUE[pet.species].main}, color-mix(in srgb, ${HUE[pet.species].main} 25%, var(--surface)))` }} />}
             <div className="min-w-0 flex-1">
               <p className="text-[15px] font-semibold leading-snug" style={{ fontFamily: 'var(--font-display)' }}>{e.text}</p>
               <p className="mt-1 text-[11.5px] num" style={{ color: 'var(--muted)' }}>

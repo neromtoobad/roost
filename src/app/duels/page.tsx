@@ -5,6 +5,7 @@ import { PERSONALITIES, usePet, type Personality } from '@/lib/store';
 import { petImage, type Species } from '@/lib/pets';
 import { challengeRival } from '@/lib/sync';
 import { DuelCard, type Duel } from '@/components/Duel';
+import { Pet } from '@/components/Pet';
 
 type Row = {
   id: string; name: string; species: Species['id']; ticker: string; personality: Personality;
@@ -18,7 +19,7 @@ type Tab = 'today' | 'all' | 'care';
 const TABS: { id: Tab; label: string; blurb: string; head: string }[] = [
   { id: 'today', label: 'Today', blurb: 'How what each one holds moved in the last 24 hours.', head: '24h · move' },
   { id: 'all', label: 'All time', blurb: 'Ranked by real P&L. Nobody reports their own score.', head: 'P&L · value' },
-  { id: 'care', label: 'Care', blurb: 'Ranked by care — days visited, pets given, feeding days kept. Never by money.', head: 'Stage · care' },
+  { id: 'care', label: 'Care', blurb: 'Ranked by care — days visited, scratches given, feeding days kept. Never by money.', head: 'Stage · care' },
 ];
 const by: Record<Tab, (a: Row, b: Row) => number> = {
   today: (a, b) => (b.pct24h ?? -Infinity) - (a.pct24h ?? -Infinity),
@@ -84,12 +85,12 @@ export default function Board() {
     <main className="mx-auto flex min-h-dvh max-w-[430px] flex-col px-4 pb-24 pt-[max(12px,env(safe-area-inset-top))] lg:h-full lg:min-h-0 lg:max-w-[1200px] lg:px-10 lg:pb-6 lg:pt-6">
       <div className="lg:flex lg:items-end lg:justify-between lg:gap-6">
       <div>
-      <h1 className="text-center text-[28px] font-bold lg:text-left lg:text-[36px]" style={{ fontFamily: 'var(--font-display)' }}>Board</h1>
+      <h1 className="text-center text-[32px] font-extrabold tracking-[-0.03em] lg:text-left lg:text-[40px]" style={{ fontFamily: 'var(--font-display)' }}>Leader<span className="text-gold">board</span></h1>
       <p className="text-center text-[13px] lg:text-left lg:text-[14px]" style={{ color: 'var(--muted)' }}>{t.blurb}</p>
       <div className="mx-auto mt-3 grid w-full max-w-[340px] grid-cols-3 rounded-full p-1 text-[13px] font-semibold lg:mx-0" style={{ background: 'var(--surface-2)' }} role="tablist" aria-label="Rank by">
         {TABS.map((x) => (
           <button key={x.id} role="tab" aria-selected={tab === x.id} onClick={() => setTab(x.id)} className="rounded-full py-1.5 transition-colors"
-            style={tab === x.id ? { background: 'var(--surface)', color: 'var(--ink)', boxShadow: '0 1px 2px rgba(0,0,0,.2)' } : { color: 'var(--muted)' }}>{x.label}</button>
+            style={tab === x.id ? { background: 'linear-gradient(180deg, #FFE46B, #F0B90B)', color: 'var(--on-accent)', boxShadow: '0 2px 0 #B98900', fontFamily: 'var(--font-display)' } : { color: 'var(--muted)', fontFamily: 'var(--font-display)' }}>{x.label}</button>
         ))}
       </div>
       </div>
@@ -119,6 +120,8 @@ export default function Board() {
           <p className="mt-1 text-[13px]" style={{ color: 'var(--muted)' }}>Feed your Fledgling and it&rsquo;ll show up here once it holds something.</p>
         </div>
       )}
+
+      {sorted && sorted.length >= 3 && <Podium rows={sorted.slice(0, 3)} tab={tab} />}
 
       <ul className="mt-4 grid gap-2 empty:hidden lg:mt-0 lg:gap-0 lg:overflow-hidden lg:rounded-[var(--radius-card)] lg:border lg:border-[var(--line)] lg:bg-[var(--surface)]">
         {rows && rows.length > 0 && (
@@ -202,12 +205,44 @@ export default function Board() {
 
       <aside className="card order-4 hidden px-5 py-4 text-[13px] lg:block" style={{ color: 'var(--muted)' }}>
         <p className="text-[12px] font-medium uppercase tracking-[.08em]">How the board works</p>
-        <p className="mt-2"><b style={{ color: 'var(--ink)' }}>Today</b> ranks the last 24 hours&rsquo; move on what each one holds. <b style={{ color: 'var(--ink)' }}>All time</b> ranks its return on what it paid. <b style={{ color: 'var(--ink)' }}>Care</b> ranks days visited, pets given and feeding days kept. Everyone is priced the same way.</p>
+        <p className="mt-2"><b style={{ color: 'var(--ink)' }}>Today</b> ranks the last 24 hours&rsquo; move on what each one holds. <b style={{ color: 'var(--ink)' }}>All time</b> ranks its return on what it paid. <b style={{ color: 'var(--ink)' }}>Care</b> ranks days visited, scratches given and feeding days kept. Everyone is priced the same way.</p>
         <p className="mt-2">A duel puts two of them side by side for 24 hours. Neither owner can trade during it, so only the rule and the market decide.</p>
       </aside>
       </div>
       </div>
       <Nav />
     </main>
+  );
+}
+
+/** The top three, standing on their bases on a podium: gold in the middle, silver and bronze beside. */
+function Podium({ rows, tab }: { rows: Row[]; tab: Tab }) {
+  const places = [1, 0, 2];
+  // By rank: gold, silver, bronze.
+  const step = [{ h: 84, c: '#FCD535', d: '#C99400' }, { h: 58, c: '#C9D1DB', d: '#8C96A3' }, { h: 42, c: '#E0A06A', d: '#9C5F2E' }];
+  const metric = (r: Row) => {
+    if (tab === 'care') return { text: `${r.growth.stage} · ${r.growth.points}`, color: 'var(--accent-ink)' };
+    const m = tab === 'today' ? r.pct24h : r.pnlPct;
+    return m === null ? { text: '—', color: 'var(--muted)' } : { text: `${m >= 0 ? '+' : ''}${m.toFixed(2)}%`, color: m >= 0 ? 'var(--up)' : 'var(--down)' };
+  };
+  return (
+    <div className="stage mt-4 grid grid-cols-3 items-end gap-2 rounded-[24px] px-3 pt-3 lg:mt-0 lg:px-8" style={{ ['--pet' as string]: 'var(--accent)' }} aria-label="Top three">
+      <div className="stage-rays" aria-hidden />
+      {places.map((at) => {
+        const r = rows[at], s = step[at], m = metric(r);
+        return (
+          <div key={r.id} className="flex min-w-0 flex-col items-center">
+            <Pet id={r.species} mood={at === 0 ? 'ecstatic' : 'happy'} night={false} size={at === 0 ? 112 : 92} base />
+            <p className="-mt-1 max-w-full truncate text-[14px] font-extrabold" style={{ fontFamily: 'var(--font-display)' }}>{r.name}</p>
+            <p className="text-[12px] font-bold num" style={{ color: m.color }}>{m.text}</p>
+            <div className="mt-1.5 grid w-full place-items-center rounded-t-[14px] text-[26px] font-extrabold"
+              style={{ height: s.h, background: `linear-gradient(180deg, ${s.c}, ${s.d})`, color: 'rgba(0,0,0,.55)', fontFamily: 'var(--font-display)',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,.6), inset 0 -6px 12px rgba(0,0,0,.18)' }}>
+              {at + 1}
+            </div>
+          </div>
+        );
+      })}
+    </div>
   );
 }

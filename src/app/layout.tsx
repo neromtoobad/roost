@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { IBM_Plex_Sans, IBM_Plex_Mono } from 'next/font/google';
+import { Bricolage_Grotesque, IBM_Plex_Sans, IBM_Plex_Mono } from 'next/font/google';
 import './globals.css';
 import './tokens.css';
 import { isNight, nyseSession } from '@/lib/session';
@@ -8,6 +8,8 @@ import { Footer, SessionTheme, TopBar } from '@/components/Nav';
 
 const plex = IBM_Plex_Sans({ subsets: ['latin'], weight: ['400', '500', '600', '700'], variable: '--font-plex' });
 const plexMono = IBM_Plex_Mono({ subsets: ['latin'], weight: ['500'], variable: '--font-plex-mono' });
+// The display face: names, titles and the big numbers. Chunky and a little playful, like the toys.
+const brico = Bricolage_Grotesque({ subsets: ['latin'], axes: ['opsz'], variable: '--font-brico' });
 
 export const metadata: Metadata = {
   title: 'Roost',
@@ -19,7 +21,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   // A first guess for the very first paint; SessionTheme keeps it on the live clock from then on.
   const session = isNight(nyseSession()) ? 'night' : 'day';
   return (
-    <html lang="en" data-session={session} className={`${plex.variable} ${plexMono.variable}`} suppressHydrationWarning>
+    <html lang="en" data-session={session} className={`${plex.variable} ${plexMono.variable} ${brico.variable}`} suppressHydrationWarning>
       <body className="min-h-dvh antialiased">
         <Wallet>
           <SessionTheme />

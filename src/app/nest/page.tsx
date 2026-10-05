@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation';
 import { Nav } from '@/components/Nav';
 import { Foil } from '@/components/Foil';
 import { petImage } from '@/lib/pets';
+import { Pet } from '@/components/Pet';
+import { HUE, LITTER_LOOK } from '@/lib/look';
+import { WIDE, useMedia } from '@/lib/client';
 import { litterById } from '@/lib/litters';
 import { costBasis, heldQty, isPaper, setCurrentPet, stockOf, usePets, type PetState } from '@/lib/store';
 import { useTickAll } from '@/lib/tickall';
@@ -22,6 +25,7 @@ export default function Nest() {
   // Every pet up to the hour before the portfolio is totalled.
   useTickAll(pets);
   const [prices, setPrices] = useState<Priced>({});
+  const wide = useMedia(WIDE);
 
   const addresses = [...new Set(pets.map((p) => stockOf(p).address.toLowerCase()))];
   const key = addresses.join(',');
@@ -59,7 +63,7 @@ export default function Nest() {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-[430px] flex-col px-4 pb-24 pt-[max(12px,env(safe-area-inset-top))] lg:h-full lg:min-h-0 lg:max-w-[1200px] lg:px-10 lg:pb-6 lg:pt-6">
-      <h1 className="text-center text-[28px] font-bold lg:text-left lg:text-[36px]" style={{ fontFamily: 'var(--font-display)' }}>Nest</h1>
+      <h1 className="text-center text-[32px] font-extrabold tracking-[-0.03em] lg:text-left lg:text-[40px]" style={{ fontFamily: 'var(--font-display)' }}>Your <span className="text-gold">nest</span></h1>
       <p className="text-center text-[13px] lg:text-left lg:text-[14px]" style={{ color: 'var(--muted)' }}>
         {pets.length ? `${pets.length} Fledgling${pets.length === 1 ? '' : 's'}, one portfolio.` : 'No Fledglings yet.'}
       </p>
@@ -71,8 +75,8 @@ export default function Nest() {
         const pnl = t.value - t.basis;
         return (
           <div key={label} className="card mt-4 px-4 py-3 lg:mt-0 lg:mb-3 lg:px-5 lg:py-4">
-            <p className="text-[11.5px]" style={{ color: 'var(--muted)' }}>{label} · {t.n} pet{t.n === 1 ? '' : 's'}</p>
-            <p className="num text-[24px] font-bold leading-tight">${t.value.toFixed(2)}</p>
+            <p className="text-[11.5px]" style={{ color: 'var(--muted)' }}>{label} · {t.n} {t.n === 1 ? 'buddy' : 'buddies'}</p>
+            <p className="text-[30px] font-extrabold leading-tight tracking-[-0.02em]" style={{ fontFamily: 'var(--font-display)' }}>${t.value.toFixed(2)}</p>
             <p className="num text-[12.5px]" style={{ color: 'var(--muted)' }}>
               cost <span style={{ color: 'var(--ink)' }}>${t.basis.toFixed(2)}</span>
               {t.basis > 0 && <> · <span style={{ color: pnl >= 0 ? 'var(--up)' : 'var(--down)' }}>{pnl >= 0 ? '+' : '−'}${Math.abs(pnl).toFixed(2)}</span></>}
@@ -98,14 +102,14 @@ export default function Nest() {
           <Link key={k} href={`/litter?key=${k}`} className="card mt-4 block px-3 py-2.5 lg:mt-0 lg:px-4 lg:py-3.5">
             <div className="flex items-center justify-between gap-2">
               <p className="truncate text-[15px] font-bold" style={{ fontFamily: 'var(--font-display)' }}>
-                {litterById(l.id)?.icon} {l.name} <span className="text-[12px] font-semibold" style={{ color: 'var(--muted)' }}>· {pups.length} pups · {isPaper(pups[0]) ? 'paper' : 'live'}</span>
+                {LITTER_LOOK[l.id] ? <img src={LITTER_LOOK[l.id].icon} alt="" className="mr-1 inline h-6 w-6 object-contain align-[-5px]" /> : litterById(l.id)?.icon} {l.name} <span className="text-[12px] font-semibold" style={{ color: 'var(--muted)' }}>· {pups.length} pups · {isPaper(pups[0]) ? 'paper' : 'live'}</span>
               </p>
               <p className="num shrink-0 text-[15px] font-bold">${v.value.toFixed(2)}</p>
             </div>
             <div className="mt-1.5 flex -space-x-2">
               {pups.map((p) => (
                 <img key={p.uid} src={petImage(p.species, 'hero')} alt={p.name} title={`${p.name} · ${stockOf(p).ticker}`}
-                  className="h-8 w-8 rounded-full border-2 object-cover object-top" style={{ background: 'var(--canvas)', borderColor: 'var(--surface)' }} />
+                  className="h-9 w-9 rounded-full border-2 object-cover object-top" style={{ background: `color-mix(in srgb, ${HUE[p.species].main} 40%, var(--surface))`, borderColor: 'var(--surface)' }} />
               ))}
             </div>
             <p className="mt-1 text-[11.5px]" style={{ color: 'var(--muted)' }}>{pups.map((p) => stockOf(p).ticker).join(' · ')} — feed them as one ›</p>
@@ -122,18 +126,21 @@ export default function Nest() {
           const chip = { background: 'color-mix(in srgb, var(--surface) 72%, transparent)', border: '1px solid var(--line)' };
           const body = (
             <>
-              {/* The collectible: art on its own lit plinth, stage and age in the corners, name on a frosted tag. */}
-              <div className={`relative ${top ? 'min-h-56 flex-1' : 'h-36 lg:h-40'}`} style={{ background: 'var(--stage-glow)' }}>
-                <span className="absolute left-2.5 top-2.5 z-[1] rounded-full px-2 py-0.5 text-[10.5px] font-medium uppercase tracking-[.06em]" style={{ ...chip, color: top ? 'var(--accent-ink)' : 'var(--muted)' }}>{g.name}</span>
-                <span className="absolute right-2.5 top-2.5 z-[1] rounded-full px-2 py-0.5 text-[10.5px] num" style={{ ...chip, color: 'var(--muted)' }}>day {p.streak}</span>
-                <img src={petImage(p.species, 'hero')} alt="" draggable={false}
-                  className={`absolute inset-x-0 mx-auto object-contain ${top ? 'bottom-3 h-[86%]' : 'bottom-2 h-[84%]'}`} />
-                <span className={`absolute bottom-2 left-1/2 z-[1] -translate-x-1/2 whitespace-nowrap rounded-full px-3 py-1 font-semibold backdrop-blur ${top ? 'text-[14px]' : 'text-[12.5px]'}`} style={chip}>
-                  {p.name} <span className="num font-medium" style={{ color: 'var(--muted)' }}>{s.ticker}</span>
-                </span>
+              {/* The collectible: the creature on its habitat base, in its own light; level and age in the corners. */}
+              <div className={`relative overflow-hidden ${top ? 'min-h-60 flex-1' : 'h-40 lg:h-44'}`}
+                style={{ background: `radial-gradient(70% 55% at 50% 78%, color-mix(in srgb, ${HUE[p.species].main} 38%, transparent), transparent 75%), linear-gradient(180deg, var(--stage-top), var(--stage-bot))` }}>
+                {top && <div className="stage-rays" aria-hidden />}
+                <span className="absolute left-2.5 top-2.5 z-[2] rounded-full px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[.06em]" style={{ ...chip, color: top ? 'var(--accent-ink)' : 'var(--muted)' }}>Lv {g.index + 1} · {g.name}</span>
+                <span className="absolute right-2.5 top-2.5 z-[2] rounded-full px-2 py-0.5 text-[10.5px] num" style={{ ...chip, color: 'var(--muted)' }}>day {p.streak}</span>
+                <div className="absolute bottom-0 left-1/2 z-[1] -translate-x-1/2">
+                  <Pet id={p.species} mood={top ? 'ecstatic' : 'happy'} night={false} size={top ? (wide ? 280 : 190) : wide ? 124 : 112} base />
+                </div>
               </div>
               <div className="flex items-end justify-between gap-2 px-3 py-2.5">
                 <div className="min-w-0">
+                  <p className={`truncate font-extrabold leading-tight ${top ? 'text-[18px]' : 'text-[14.5px]'}`} style={{ fontFamily: 'var(--font-display)' }}>
+                    {p.name} <span className="num text-[11.5px] font-medium" style={{ color: 'var(--muted)' }}>{s.ticker}</span>
+                  </p>
                   <p className="truncate text-[11px]" style={{ color: 'var(--muted)' }}>{s.company} · {isPaper(p) ? 'paper' : 'live'}</p>
                   <p className={`num font-semibold leading-tight ${top ? 'text-[20px]' : 'text-[15px]'}`}>{r.value != null ? `$${r.value.toFixed(2)}` : '—'}</p>
                 </div>
@@ -146,7 +153,7 @@ export default function Nest() {
               </div>
             </>
           );
-          const frame = { outline: on ? '2px solid var(--accent)' : '2px solid transparent', outlineOffset: '-2px' };
+          const frame = { outline: on ? `2px solid ${HUE[p.species].main}` : '2px solid transparent', outlineOffset: '-2px' };
           return (
             <li key={p.uid ?? p.adoptedAt} className={top ? 'col-span-2 lg:row-span-2' : ''}>
               <button onClick={() => open(p)} className="block h-full w-full text-left" aria-label={`Open ${p.name}`}>

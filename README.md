@@ -2,7 +2,7 @@
 
 <h1 align="center">Roost</h1>
 
-<p align="center"><b>Tokenized stocks, raised like pets.</b><br/>
+<p align="center"><b>Tokenized stocks, raised with a buddy.</b><br/>
 Adopt a Fledgling — a creature that is also a trading rule — feed it USDT, and it buys real tokenized equities on BNB Smart Chain, from your own wallet.</p>
 
 <p align="center">
@@ -19,16 +19,16 @@ Adopt a Fledgling — a creature that is also a trading rule — feed it USDT, a
 ## Try it in a minute
 
 1. Open **[roost.nerom.site](https://roost.nerom.site)** — phone or desktop, no wallet needed to start.
-2. **Pick an egg.** Search any of the ~450 tokenized stocks and ETFs on BSC, hatch a whole themed **litter** (Magnificent 7, AI Chips, Buffett Portfolio…), or take one of the six classics.
+2. **Pick a pod.** Search any of the ~450 tokenized stocks and ETFs on BSC, hatch a whole themed **litter** (Magnificent 7, AI Chips, Buffett Portfolio…), or take one of the six classics.
 3. **Name it and choose a personality.** The personality *is* its trading strategy.
 4. **Feed it.** Without a wallet it trades on paper, and says so everywhere. Connect Binance Web3 Wallet before adopting and every feed is a real swap you sign.
 5. **Come back tomorrow.** An hourly worker keeps it trading while the app is closed, and it tells you what it did — in its diary, or on Telegram.
 
-## Why a pet
+## Why a buddy
 
 A tokenized stock trades every hour of the week. The exchange behind it is open about **32 hours in 168**. For the other 136 the reference price stopped moving on Friday afternoon while the token kept trading. That gap is what a tokenized stock *is*, and it is surprisingly hard to measure honestly — see [what we measured](#what-we-measured-on-bsc).
 
-A pet makes it felt rather than explained:
+A buddy makes it felt rather than explained:
 
 - **It lives on the market's clock.** The app has a day and a night in Binance's colours — its light theme while the NYSE trades, its dark one while it sleeps — switched by the real session, holidays included. At the close the Fledgling's floor starts to glow. There is a mood only a 24/7 chain can have — **Night Owl**: *"Wall Street sleeps. I don't."*
 - **Its mood is the market.** Eight moods from the live print, the session and how hungry it is. Hunger and session outrank price, so care is never masked by a green day.
@@ -39,22 +39,22 @@ A pet makes it felt rather than explained:
 |---|---|
 | ![Night: the NYSE is closed and Rivet is up with a coffee](docs/img/home-night.webp) | ![A Magnificent 7 litter: seven pups, each bar against an equal share](docs/img/litter-desktop.webp) |
 | **Night Owl.** The exchange is shut; the token is not. | **Litters.** Fed as one — whoever is furthest behind eats first. |
-| ![Two issuers sell GOOGL: the pet compares one share through each](docs/img/issuer-desktop.webp) | ![Pick your egg: search ~450 stocks, or hatch a litter](docs/img/adopt-desktop.webp) |
+| ![Two issuers sell GOOGL: the buddy compares one share through each](docs/img/issuer-desktop.webp) | ![Pick your pod: search ~450 stocks, or hatch a litter](docs/img/adopt-desktop.webp) |
 | **The cheaper share.** Two issuers, one share — it picks, and says why. | **Any stock.** The sector decides which Fledgling hatches. |
 
 ## What it does
 
 - **Any of ~450 tokenized stocks and ETFs.** Search by ticker or company, read a company card — sector, CEO, 52-week range, P/E, dividend, the issuer's collateral report, and how far the token trades from the share it stands for — and hatch it. The sector picks the creature: Technology a circuit pangolin, Energy a copper axolotl, Consumer and Healthcare a shopping capybara, Industrials a jetpack beaver, ETFs a patchwork sheep, Communication and Financials a dish-eared fennec.
-- **The cheaper share.** Most big names are sold by two issuers — bStock's `NVDAB` and Ondo's `NVDAon` — at different prices. On hatching, the pet prices one share through each (real fills for your wallet when connected), picks the cheaper, and writes why in its first diary line. On 29 Sept the price feed called GOOGL and QQQ a tie; real fills made **bStock's 1.26% and 1.40% cheaper per share**.
+- **The cheaper share.** Most big names are sold by two issuers — bStock's `NVDAB` and Ondo's `NVDAon` — at different prices. On hatching, the buddy prices one share through each (real fills for your wallet when connected), picks the cheaper, and writes why in its first diary line. On 29 Sept the price feed called GOOGL and QQQ a tie; real fills made **bStock's 1.26% and 1.40% cheaper per share**.
 - **Litters.** Magnificent 7, AI Chips, Whole market and Buffett Portfolio hatch as several pups sharing a personality and a wallet. Each feed is a **rebalance with new money**: it tops up whoever sits furthest below an equal share, and nothing is sold to make room.
 - **Real, non-custodial trades.** A live feed is a real swap signed in *your* wallet — simulated first, exact approvals only, refused if the price is bad, and recorded from the chain's receipt. [How →](#roost-never-holds-your-keys)
 - **Release.** Sell some or all back to USDT through the same checks, with FIFO cost basis and realized P&L.
 - **A nest.** Keep several Fledglings and litters; one portfolio view, real money and paper counted apart.
-- **Habits, not hype.** Weekly, fortnightly or monthly **feeding days** (missed ones are skipped, never stacked into a catch-up buy); a free daily **pet**; a streak that **forgives one missed day a week**; growth from Hatchling to Legend by days visited and feeding days kept — never by returns or deposit size. When a token's share ratio rises, a dividend was reinvested, and the pet says it grew. Confetti is for hatching and care milestones only.
-- **It keeps going without you.** An hourly worker replays the same deterministic engine against the real hourly tape, keeps paper feeding days, and writes the diary. A pet waiting on your yes/no is skipped: the permission rule holds when nobody is watching.
+- **Habits, not hype.** Weekly, fortnightly or monthly **feeding days** (missed ones are skipped, never stacked into a catch-up buy); a free daily **scratch**; a streak that **forgives one missed day a week**; growth from Hatchling to Legend by days visited and feeding days kept — never by returns or deposit size. When a token's share ratio rises, a dividend was reinvested, and the buddy says it grew. Confetti is for hatching and care milestones only.
+- **It keeps going without you.** An hourly worker replays the same deterministic engine against the real hourly tape, keeps paper feeding days, and writes the diary. A buddy waiting on your yes/no is skipped: the permission rule holds when nobody is watching.
 - **Board and duels.** A leaderboard by today's move, all-time P&L or care — the care ranking never counts money — and 24-hour duels between Fledglings that neither owner can trade during, with the closest race up front.
-- **A pet on Telegram.** Feeding-day reminders with a **Sign it** button, the pet's own buy requests, and `/pets` to check in. It never trades from the chat.
-- **Phone and desktop.** A thumb-first phone app with a tab bar; on a wide screen, an exchange-style top bar with the market clock and the wallet, and every page laid out two-up — the pet on its own stage beside its numbers, the market and what it did lately.
+- **A buddy on Telegram.** Feeding-day reminders with a **Sign it** button, the buddy's own buy requests, and `/buddies` to check in. It never trades from the chat.
+- **Phone and desktop.** A thumb-first phone app with a tab bar; on a wide screen, an exchange-style top bar with the market clock and the wallet, and every page laid out two-up — the buddy on its own stage beside its numbers, the market and what it did lately.
 
 <p align="center"><img src="docs/img/home-mobile.webp" width="300" alt="Roost on a phone" />&nbsp;&nbsp;&nbsp;<img src="docs/img/feed-mobile.webp" width="300" alt="Feeding a Fledgling on a phone" /></p>
 
@@ -68,7 +68,7 @@ A pet makes it felt rather than explained:
 | **Transaction API** (`simulate`) | Every live buy and sale is simulated against the signing wallet first | [`lib/preflight`](src/lib/preflight.ts) |
 | **Wallet API** | USDT, BNB and token balances behind a wallet; on-chain holdings | [`lib/preflight`](src/lib/preflight.ts), [`/api/holdings`](src/app/api/holdings/route.ts) |
 | **Binance Web3 Wallet** | Signs every live trade in the web app (wagmi 3, EIP-6963) | [`lib/trade`](src/lib/trade.ts) |
-| **Agentic Wallet + Wallet Skills** | The pet decides; the owner's own agent executes it with `baw` | [`skills/roost`](skills/roost) |
+| **Agentic Wallet + Wallet Skills** | The buddy decides; the owner's own agent executes it with `baw` | [`skills/roost`](skills/roost) |
 | **BNB Agent Studio** | A Fledgling as a seller agent that sells the spread, per ticker and per issuer | [`roostsignal`](roostsignal) |
 
 All signing lives in [`lib/binance`](src/lib/binance.ts), which builds the wire path once and uses that one string for both the signature and the request, and paces calls in the lanes the gateway actually enforces.
@@ -85,7 +85,7 @@ Roost decides; something the user controls executes. There is no server-side key
 4. You sign the swap — the transaction that was simulated, unchanged.
 5. The diary is written from the **receipt's Transfer logs** and linked to BscScan — never from the quote. Roost records no trade the chain did not.
 
-Or fund it and let its rule decide: when the rule fires, the pet asks for a signature instead of pretending it traded.
+Or fund it and let its rule decide: when the rule fires, the buddy asks for a signature instead of pretending it traded.
 
 **With the Binance Agentic Wallet** ([`skills/roost`](skills/roost)) — MPC-keyless, signed into from the Binance App by QR, driven through the `baw` CLI inside limits set in the App — `POST /api/agent` returns the Fledgling's decision as one of four instructions: a `swap` carrying the exact `baw` command, an `ask`, a `hold`, or a `blocked`. The owner can also just say "feed it $5" and it eats at once, at any hour. Every `swap` comes back simulated against the wallet that would sign it, and the skill carries Binance's own rule: an `orderId` is not a completed swap — poll to `FINISHED` or `FAILED` before reporting anything.
 
@@ -99,7 +99,7 @@ Everything below was found against the live Binance Web3 API, and is reproducibl
 
 **`tokenToShareRatio` is not optional.** Skip it and a 10:1 token reports a **900%** spread — `NFLXon`, `PPLTon` and `KLACon` all do.
 
-**A price is not a fill.** On Tuesday 29 Sept, pre-market, the price feed put GOOGL and QQQ within 0.04% across issuers. Real $25 buy quotes for one wallet made **`GOOGLB` 1.26% cheaper per share than `GOOGLon`, and `QQQB` 1.40% cheaper than `QQQon`**. That is why the pet asks for fills rather than reading prices.
+**A price is not a fill.** On Tuesday 29 Sept, pre-market, the price feed put GOOGL and QQQ within 0.04% across issuers. Real $25 buy quotes for one wallet made **`GOOGLB` 1.26% cheaper per share than `GOOGLon`, and `QQQB` 1.40% cheaper than `QQQon`**. That is why the buddy asks for fills rather than reading prices.
 
 **The same stock from two issuers is two prices and two references.** bStock and Ondo both list 40 tickers on BSC. Quoted both ways on a Saturday (`npm run cross`):
 
@@ -159,7 +159,7 @@ flowchart TB
 | [`src/lib/issuer.ts`](src/lib/issuer.ts), [`litters.ts`](src/lib/litters.ts) | The cheaper-share choice; themed baskets and the rebalance-with-new-money split |
 | [`src/lib/care.ts`](src/lib/care.ts) | Feeding days, the forgiving streak, petting, growth stages |
 | [`src/lib/quote.ts`](src/lib/quote.ts), [`signal.ts`](src/lib/signal.ts) | The two-source price, the spread, the cross-issuer report |
-| [`src/lib/tick.ts`](src/lib/tick.ts), [`telegram.ts`](src/lib/telegram.ts) | The hourly worker and the Telegram pet |
+| [`src/lib/tick.ts`](src/lib/tick.ts), [`telegram.ts`](src/lib/telegram.ts) | The hourly worker and the Telegram buddy |
 | [`skills/roost/`](skills/roost) | The Agentic Wallet skill |
 | [`roostsignal/`](roostsignal) | The Agent Studio seller agent |
 
@@ -198,7 +198,7 @@ npm run worker                        # one tick of the hourly worker
 
 Dev switches: `?night=1` and `?day=1` force a theme, `?mood=sulking` pins a mood.
 
-The Telegram pet is optional: make a bot with [@BotFather](https://t.me/BotFather), set `TELEGRAM_BOT_TOKEN` on the app and the worker, and `PUBLIC_URL` on the worker (Railway gives the web service `RAILWAY_PUBLIC_DOMAIN` by itself). The app registers its webhook on every start.
+The Telegram buddy is optional: make a bot with [@BotFather](https://t.me/BotFather), set `TELEGRAM_BOT_TOKEN` on the app and the worker, and `PUBLIC_URL` on the worker (Railway gives the web service `RAILWAY_PUBLIC_DOMAIN` by itself). The app registers its webhook on every start.
 
 ## Status
 
@@ -206,7 +206,7 @@ The Telegram pet is optional: make a bot with [@BotFather](https://t.me/BotFathe
 
 **Signed on BSC mainnet:** the first live feed — a Fledgling named Pango, $5.00 USDT into 0.0212 `NVDAB`, simulated against the wallet first and signed in the web app on Monday 5 Oct at 06:00 UTC, with the NYSE shut ([BscScan](https://bscscan.com/tx/0x2411ac8db22eae81d3017afbf75536593ddd82941f904a49cd564d0762191bb1)). Its diary line was written from the receipt.
 
-**Verified against the live API:** hatching from any listed stock with its company card; the cheaper issuer by real fills; litters and their rebalancing feed; the nest; release with FIFO cost and realized P&L; on-chain holdings; the mood and strategy engines and the diary; the two-source spread; hourly candles on both issuers; the agent intent layer; the seller agent's deliverable across 448 tickers; the cross-issuer comparison; and the pre-flight simulation against live wallets in all four outcomes — would succeed, needs approval, would fail, not simulated. The Telegram pet was run end to end against a local Postgres and a stand-in Bot API.
+**Verified against the live API:** hatching from any listed stock with its company card; the cheaper issuer by real fills; litters and their rebalancing feed; the nest; release with FIFO cost and realized P&L; on-chain holdings; the mood and strategy engines and the diary; the two-source spread; hourly candles on both issuers; the agent intent layer; the seller agent's deliverable across 448 tickers; the cross-issuer comparison; and the pre-flight simulation against live wallets in all four outcomes — would succeed, needs approval, would fail, not simulated. The Telegram buddy was run end to end against a local Postgres and a stand-in Bot API.
 
 **Honest gaps.**
 - **A live release (sale) has not been signed yet** — only the buy above. It goes through the same simulate, price-check and receipt path.
@@ -214,4 +214,4 @@ The Telegram pet is optional: make a bot with [@BotFather](https://t.me/BotFathe
 - **The Agent Studio seller is not deployed yet.** It runs locally against the live app — the free x402 route answers with tool-grounded spread reports — and passes `bag deploy prepare` with nothing blocked. The managed testnet trial lasts 48 hours, so it goes up just before submission.
 - **Ondo request-for-quote fills stop in the web app** with that reason rather than being attempted — typically Ondo names on a weekday in market hours, which includes the all-Ondo Buffett litter. bStock swaps at any hour.
 - **NYSE holidays** still come from Backpack's public API, a Solana-ecosystem venue — the next thing to replace.
-- **The Telegram pet** needs a bot token to switch on.
+- **The Telegram buddy** needs a bot token to switch on.

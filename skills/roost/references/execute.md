@@ -27,7 +27,7 @@ curl -s -X POST "$ROOST_URL/api/agent" \
 quoted without it, and even on bStock a real taker address gets a routable quote where the zero
 address returns *insufficient liquidity*.
 
-`awaitingAnswer` must be `true` if the pet has an open question its owner has not answered. A
+`awaitingAnswer` must be `true` if the buddy has an open question its owner has not answered. A
 Fledgling with an unanswered question does not act. That rule holds when nobody is watching,
 which is the only time it matters.
 
@@ -39,7 +39,7 @@ which is the only time it matters.
     "species": "nova", "stock": "NVDA", "token": "NVDAB",
     "address": "0x02fca66c1d1afb4e2a7884261eb00f63598a7436",
     "platform": "bstock", "chainId": "56",
-    "persona": "You are an unhinged 3am trading pet...",
+    "persona": "You are an unhinged 3am trading buddy...",
     "quotingNeedsWallet": false
   },
   "instruction": {
@@ -74,8 +74,8 @@ Transaction API's simulator against current chain state. Nothing is signed or br
 
 ### Feeding now
 
-When the user says "feed Pango $5" — or "buy $10 of my pet's stock" — they are not asking what the
-pet wants. They are feeding it, and a fed Fledgling eats at once:
+When the user says "feed Pango $5" — or "buy $10 of my buddy's stock" — they are not asking what the
+buddy wants. They are feeding it, and a fed Fledgling eats at once:
 
 ```bash
 curl -s -X POST "$ROOST_URL/api/agent" \
@@ -85,9 +85,9 @@ curl -s -X POST "$ROOST_URL/api/agent" \
 ```
 
 The answer has the same shape as above, and the instruction is always a `swap` for exactly that
-amount, at any hour — it does not wait for the market open or for the pet's rule to fire. Every
+amount, at any hour — it does not wait for the market open or for the buddy's rule to fire. Every
 step below still applies: show the user the pre-flight, get their yes, run it, poll it. An open
-question (`awaitingAnswer`) does not block a feed; that rule stops the pet acting on its own, and
+question (`awaitingAnswer`) does not block a feed; that rule stops the buddy acting on its own, and
 here the owner is the one acting.
 
 Ondo names (Bara, Fen) have a $5 minimum and refuse to quote while their market is `closed` — the
@@ -96,7 +96,7 @@ pre-flight says so in its summary. Report it rather than retrying in another siz
 ### Feeding days
 
 An owner can give a Fledgling a standing feed — "$10 every Monday". In the app it becomes a
-schedule; a paper pet is fed on the day by Roost's hourly worker, but a live one only ever by its
+schedule; a paper buddy is fed on the day by Roost's hourly worker, but a live one only ever by its
 owner's signature, so on its day it waits. `GET {ROOST_URL}/api/pet/<id>` answers `feedingDue:
 true` then, with the amount in `schedule.usd`.
 
@@ -108,7 +108,7 @@ worth because a week went by.
 
 ### Releasing
 
-"Sell half of Pango's NVDA", "take $20 out of my pet": the owner releasing some of what it holds.
+"Sell half of Pango's NVDA", "take $20 out of my buddy": the owner releasing some of what it holds.
 
 ```bash
 curl -s -X POST "$ROOST_URL/api/agent" \
@@ -124,7 +124,7 @@ dollars, and never ask to sell more than `baw` reports the wallet holding. The i
 the sale the same way: it refuses a fill more than 3% under the token's reference price, and an
 Ondo sale under $5 is refused by Ondo itself. Show it, get a yes, run it, poll it — as below.
 
-`token` is the stock's contract address. Pass it whenever the pet hatched from a stock other than
+`token` is the stock's contract address. Pass it whenever the buddy hatched from a stock other than
 its species' signature one (the web app shows it); without it, the signature stock is assumed.
 
 ### The cheaper issuer
@@ -144,7 +144,7 @@ swap route even when slightly cheaper, and `reason` says so — keep that senten
 ### Feeding a litter
 
 A litter is several pups hatched from one theme (`mag7`, `chips`, `etf`, `buffett`) and fed as one.
-`GET {ROOST_URL}/api/litter/<id>` lists each pup's `stock` — the token its pet holds. Split the
+`GET {ROOST_URL}/api/litter/<id>` lists each pup's `stock` — the token its buddy holds. Split the
 owner's amount the way the app does: top up the pups furthest below an equal share of the litter's
 value first, never sell one to feed another, and leave out any pup whose share would be $6 or less
 (Ondo refuses $5 and under) — its share goes to the others. Then run one [feed](#feeding-now) per
@@ -155,7 +155,7 @@ declines.
 
 ## 2. Show the user, before anything moves
 
-Say four things, in the pet's voice but with the numbers untouched:
+Say four things, in the buddy's voice but with the numbers untouched:
 
 - what it wants to do — `instruction.summary`
 - **why** — `instruction.reason`, verbatim, because a deterministic engine produced it
@@ -205,7 +205,7 @@ baw market-order list --orderId <orderId> --json
 `PENDING` is not terminal. Keep polling until `FINISHED` or `FAILED`.
 
 - **`FINISHED`** — report the `txHash` and the amount actually received. That number, not the
-  expected one, is what the pet's diary should record.
+  expected one, is what the buddy's diary should record.
 - **`FAILED`** — say it failed. `txHash` may be `null`. Do not present it as success, and do not
   quietly retry with different parameters.
 - **still `PENDING` after ~30s** — say it is still processing. Not that it worked.
@@ -214,23 +214,23 @@ baw market-order list --orderId <orderId> --json
 
 ## 5. Report
 
-One or two lines, in the pet's voice, containing only things that happened. A Fledgling that
+One or two lines, in the buddy's voice, containing only things that happened. A Fledgling that
 bought says what it bought and why. A Fledgling that held says it held. A Fledgling whose swap
-failed says that too — it is a pet, not a marketing surface, and the diary is meant to be
+failed says that too — it is a buddy, not a marketing surface, and the diary is meant to be
 checkable against the chain.
 
 ---
 
 ## When it is not a swap
 
-**`ask`** — the pet wants more than its rule allows alone. Put `instruction.reason` to the user
+**`ask`** — the buddy wants more than its rule allows alone. Put `instruction.reason` to the user
 as a question and wait. If they say no, it holds; do not re-ask in a smaller size unless they
 suggest it.
 
-**`blocked`** — read `why` out plainly. The pet could not decide: as of this version, the token
+**`blocked`** — read `why` out plainly. The buddy could not decide: as of this version, the token
 returned no candles, so no rule had anything to fire on. Do not guess a trade in its place.
 No Fledgling lends — no venue on BSC is confirmed to take a tokenized equity as collateral — so
-never substitute a yield product the pet did not choose.
+never substitute a yield product the buddy did not choose.
 
 **`hold`** — report it. An hour where a rule deliberately did nothing is a real outcome, and it is
-the honest answer to "what did my pet do today?"
+the honest answer to "what did my buddy do today?"

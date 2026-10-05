@@ -17,7 +17,7 @@ const ICONS = {
 };
 
 const TABS = [
-  { href: '/', label: 'Pet', icon: ICONS.pet },
+  { href: '/', label: 'Buddy', icon: ICONS.pet },
   { href: '/nest', label: 'Nest', icon: ICONS.nest },
   { href: '/duels', label: 'Board', icon: ICONS.board },
   { href: '/diary', label: 'Diary', icon: ICONS.diary },
@@ -52,13 +52,15 @@ export function SessionBadge({ className = '' }: { className?: string }) {
 export function Nav() {
   const path = usePathname();
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-10 mx-auto flex max-w-[430px] justify-around border-t px-2 pb-[max(10px,env(safe-area-inset-bottom))] pt-2 text-[11.5px] font-medium lg:hidden"
-      style={{ background: 'var(--surface)', borderColor: 'var(--line)', color: 'var(--muted)' }}>
+    <nav className="fixed inset-x-0 bottom-0 z-10 mx-auto flex max-w-[430px] justify-around border-t px-2 pb-[max(10px,env(safe-area-inset-bottom))] pt-2 text-[11.5px] font-semibold lg:hidden"
+      style={{ background: 'color-mix(in srgb, var(--surface) 82%, transparent)', backdropFilter: 'saturate(1.4) blur(14px)', WebkitBackdropFilter: 'saturate(1.4) blur(14px)', borderColor: 'var(--line)', color: 'var(--muted)', fontFamily: 'var(--font-display)' }}>
       {TABS.map((t) => {
         const active = isActive(t.href, path);
         return (
-          <Link key={t.href} href={t.href} className="flex flex-col items-center gap-1 px-3 py-1" style={active ? { color: 'var(--ink)' } : undefined}>
-            <span style={active ? { color: 'var(--accent-ink)' } : undefined}>{t.icon}</span>{t.label}
+          <Link key={t.href} href={t.href} className="flex flex-col items-center gap-0.5 px-3 py-0.5" style={active ? { color: 'var(--ink)' } : undefined}>
+            {/* The tab you're on gets the lit yellow button. */}
+            <span className="grid h-8 w-11 place-items-center rounded-full transition-colors"
+              style={active ? { background: 'linear-gradient(180deg, #FFE46B, #F0B90B)', color: 'var(--on-accent)', boxShadow: '0 2px 0 #B98900, 0 6px 14px -6px rgba(240,185,11,.7)' } : undefined}>{t.icon}</span>{t.label}
           </Link>
         );
       })}
@@ -109,7 +111,7 @@ export function Footer() {
     <footer className="hidden shrink-0 border-t lg:block" style={{ borderColor: 'var(--line)', background: 'var(--surface)' }}>
       <div className="mx-auto flex h-9 max-w-[1200px] items-center justify-between gap-6 px-10 text-[12px]" style={{ color: 'var(--muted)' }}>
         <span>Roost never holds your keys. Every trade is signed in your own wallet, on BNB Smart Chain.</span>
-        <span className="shrink-0">Tokenized stocks, raised like pets.</span>
+        <span className="shrink-0">Tokenized stocks, raised with a buddy.</span>
       </div>
     </footer>
   );

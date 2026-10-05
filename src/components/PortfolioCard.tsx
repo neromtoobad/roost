@@ -65,7 +65,7 @@ export function PortfolioCard({ value, basis, paper, bars, lots, yieldQty, pct24
         )}
       </div>
 
-      <div className={`mt-1 font-semibold leading-none tracking-[-0.02em] ${big ? 'text-[34px] lg:text-[44px]' : 'text-[30px]'}`}>
+      <div className={`mt-1 font-extrabold leading-none tracking-[-0.03em] ${big ? 'text-[36px] lg:text-[48px]' : 'text-[32px]'}`} style={{ fontFamily: 'var(--font-display)' }}>
         {shown !== null ? <NumberFlow value={shown} locales="en-US" format={usd} className="dim-cents" /> : '—'}
       </div>
 

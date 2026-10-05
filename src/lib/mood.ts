@@ -50,7 +50,7 @@ export function moodReason(mood: Mood, i: MoodInput, ticker: string): string {
   const pct = Number.isFinite(i.pct24h) ? `${i.pct24h >= 0 ? '+' : '−'}${Math.abs(i.pct24h).toFixed(2)}%` : 'flat';
   switch (mood) {
     case 'hungry': return 'Hungry: it has gone two days without food. Hunger outranks the market.';
-    case 'pajamas': return `In pajamas: the NYSE is closed for the ${i.session === 'holiday' ? 'holiday' : 'weekend'}. ${ticker} still trades on-chain; the pet rests.`;
+    case 'pajamas': return `In pajamas: the NYSE is closed for the ${i.session === 'holiday' ? 'holiday' : 'weekend'}. ${ticker} still trades on-chain; your buddy rests.`;
     case 'nightowl': return `Night owl: the NYSE is shut for the night, but ${ticker} trades on-chain around the clock.`;
     case 'ecstatic': return `Ecstatic: ${ticker} is ${pct} today — up 4% or more.`;
     case 'happy': return `Happy: ${ticker} is ${pct} today — up between 1% and 4%.`;
