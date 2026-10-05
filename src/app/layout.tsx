@@ -23,10 +23,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-dvh antialiased">
         <Wallet>
           <SessionTheme />
-          {/* Desktop has a bar across the top and a footer; phones use the tab bar. */}
-          <TopBar />
-          <div className="lg:min-h-[calc(100dvh-65px)]">{children}</div>
-          <Footer />
+          {/* Desktop is one fixed screen: the bar across the top, the page between, a slim footer.
+              Pages fit the space and scroll their own long lists; if a window is too short anyway,
+              only the page area scrolls. Phones scroll normally and use the tab bar. */}
+          <div className="lg:flex lg:h-dvh lg:flex-col">
+            <TopBar />
+            <div className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto">{children}</div>
+            <Footer />
+          </div>
         </Wallet>
       </body>
     </html>

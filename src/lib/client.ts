@@ -27,6 +27,9 @@ export function useMedia(query: string): boolean {
 export const WIDE = '(min-width: 1024px)';
 /** Wide enough for the full-size pet and the roomier columns. */
 export const WIDER = '(min-width: 1280px)';
+/** Desktop is one fixed screen, so the pet is also sized by how tall the window is. */
+export const TALL = '(min-height: 860px)';
+export const SHORT = '(max-height: 719px)';
 
 /** The current URL query string. Server snapshot is ''. */
 export function useSearch(): URLSearchParams {

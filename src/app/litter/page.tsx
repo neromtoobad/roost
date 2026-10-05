@@ -137,7 +137,7 @@ export default function LitterPage() {
   const hatched = Boolean(q.get('hatched'));
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-[430px] flex-col px-4 pb-24 pt-[max(12px,env(safe-area-inset-top))] lg:min-h-0 lg:max-w-[1200px] lg:px-10 lg:pb-16 lg:pt-8">
+    <main className="mx-auto flex min-h-dvh max-w-[430px] flex-col px-4 pb-24 pt-[max(12px,env(safe-area-inset-top))] lg:h-full lg:min-h-0 lg:max-w-[1200px] lg:px-10 lg:pb-6 lg:pt-6">
       <div className="flex items-center justify-between gap-2">
         <button onClick={() => router.push('/nest')} aria-label="Back to the nest" className="text-[22px]">‹</button>
         <div className="lg:hidden"><ConnectPill /></div>
@@ -152,9 +152,9 @@ export default function LitterPage() {
         {pups.length} pups · {live ? `live, bound to ${short(bound)}` : 'paper'} · {PERSONALITIES[first.personality].name}
       </p>
 
-      <div className="lg:mt-4 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start lg:gap-8 xl:grid-cols-[minmax(0,1fr)_400px] xl:gap-10">
-      <div>
-      <div className="card mt-4 px-4 py-3">
+      <div className="lg:mt-4 lg:grid lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-8 xl:grid-cols-[minmax(0,1fr)_400px] xl:gap-10">
+      <div className="lg:flex lg:min-h-0 lg:flex-col">
+      <div className="card mt-4 shrink-0 px-4 py-3 lg:mt-0">
         <p className="text-[11.5px]" style={{ color: 'var(--muted)' }}>Together</p>
         <p className="num text-[24px] font-bold leading-tight">${total.toFixed(2)}</p>
         <p className="text-[12px]" style={{ color: 'var(--muted)' }}>
@@ -162,7 +162,7 @@ export default function LitterPage() {
         </p>
       </div>
 
-      <ul className="mt-3 grid gap-1.5">
+      <ul className="mt-3 grid gap-1.5 lg:min-h-0 lg:content-start lg:overflow-y-auto lg:pr-1">
         {pups.map((p, i) => {
           const w = total > 0 ? values[i] / total : 0;
           const gets = shares[i];
@@ -191,7 +191,7 @@ export default function LitterPage() {
 
       </div>
 
-      <div className="lg:sticky lg:top-8">
+      <div className="lg:self-start">
       <p className="mt-5 text-[12px] font-semibold uppercase tracking-wide lg:mt-4" style={{ color: 'var(--muted)' }}>Feed the litter</p>
       <div className="mt-2 grid grid-cols-4 gap-2">
         {(live ? AMOUNTS.live : AMOUNTS.paper).map((a) => (

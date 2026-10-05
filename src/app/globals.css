@@ -1,6 +1,9 @@
 @import "tailwindcss";
 
 /* Theme is driven by the NYSE session via <html data-session>, see tokens.css — not by prefers-color-scheme. */
+/* Desktop is one fixed screen, so some sizes also depend on how tall the window is. */
+@custom-variant tall (@media (min-height: 860px));
+
 @theme inline {
   --font-sans: var(--font-body);
   --font-mono: var(--font-mono);

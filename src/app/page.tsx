@@ -8,12 +8,13 @@ import { Nav, SessionBadge } from '@/components/Nav';
 import { ConnectPill, useWallet } from '@/components/Wallet';
 import { Confetti } from '@/components/Confetti';
 import { ENTRY_ICON, Report, Ask } from '@/components/Report';
-import { Sparkline } from '@/components/Sparkline';
+import { PortfolioCard } from '@/components/PortfolioCard';
+import { GrowthRings } from '@/components/Stage';
 import { DuelCard, type Duel } from '@/components/Duel';
 import { TelegramLink } from '@/components/Telegram';
 import { petImage, type Mood } from '@/lib/pets';
 import { computeMood, moodLine } from '@/lib/mood';
-import { WIDE, WIDER, useMarketSession, useMedia, useNow, useSearch } from '@/lib/client';
+import { SHORT, TALL, WIDE, WIDER, useMarketSession, useMedia, useNow, useSearch } from '@/lib/client';
 import { runEngine } from '@/lib/engine';
 import { useTickAll } from '@/lib/tickall';
 import { pullPet, syncPet } from '@/lib/sync';
@@ -35,6 +36,8 @@ export default function Home() {
   const q = useSearch();
   const wide = useMedia(WIDE);
   const wider = useMedia(WIDER);
+  const tall = useMedia(TALL);
+  const short = useMedia(SHORT);
   // A link from the Telegram pet names which Fledgling it is about.
   const elsewhere = useFocusPet(q);
   const [price, setPrice] = useState<Price>({ price: null, pct24h: 0, source: 'none' });
@@ -180,12 +183,13 @@ export default function Home() {
   };
 
   const qty = pet ? heldQty(pet) : 0;
+  const petSize = Math.round((!wide ? 300 : short ? 250 : wider && tall ? 440 : 340) * grown.scale);
   const perf = pet && price.price ? pnl(pet, price.price) : null;
 
   if (!hasStore && !pet) return <main className="min-h-dvh" />;
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-[430px] flex-col px-4 pb-24 pt-[max(12px,env(safe-area-inset-top))] lg:min-h-0 lg:max-w-[1200px] lg:px-10 lg:pb-16 lg:pt-8">
+    <main className="mx-auto flex min-h-dvh max-w-[430px] flex-col px-4 pb-24 pt-[max(12px,env(safe-area-inset-top))] lg:h-full lg:min-h-0 lg:max-w-[1200px] lg:px-10 lg:pb-6 lg:pt-6">
       {/* Desktop has the clock and the wallet in the top bar. */}
       <div className="flex items-center justify-between gap-2 lg:hidden">
         <SessionBadge />
@@ -232,28 +236,41 @@ export default function Home() {
       )}
 
       {/* Desktop: the pet gets a stage of its own on the left, and the numbers sit beside it. */}
-      <div className="lg:mt-4 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(360px,420px)] xl:gap-10">
-      <section className="lg:sticky lg:top-8 lg:rounded-[var(--radius-card)] lg:border lg:border-[var(--line)] lg:bg-[var(--surface)] lg:flex lg:min-h-[620px] lg:flex-col lg:items-center lg:justify-center lg:py-10">
+      <div className="lg:mt-3 lg:grid lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(360px,420px)] xl:gap-10">
+      <section className="lg:relative lg:flex lg:min-h-0 lg:flex-col lg:items-center lg:justify-center lg:overflow-hidden lg:rounded-[var(--radius-card)] lg:border lg:border-[var(--line)] lg:bg-[var(--surface)] lg:py-6 lg:[background-image:var(--grain)]">
+      {/* Desktop: the stock rides on the stage as one chip, the way a price tag sits by a toy. */}
+      {stock && (
+        <div className="absolute left-4 top-4 z-10 hidden items-center gap-2.5 rounded-full border px-3 py-1.5 text-[12px] num lg:flex"
+          style={{ borderColor: 'var(--line)', background: 'color-mix(in srgb, var(--surface-2) 85%, transparent)' }}>
+          <span className="font-semibold" style={{ color: 'var(--ink)' }}>{stock.tokenSymbol}</span>
+          <span style={{ color: 'var(--ink)' }}>{price.price ? `$${price.price.toFixed(2)}` : '—'}</span>
+          <span style={{ color: price.pct24h >= 0 ? 'var(--up)' : 'var(--down)' }}>{price.pct24h >= 0 ? '+' : ''}{price.pct24h.toFixed(2)}%</span>
+          {fill?.spreadPct != null && (
+            <span style={{ color: 'var(--muted)' }}>· {fill.spreadPct >= 0 ? '+' : ''}{fill.spreadPct.toFixed(2)}% vs share</span>
+          )}
+        </div>
+      )}
       <div className="relative mt-5 flex flex-col items-center lg:mt-0">
-        <div className="card relative mb-2 max-w-[264px] px-4 py-2.5 text-center text-[15px] font-semibold lg:max-w-[360px] lg:px-5 lg:py-3 lg:text-[18px]" style={{ fontFamily: 'var(--font-display)' }}>
+        <div className="card relative z-10 mb-2 max-w-[264px] px-4 py-2.5 text-center text-[15px] font-semibold lg:max-w-[360px] lg:px-5 lg:py-3 lg:text-[18px]" style={{ fontFamily: 'var(--font-display)' }}>
           {line}
           <span className="absolute -bottom-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45" style={{ background: 'var(--surface)', borderRight: '1px solid var(--line)', borderBottom: '1px solid var(--line)' }} aria-hidden />
         </div>
         <button type="button" onClick={onPet} className="relative" aria-label={pet && canPet(pet.care) ? `Pet ${pet.name}` : `${pet?.name} was petted recently`}>
           {(celebrate || ms) && <Confetti />}
           {/* It grows with care: a Hatchling is small, a Legend is not. Never with money. */}
-          <Pet id={species} mood={mood} night={night} size={Math.round((wider ? 440 : 300) * grown.scale)} />
+          <GrowthRings size={petSize} grown={grown} spread={wide ? 1.45 : 1.04} labels={wide} />
+          <Pet id={species} mood={mood} night={night} size={petSize} />
         </button>
-        <p className="-mt-1 text-[11.5px] num lg:text-[13px]" style={{ color: 'var(--muted)' }}>
+        <p className="relative z-10 -mt-1 text-[11.5px] num lg:text-[13px]" style={{ color: 'var(--muted)' }}>
           {grown.name}{grown.next !== null ? ` · ${grown.points}/${grown.next} to grow` : ''}
           {pet && canPet(pet.care) ? ` · ${wide ? 'click' : 'tap'} to pet` : ''}
         </p>
       </div>
       </section>
 
-      <section className="lg:flex lg:flex-col">
+      <section className="lg:flex lg:min-h-0 lg:flex-col lg:overflow-y-auto lg:pr-1">
       {/* Desktop: the name as a heading, where the phone has a caption above the pet. */}
-      <div className="mb-4 hidden lg:block">
+      <div className="mb-3 hidden lg:block">
         <h1 className="text-[36px] font-bold leading-tight" style={{ fontFamily: 'var(--font-display)' }}>{pet?.name}</h1>
         <p className="text-[14px] font-semibold" style={{ color: 'var(--muted)' }}>
           <span className="num" style={{ color: 'var(--ink)' }}>{ticker}</span>{stock && stock.company !== ticker ? ` · ${stock.company}` : ''} · day {pet?.streak ?? 1}
@@ -263,18 +280,8 @@ export default function Home() {
 
       {/* Portfolio — the number that moves without you. */}
       {pet && (
-        <div className="card mt-1 flex items-center justify-between px-4 py-3">
-          <div>
-            <p className="text-[11.5px]" style={{ color: 'var(--muted)' }}>Portfolio {isPaper(pet) && <span className="num">· paper</span>}</p>
-            <p className="text-[24px] font-bold num leading-tight">{perf ? `$${perf.value.toFixed(2)}` : '—'}</p>
-            {perf && perf.basis > 0 && (
-              <p className="text-[12.5px] num" style={{ color: perf.abs >= 0 ? 'var(--up)' : 'var(--down)' }}>
-                {perf.abs >= 0 ? '+' : ''}${perf.abs.toFixed(2)} ({perf.abs >= 0 ? '+' : ''}{perf.pct.toFixed(2)}%)
-              </p>
-            )}
-          </div>
-          <Sparkline bars={bars} lots={pet.lots} yieldQty={pet.yieldQty} />
-        </div>
+        <PortfolioCard value={perf ? perf.value : null} basis={perf?.basis ?? 0} paper={isPaper(pet)} bars={bars} lots={pet.lots}
+          yieldQty={pet.yieldQty} pct24h={price.pct24h} big={wide} />
       )}
 
       {pet && <Ask pet={pet} price={price.price} onAnswer={(yes) => {
@@ -350,27 +357,15 @@ export default function Home() {
       )}
       {pet && <TelegramLink pet={pet} />}
 
-      {/* Desktop has room for what the phone keeps a tap away: the stock, and what the pet did lately. */}
-      <div className="card mt-6 hidden px-5 py-4 lg:block">
-        <p className="text-[11.5px] font-medium uppercase tracking-[.08em]" style={{ color: 'var(--muted)' }}>Market</p>
-        <div className="mt-1.5 flex items-baseline justify-between gap-3">
-          <p className="num text-[20px] font-semibold">{price.price ? `$${price.price.toFixed(2)}` : '—'} <span className="text-[13px] font-medium" style={{ color: 'var(--muted)' }}>{stock?.tokenSymbol}</span></p>
-          <p className="num text-[13px] font-medium" style={{ color: price.pct24h >= 0 ? 'var(--up)' : 'var(--down)' }}>{price.pct24h >= 0 ? '+' : ''}{price.pct24h.toFixed(2)}% 24h</p>
-        </div>
-        {fill?.spreadPct != null && (
-          <p className="mt-1 text-[12.5px] num" style={{ color: 'var(--muted)' }}>
-            On-chain <b style={{ color: fill.spreadPct >= 0 ? 'var(--up)' : 'var(--down)' }}>{fill.spreadPct >= 0 ? '+' : ''}{fill.spreadPct.toFixed(3)}%</b> vs reference{fill.vendor ? ` · ${fill.vendor}` : ''}
-          </p>
-        )}
-      </div>
+      {/* Desktop has room for what the phone keeps a tap away: what the pet did lately. */}
       {pet && pet.diary.length > 0 && (
-        <div className="card mt-3 hidden px-5 py-4 lg:block">
-          <div className="flex items-center justify-between">
+        <div className="card mt-4 hidden min-h-[150px] flex-1 flex-col px-5 py-3.5 lg:flex">
+          <div className="flex shrink-0 items-center justify-between">
             <p className="text-[11.5px] font-medium uppercase tracking-[.08em]" style={{ color: 'var(--muted)' }}>Recent</p>
             <Link href="/diary" className="text-[12.5px] font-medium" style={{ color: 'var(--accent-ink)' }}>Diary ›</Link>
           </div>
-          <ul className="mt-2.5 grid gap-3">
-            {[...pet.diary].sort((a, b) => b.ts - a.ts).slice(0, 4).map((e, i) => (
+          <ul className="mt-2.5 grid min-h-0 content-start gap-3 overflow-y-auto pr-1">
+            {[...pet.diary].sort((a, b) => b.ts - a.ts).slice(0, 20).map((e, i) => (
               <li key={`${e.ts}-${i}`} className="flex gap-3 text-[13.5px]">
                 <span aria-hidden className="w-5 shrink-0 text-center">{ENTRY_ICON[e.kind] ?? '•'}</span>
                 <div className="min-w-0">

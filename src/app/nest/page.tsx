@@ -52,15 +52,15 @@ export default function Nest() {
   const singles = pets.filter((p) => !p.litter);
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-[430px] flex-col px-4 pb-24 pt-[max(12px,env(safe-area-inset-top))] lg:min-h-0 lg:max-w-[1200px] lg:px-10 lg:pb-16 lg:pt-8">
+    <main className="mx-auto flex min-h-dvh max-w-[430px] flex-col px-4 pb-24 pt-[max(12px,env(safe-area-inset-top))] lg:h-full lg:min-h-0 lg:max-w-[1200px] lg:px-10 lg:pb-6 lg:pt-6">
       <h1 className="text-center text-[28px] font-bold lg:text-left lg:text-[36px]" style={{ fontFamily: 'var(--font-display)' }}>Nest</h1>
       <p className="text-center text-[13px] lg:text-left lg:text-[14px]" style={{ color: 'var(--muted)' }}>
         {pets.length ? `${pets.length} Fledgling${pets.length === 1 ? '' : 's'}, one portfolio.` : 'No Fledglings yet.'}
       </p>
 
       {/* Desktop: the totals and the way to hatch stay put on the left; the pets fill the right. */}
-      <div className="lg:mt-6 lg:grid lg:grid-cols-[340px_minmax(0,1fr)] lg:items-start lg:gap-8">
-      <aside className="lg:sticky lg:top-24">
+      <div className="lg:mt-5 lg:grid lg:min-h-0 lg:flex-1 lg:grid-cols-[340px_minmax(0,1fr)] lg:gap-8">
+      <aside className="lg:self-start">
       {[{ label: 'Real money', t: live }, { label: 'Paper', t: paper }].filter((x) => x.t.n > 0).map(({ label, t }) => {
         const pnl = t.value - t.basis;
         return (
@@ -81,7 +81,7 @@ export default function Nest() {
       <Link href="/shelf" className="mt-3 hidden text-center text-[13px] underline lg:block" style={{ color: 'var(--muted)' }}>Meet the six Fledglings</Link>
       </aside>
 
-      <div>
+      <div className="lg:min-h-0 lg:overflow-y-auto lg:pr-1">
       {/* Litters first, each as one card: hatched together, fed together. */}
       {litters.length > 0 && <p className="mt-6 mb-1 hidden text-[11.5px] font-medium uppercase tracking-[.08em] lg:mt-0 lg:block" style={{ color: 'var(--muted)' }}>Litters</p>}
       <div className="lg:grid lg:grid-cols-2 lg:gap-3">

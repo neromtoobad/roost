@@ -74,7 +74,7 @@ export function TopBar() {
   const path = usePathname();
   const links = [...TABS, { href: '/shelf', label: 'Fledglings' }];
   return (
-    <header className="sticky top-0 z-30 hidden border-b lg:block"
+    <header className="z-30 hidden shrink-0 border-b lg:block"
       style={{ background: 'color-mix(in srgb, var(--surface) 90%, transparent)', borderColor: 'var(--line)', backdropFilter: 'saturate(1.4) blur(12px)', WebkitBackdropFilter: 'saturate(1.4) blur(12px)' }}>
       <div className="mx-auto flex h-16 max-w-[1200px] items-center gap-10 px-10">
         <Link href="/" className="flex shrink-0 items-center gap-2.5">
@@ -106,8 +106,8 @@ export function TopBar() {
 /** Desktop only: the promise, said once at the bottom of every page. */
 export function Footer() {
   return (
-    <footer className="hidden border-t lg:block" style={{ borderColor: 'var(--line)' }}>
-      <div className="mx-auto flex max-w-[1200px] items-center justify-between gap-6 px-10 py-6 text-[12.5px]" style={{ color: 'var(--muted)' }}>
+    <footer className="hidden shrink-0 border-t lg:block" style={{ borderColor: 'var(--line)', background: 'var(--surface)' }}>
+      <div className="mx-auto flex h-9 max-w-[1200px] items-center justify-between gap-6 px-10 text-[12px]" style={{ color: 'var(--muted)' }}>
         <span>Roost never holds your keys. Every trade is signed in your own wallet, on BNB Smart Chain.</span>
         <span className="shrink-0">Tokenized stocks, raised like pets.</span>
       </div>

@@ -33,7 +33,7 @@ function issuerNote(ticker: string, token: Stock, choice: Pick<IssuerChoice, 'ba
 
 function PersonalityPicker({ value, onChange }: { value: Personality; onChange: (p: Personality) => void }) {
   return (
-    <div className="mt-3 grid gap-2">
+    <div className="mt-3 grid gap-2 lg:grid-cols-2">
       {(Object.keys(PERSONALITIES) as Personality[]).map((k) => {
         const p = PERSONALITIES[k], on = value === k;
         return (
@@ -148,7 +148,7 @@ export default function Adopt() {
   };
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-[430px] flex-col px-4 pb-10 pt-[max(12px,env(safe-area-inset-top))] lg:min-h-0 lg:max-w-[1200px] lg:px-10 lg:pb-16 lg:pt-8">
+    <main className="mx-auto flex min-h-dvh max-w-[430px] flex-col px-4 pb-10 pt-[max(12px,env(safe-area-inset-top))] lg:h-full lg:min-h-0 lg:max-w-[1200px] lg:px-10 lg:pb-6 lg:pt-6">
       <div className="flex items-center justify-between gap-2">
         <span className="rounded-full border px-3 py-1.5 text-[12px] num" style={{ borderColor: 'var(--ink)' }}>
           {step === 'egg' ? 'Adopt' : step === 'stock' ? 'Meet the stock' : step === 'litter' ? 'A litter' : step === 'hatch' ? 'Hatching' : 'Name & personality'}
@@ -165,13 +165,15 @@ export default function Adopt() {
 
       <AnimatePresence mode="wait">
         {step === 'egg' && (
-          <motion.section key="egg" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-            <h1 className="mt-5 text-center text-[32px] font-bold" style={{ fontFamily: 'var(--font-display)' }}>Pick your egg</h1>
-            <p className="mt-1 text-center text-[14px]" style={{ color: 'var(--muted)' }}>Any of ~450 tokenized stocks. Its sector decides which Fledgling hatches.</p>
+          <motion.section key="egg" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+            className="lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
+            <h1 className="mt-5 text-center text-[32px] font-bold lg:mt-0 lg:text-[28px]" style={{ fontFamily: 'var(--font-display)' }}>Pick your egg</h1>
+            <p className="mt-1 text-center text-[14px] lg:mt-0.5 lg:text-[13.5px]" style={{ color: 'var(--muted)' }}>Any of ~450 tokenized stocks. Its sector decides which Fledgling hatches.</p>
 
-            <div className="lg:mt-4 lg:grid lg:grid-cols-2 lg:items-start lg:gap-10">
-            <div>
-            <label className="card mt-5 flex items-center gap-2 px-4 py-3">
+            {/* Desktop: two columns that fit the window; the stock list scrolls inside its own column. */}
+            <div className="lg:mt-4 lg:grid lg:min-h-0 lg:flex-1 lg:grid-cols-2 lg:gap-10">
+            <div className="lg:flex lg:min-h-0 lg:flex-col">
+            <label className="card mt-5 flex shrink-0 items-center gap-2 px-4 py-3 lg:mt-0">
               <span aria-hidden>🔎</span>
               <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Ticker or company — NVDA, Coca-Cola, SPY…"
                 className="w-full bg-transparent text-[15px] outline-none" style={{ color: 'var(--ink)' }} aria-label="Search tokenized stocks" />
@@ -179,7 +181,7 @@ export default function Adopt() {
             <p className="mt-3 text-[12px] font-semibold uppercase tracking-wide" style={{ color: 'var(--muted)' }}>
               {q.trim() ? 'Matches' : 'Most traded on BSC right now'}
             </p>
-            <div className="mt-2 grid gap-1.5">
+            <div className="mt-2 grid gap-1.5 lg:min-h-0 lg:content-start lg:overflow-y-auto lg:pr-1">
               {results && results.list.length === 0 && q.trim() && (
                 <p className="card px-4 py-3 text-[13px]" style={{ color: 'var(--muted)' }}>No tokenized stock on BSC matches “{q.trim()}”.</p>
               )}
@@ -204,13 +206,15 @@ export default function Adopt() {
 
             </div>
 
-            <div className="lg:mt-5">
+            <div className="lg:flex lg:min-h-0 lg:flex-col">
+            {/* Desktop: litters and eggs scroll if the window is short; Hatch stays in view below them. */}
+            <div className="lg:min-h-0 lg:overflow-y-auto lg:pr-1">
             {/* Themes, hatched as several pups and fed as one. Binance's own sector names. */}
             <p className="mt-6 text-[12px] font-semibold uppercase tracking-wide lg:mt-0" style={{ color: 'var(--muted)' }}>Or a litter</p>
             <div className="mt-2 grid grid-cols-2 gap-2">
               {LITTERS.map((l) => (
                 <button key={l.id} onClick={() => void openLitter(l)} disabled={loading !== null}
-                  className="card flex flex-col items-start gap-0.5 px-3 py-3 text-left active:scale-[0.98]"
+                  className="card flex flex-col items-start gap-0.5 px-3 py-3 text-left active:scale-[0.98] lg:py-2.5"
                   style={{ opacity: loading && loading !== l.id ? 0.4 : 1, transition: 'transform .1s' }}>
                   <span className="text-[20px]" aria-hidden>{l.icon}</span>
                   <span className="text-[14.5px] font-bold leading-tight" style={{ fontFamily: 'var(--font-display)' }}>{l.name}</span>
@@ -221,21 +225,22 @@ export default function Adopt() {
               ))}
             </div>
 
-            <p className="mt-6 text-[12px] font-semibold uppercase tracking-wide" style={{ color: 'var(--muted)' }}>Or a classic</p>
-            <div className="mt-2 grid grid-cols-2 gap-3 xl:grid-cols-3">
+            <p className="mt-6 text-[12px] font-semibold uppercase tracking-wide lg:mt-4" style={{ color: 'var(--muted)' }}>Or a classic</p>
+            <div className="mt-2 grid grid-cols-2 gap-3 lg:mb-3 lg:grid-cols-3 lg:gap-2">
               {ORDER.map((id) => {
                 const s = SPECIES[id], on = pick === id;
                 return (
-                  <button key={id} onClick={() => setPick(id)} className="card flex flex-col items-center gap-2 px-3 pb-3 pt-4 text-left transition-transform active:scale-[0.98]"
+                  <button key={id} onClick={() => setPick(id)} className="card flex flex-col items-center gap-2 px-3 pb-3 pt-4 text-left transition-transform active:scale-[0.98] lg:gap-1 lg:pb-2 lg:pt-2.5"
                     style={{ outline: on ? '3px solid var(--accent)' : '3px solid transparent', boxShadow: on ? 'var(--glow)' : 'none' }}>
-                    <img src={`/pets/eggs/${id}.png`} alt="" className="h-28 w-28 object-contain lg:h-24 lg:w-24" draggable={false} />
+                    <img src={`/pets/eggs/${id}.png`} alt="" className="h-28 w-28 object-contain lg:h-16 lg:w-16" draggable={false} />
                     <span className="text-[15px] font-bold" style={{ fontFamily: 'var(--font-display)' }}>{s.ticker}</span>
                     <span className="-mt-1 text-[12px]" style={{ color: 'var(--muted)' }}>{s.preIpo ? 'pre-IPO' : 'tokenized stock'}</span>
                   </button>
                 );
               })}
             </div>
-            <button onClick={() => { setChosen(null); setChoice(null); hatch(); }} disabled={!pick} className="pill mt-6 w-full text-[18px] disabled:opacity-40">Hatch</button>
+            </div>
+            <button onClick={() => { setChosen(null); setChoice(null); hatch(); }} disabled={!pick} className="pill mt-6 w-full shrink-0 text-[18px] disabled:opacity-40 lg:mt-auto">Hatch</button>
             </div>
             </div>
           </motion.section>
@@ -244,7 +249,7 @@ export default function Adopt() {
         {step === 'stock' && chosen && sp && (
           <motion.section key="stock" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
             className="lg:mx-auto lg:mt-6 lg:grid lg:w-full lg:max-w-[960px] lg:grid-cols-[300px_minmax(0,1fr)] lg:items-start lg:gap-8 xl:grid-cols-[380px_minmax(0,1fr)] xl:gap-10">
-            <div className="lg:sticky lg:top-8">
+            <div className="lg:self-start">
             <div className="mx-auto mt-3 grid h-32 w-32 place-items-center lg:h-44 lg:w-44">
               <img src={`/pets/eggs/${sp.id}.png`} alt="" className="h-28 w-28 object-contain" draggable={false} />
             </div>
@@ -287,14 +292,15 @@ export default function Adopt() {
         )}
 
         {step === 'litter' && litter && (
-          <motion.section key="litter" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+          <motion.section key="litter" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+            className="lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
             <h1 className="mt-4 text-center text-[28px] font-bold" style={{ fontFamily: 'var(--font-display)' }}>{litter.icon} {litter.name}</h1>
             <p className="text-center text-[13.5px]" style={{ color: 'var(--muted)' }}>{litter.blurb}</p>
             <p className="mt-2 text-center text-[12px]" style={{ color: 'var(--muted)' }}>
               {pups.length} pups, fed as one: each feed tops up whoever has fallen furthest behind first.
             </p>
-            <div className="lg:mx-auto lg:mt-4 lg:grid lg:max-w-[1000px] lg:grid-cols-2 lg:items-start lg:gap-10">
-            <ul className="mt-3 grid gap-1.5 lg:mt-0">
+            <div className="lg:mx-auto lg:mt-4 lg:grid lg:min-h-0 lg:w-full lg:max-w-[1000px] lg:flex-1 lg:grid-cols-2 lg:gap-10">
+            <ul className="mt-3 grid gap-1.5 lg:mt-0 lg:min-h-0 lg:content-start lg:overflow-y-auto lg:pr-1">
               {litter.members.map((m) => (
                 <li key={m.ticker} className="card flex items-start gap-3 px-3 py-2.5" style={{ opacity: m.stock ? 1 : 0.5 }}>
                   <img src={`/pets/eggs/${m.species}.png`} alt="" className="h-10 w-10 shrink-0 object-contain" />
@@ -307,7 +313,7 @@ export default function Adopt() {
                 </li>
               ))}
             </ul>
-            <div className="lg:sticky lg:top-8">
+            <div className="lg:self-start">
             <p className="mt-4 text-[12px] font-semibold uppercase tracking-wide lg:mt-0" style={{ color: 'var(--muted)' }}>One personality for the litter</p>
             <PersonalityPicker value={personality} onChange={setPersonality} />
             <button onClick={hatchLitter} disabled={!pups.length} className="pill mt-4 w-full text-[18px] disabled:opacity-40">Hatch {pups.length} pups</button>
@@ -368,18 +374,23 @@ export default function Adopt() {
         )}
 
         {step === 'name' && sp && (
-          <motion.section key="name" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="lg:mx-auto lg:w-full lg:max-w-[480px]">
-            <div className="mx-auto mt-2 grid h-44 w-44 place-items-center">
-              <img src={petImage(sp.id, 'happy')} alt="" className="h-44 w-44 object-contain" />
+          <motion.section key="name" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+            className="lg:mx-auto lg:grid lg:w-full lg:max-w-[1000px] lg:flex-1 lg:grid-cols-[300px_minmax(0,1fr)] lg:content-center lg:gap-x-10">
+            {/* Desktop: the pet, its name and Adopt on the left; the six personalities two-up beside them. */}
+            <div className="mx-auto mt-2 grid h-44 w-44 place-items-center lg:col-start-1 lg:row-start-1 lg:mt-0 lg:h-52 lg:w-52 lg:self-end">
+              <img src={petImage(sp.id, 'happy')} alt="" className="h-44 w-44 object-contain lg:h-52 lg:w-52" />
             </div>
-            <label className="card mt-2 block px-4 py-3">
+            <label className="card mt-2 block px-4 py-3 lg:col-start-1 lg:row-start-2">
               <span className="block text-[12px] font-semibold" style={{ color: 'var(--muted)' }}>Name</span>
               <input value={name} onChange={(e) => setName(e.target.value)} maxLength={16} autoFocus
                 className="w-full bg-transparent text-[20px] font-bold outline-none" style={{ fontFamily: 'var(--font-display)', color: 'var(--ink)' }} />
             </label>
-            <PersonalityPicker value={personality} onChange={setPersonality} />
-            <p className="mt-3 text-center text-[12.5px]" style={{ color: 'var(--muted)' }}>The personality is also how it trades.</p>
-            <button onClick={adopt} disabled={!name.trim()} className="pill mt-4 w-full text-[18px] disabled:opacity-40">Adopt {name.trim() || sp.name}</button>
+            <div className="lg:col-start-2 lg:row-span-3 lg:row-start-1 lg:self-center">
+              <p className="mt-4 hidden text-[12px] font-semibold uppercase tracking-wide lg:block" style={{ color: 'var(--muted)' }}>Personality — it is also how it trades</p>
+              <PersonalityPicker value={personality} onChange={setPersonality} />
+            </div>
+            <p className="mt-3 text-center text-[12.5px] lg:hidden" style={{ color: 'var(--muted)' }}>The personality is also how it trades.</p>
+            <button onClick={adopt} disabled={!name.trim()} className="pill mt-4 w-full text-[18px] disabled:opacity-40 lg:col-start-1 lg:row-start-3 lg:self-start">Adopt {name.trim() || sp.name}</button>
           </motion.section>
         )}
       </AnimatePresence>

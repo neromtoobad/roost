@@ -11,14 +11,14 @@ export default function Shelf() {
   const [mood, setMood] = useState<Mood>('chill');
   const sp = SPECIES[open];
   return (
-    <main className="mx-auto flex min-h-dvh max-w-[430px] flex-col px-4 pb-24 pt-[max(12px,env(safe-area-inset-top))] lg:min-h-0 lg:max-w-[1200px] lg:px-10 lg:pb-16 lg:pt-8">
+    <main className="mx-auto flex min-h-dvh max-w-[430px] flex-col px-4 pb-24 pt-[max(12px,env(safe-area-inset-top))] lg:h-full lg:min-h-0 lg:max-w-[1200px] lg:px-10 lg:pb-6 lg:pt-6">
       <h1 className="text-center text-[28px] font-bold" style={{ fontFamily: 'var(--font-display)' }}>Shelf</h1>
       <p className="text-center text-[13px]" style={{ color: 'var(--muted)' }}>Six Fledglings. One wrong detail each.</p>
 
-      <div className="lg:mt-6 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start lg:gap-8">
-      <div className="card relative mt-4 flex flex-col items-center px-4 pb-4 pt-3 lg:mt-0 lg:py-8">
-        <div className="grid h-56 w-56 place-items-center lg:h-64 lg:w-64 xl:h-80 xl:w-80">
-          <img src={petImage(open, mood)} alt={`${sp.name} looking ${mood}`} className="h-56 w-56 object-contain lg:h-64 lg:w-64 xl:h-80 xl:w-80" />
+      <div className="lg:mt-5 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start lg:gap-8">
+      <div className="card relative mt-4 flex flex-col items-center px-4 pb-4 pt-3 lg:mt-0 lg:py-6">
+        <div className="grid h-56 w-56 place-items-center lg:h-64 lg:w-64 xl:tall:h-80 xl:tall:w-80">
+          <img src={petImage(open, mood)} alt={`${sp.name} looking ${mood}`} className="h-56 w-56 object-contain lg:h-64 lg:w-64 xl:tall:h-80 xl:tall:w-80" />
         </div>
         <p className="text-[22px] font-bold" style={{ fontFamily: 'var(--font-display)' }}>{sp.name}</p>
         <p className="text-[13px] num" style={{ color: 'var(--muted)' }}>{sp.species} · {sp.ticker}</p>

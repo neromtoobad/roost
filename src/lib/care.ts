@@ -125,7 +125,8 @@ export function bond(care: Care | undefined, streak: number, now = Date.now()): 
 
 export type Stage = { name: 'Hatchling' | 'Fledgling' | 'Flyer' | 'Legend'; index: number; points: number; next: number | null; scale: number };
 
-const STAGES: { name: Stage['name']; from: number; scale: number }[] = [
+/** The growth ladder, by care points. The home stage draws the last three as rings around the pet. */
+export const STAGES: { name: Stage['name']; from: number; scale: number }[] = [
   { name: 'Hatchling', from: 0, scale: 0.86 },
   { name: 'Fledgling', from: 5, scale: 0.92 },
   { name: 'Flyer', from: 15, scale: 1 },
