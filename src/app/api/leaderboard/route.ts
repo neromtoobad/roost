@@ -1,12 +1,15 @@
 import { NextResponse } from 'next/server';
 import { dbEnabled, ensureSchema, pool } from '@/lib/db';
 import { nyseSession } from '@/lib/session';
-import { pricesByAddress } from '@/lib/quote';
+import { changesByAddress, pricesByAddress } from '@/lib/quote';
+import { stage, type Care, type Schedule } from '@/lib/care';
 import { SPECIES, type Species } from '@/lib/pets';
 import { cached } from '@/lib/swr';
 
 // Ranked by real, unrealised P&L: quantity and cost basis come from the database, and the live
-// price per ticker is applied here. Nothing in the ranking is self-reported.
+// price per ticker is applied here. Nothing in the ranking is self-reported. Each row also carries
+// today's move on what it holds (the token's 24h change) and its growth from care, so the board can
+// rank by the day, by all time, or by care alone.
 //
 // Served through lib/swr: the last board at once, refreshed after the response. A pet syncing
 // clears it (api/pet), so your own feed shows on the next load rather than fifteen seconds later.
@@ -39,12 +42,13 @@ async function board() {
     timed(ms, 'pets', pool().query<{
       id: string; name: string; species: string; ticker: string; token_address: string | null; token_symbol: string | null; personality: string;
       streak: number; paper: boolean; is_public: boolean; held_qty: string; cost_basis: string; lent_qty: string;
+      care: Care | null; schedule: Schedule | null;
     }>(
       `select p.id, p.name, p.species, p.ticker, p.token_address, p.token_symbol, p.personality, p.streak, p.paper,
               (p.launch is not null) as is_public,
               coalesce((select sum((l->>'qty')::numeric) from jsonb_array_elements(p.lots) l), 0) + p.yield_qty as held_qty,
               coalesce((select sum((l->>'qty')::numeric * (l->>'price')::numeric) from jsonb_array_elements(p.lots) l), 0) as cost_basis,
-              p.lent_qty
+              p.lent_qty, p.care, p.schedule
          from pets p
         order by p.updated_at desc
         limit 100`,
@@ -60,6 +64,7 @@ async function board() {
   const addressOf = (r: { species: string; token_address: string | null }) =>
     (r.token_address ?? SPECIES[r.species as Species['id']]?.address ?? '').toLowerCase();
   const prices = await timed(ms, 'prices', pricesByAddress(rows.map(addressOf).filter(Boolean)));
+  const changes = await changesByAddress(rows.map(addressOf).filter(Boolean)); // same batch, from cache
   const total = Date.now() - start;
   if (total > 1000) console.log(`[board] slow load ${total}ms — ${Object.entries(ms).map(([k, v]) => `${k} ${v}ms`).join(', ')}`);
   const pulse = {
@@ -74,6 +79,8 @@ async function board() {
       const basis = Number(r.cost_basis) || 0;
       const value = px ? qty * px : null;
       const abs = value !== null ? value - basis : null;
+      const pct24h = changes[addressOf(r)] ?? null;
+      const grown = stage(r.care ?? undefined, r.schedule ?? undefined);
       return {
         id: r.id, name: r.name, species: r.species, ticker: r.ticker, personality: r.personality,
         tokenSymbol: r.token_symbol ?? SPECIES[r.species as Species['id']]?.tokenSymbol ?? null,
@@ -81,6 +88,9 @@ async function board() {
         qty, basis, value, price: px,
         pnlAbs: abs, pnlPct: abs !== null && basis > 0 ? (abs / basis) * 100 : null,
         lentQty: Number(r.lent_qty) || 0,
+        // Today: the token's 24h move applied to what is held now.
+        pct24h, dayAbs: value !== null && pct24h !== null ? value - value / (1 + pct24h / 100) : null,
+        growth: { stage: grown.name, points: grown.points },
       };
     })
     .filter((r) => r.basis > 0)

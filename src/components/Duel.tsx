@@ -18,7 +18,7 @@ function left(ms: number) {
 }
 
 /** One duel, both sides, with the live gap between them. */
-export function DuelCard({ duel, mine }: { duel: Duel; mine: string | null }) {
+export function DuelCard({ duel, mine, featured }: { duel: Duel; mine: string | null; featured?: boolean }) {
   const now = useNow(60_000); // 0 until hydration, so the server and the first paint agree
   const a = pct(duel.aNow, duel.aValue);
   const b = pct(duel.bNow, duel.bValue);
@@ -30,7 +30,7 @@ export function DuelCard({ duel, mine }: { duel: Duel; mine: string | null }) {
     const winning = settled ? duel.winner === id : ahead === id;
     return (
       <div className={`flex min-w-0 flex-1 items-center gap-2 ${align === 'right' ? 'flex-row-reverse text-right' : ''}`}>
-        <img src={petImage(species, (move ?? 0) >= 0 ? 'happy' : 'sulking')} alt="" className="h-10 w-10 shrink-0 object-contain"
+        <img src={petImage(species, (move ?? 0) >= 0 ? 'happy' : 'sulking')} alt="" className={`${featured ? 'h-16 w-16' : 'h-10 w-10'} shrink-0 object-contain`}
           style={{ opacity: settled && !winning ? 0.5 : 1 }} />
         <div className="min-w-0">
           <p className="truncate text-[13.5px] font-bold" style={{ fontFamily: 'var(--font-display)' }}>
@@ -45,8 +45,10 @@ export function DuelCard({ duel, mine }: { duel: Duel; mine: string | null }) {
   };
 
   return (
-    <div className="card flex items-center gap-2 px-3 py-2.5"
-      style={duel.winner && duel.winner === mine ? { outline: '3px solid var(--accent)' } : undefined}>
+    <div className={`card flex items-center gap-2 ${featured ? 'px-4 py-4' : 'px-3 py-2.5'}`}
+      style={featured
+        ? { borderColor: 'color-mix(in srgb, var(--accent) 45%, var(--line))', background: 'radial-gradient(120% 140% at 50% 0%, color-mix(in srgb, var(--accent) 10%, var(--surface)), var(--surface) 70%)' }
+        : duel.winner && duel.winner === mine ? { outline: '3px solid var(--accent)' } : undefined}>
       {side(duel.a, duel.aName, duel.aSpecies, a, 'left')}
       <div className="shrink-0 px-1 text-center">
         <p className="text-[15px] leading-none">⚔</p>

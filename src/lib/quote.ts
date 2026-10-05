@@ -263,6 +263,19 @@ export async function pricesByAddress(addresses: string[]): Promise<Record<strin
 }
 
 /**
+ * Each token's 24h change, in percent, from the same DEX batch the prices come from — cached
+ * alongside them, so asking right after pricesByAddress costs no request. Null when the feed has none.
+ */
+export async function changesByAddress(addresses: string[]): Promise<Record<string, number | null>> {
+  const uniq = [...new Set(addresses.map(addr))];
+  const dex = await dexRows(uniq);
+  return Object.fromEntries(uniq.map((a) => {
+    const v = dex.get(a)?.priceChange24H;
+    return [a, v !== null && v !== undefined && Number.isFinite(Number(v)) ? Number(v) : null];
+  }));
+}
+
+/**
  * Prices by ticker, for the leaderboard and duels. They only need the traded print, so this reads
  * the DEX feed alone (~0.4s) and falls back to the full quote — which also pulls the rwa/tokens
  * list, ~1.3s median — only for a ticker the feed has no price for. Same answer as `quotesFor`'s

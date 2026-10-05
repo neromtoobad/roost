@@ -27,3 +27,17 @@ export const sessionLabel: Record<Session, string> = {
   weekend: 'NYSE closed · weekend',
   holiday: 'NYSE closed · holiday',
 };
+
+/**
+ * The next bell: when the regular session next opens, or, during it, when it closes. Walked in
+ * 15-minute steps over the session clock above (the bells fall on quarter hours), up to a week.
+ */
+export function nextBell(now: Date = new Date(), holidays?: Set<string>): { kind: 'open' | 'close'; at: Date } {
+  const open = nyseSession(now, holidays) === 'regular';
+  const step = 15 * 60e3;
+  let t = Math.ceil(now.getTime() / step) * step;
+  for (let k = 0; k < 7 * 96; k++, t += step) {
+    if ((nyseSession(new Date(t), holidays) === 'regular') !== open) return { kind: open ? 'close' : 'open', at: new Date(t) };
+  }
+  return { kind: open ? 'close' : 'open', at: new Date(t) };
+}
