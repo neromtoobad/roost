@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Nav } from '@/components/Nav';
 import { Confetti } from '@/components/Confetti';
 import { HUE, LITTER_LOOK } from '@/lib/look';
+import { StockLogo } from '@/components/StockLogo';
 import { ConnectPill, useWallet } from '@/components/Wallet';
 import { petImage } from '@/lib/pets';
 import { allocate, litterById } from '@/lib/litters';
@@ -180,7 +181,7 @@ export default function LitterPage() {
                 <img src={petImage(p.species, 'hero')} alt="" className="h-11 w-11 shrink-0 rounded-full object-cover object-top" style={{ background: `radial-gradient(circle at 50% 70%, ${HUE[p.species].main}, color-mix(in srgb, ${HUE[p.species].main} 25%, var(--surface)))` }} />
                 <div className="min-w-0 flex-1">
                   <p className="flex items-baseline justify-between gap-2 text-[14px] font-bold" style={{ fontFamily: 'var(--font-display)' }}>
-                    <span className="truncate">{p.name} <span className="num text-[11.5px] font-semibold" style={{ color: 'var(--muted)' }}>{stockOf(p).tokenSymbol}</span></span>
+                    <span className="flex min-w-0 items-center gap-1.5"><span className="truncate">{p.name}</span> <StockLogo address={stockOf(p).address} ticker={stockOf(p).ticker} size={18} /><span className="num text-[11.5px] font-semibold" style={{ color: 'var(--muted)' }}>{stockOf(p).tokenSymbol}</span></span>
                     <span className="num shrink-0 text-[13px]">${values[i].toFixed(2)}</span>
                   </p>
                   <div className="relative mt-1 h-2.5 rounded-full" style={{ background: 'color-mix(in srgb, var(--ink) 9%, transparent)' }} aria-hidden>

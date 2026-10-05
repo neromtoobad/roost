@@ -1,4 +1,5 @@
 'use client';
+import { StockLogo } from './StockLogo';
 import type { Species, Stock } from '@/lib/pets';
 
 // A stock as a first-time investor needs to see it before adopting it: what the company is, how
@@ -38,11 +39,14 @@ export function StockCard({ info, compact = false }: { info: StockInfo; compact?
   return (
     <div className="card px-4 py-3 text-[13px]">
       <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
+        <div className="flex min-w-0 items-center gap-3">
+          <StockLogo address={stock.address} ticker={stock.ticker} size={40} />
+          <div className="min-w-0">
           <p className="truncate text-[17px] font-bold" style={{ fontFamily: 'var(--font-display)' }}>{stock.company}</p>
           <p className="num text-[12px]" style={{ color: 'var(--muted)' }}>
             {stock.ticker} · {stock.tokenSymbol} · {ISSUER[stock.platform] ?? stock.platform}{stock.assetType === 3 ? ' · ETF' : ''}
           </p>
+          </div>
         </div>
         {price != null && (
           <div className="shrink-0 text-right">

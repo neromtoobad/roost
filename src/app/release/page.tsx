@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ConnectPill, useWallet } from '@/components/Wallet';
 import { Habitat } from '@/components/Habitat';
+import { StockLogo } from '@/components/StockLogo';
 import type { Mood } from '@/lib/pets';
 import { heldQty, isPaper, readPet, recordSell, stockOf, usePet } from '@/lib/store';
 import { syncPet } from '@/lib/sync';
@@ -110,7 +111,7 @@ export default function ReleasePage() {
       <div className="card mt-4 grid grid-cols-2 gap-3 px-4 py-3 text-[13px] lg:mt-0">
         <div>
           <p style={{ color: 'var(--muted)' }}>{pet.name} holds</p>
-          <p className="num text-[16px] font-bold">{recorded.toFixed(4)} {stock.ticker}</p>
+          <p className="num flex items-center gap-1.5 text-[16px] font-bold"><StockLogo address={stock.address} ticker={stock.ticker} size={22} />{recorded.toFixed(4)} {stock.ticker}</p>
         </div>
         <div>
           <p style={{ color: 'var(--muted)' }}>{live ? 'Your wallet holds' : 'Worth now'}</p>

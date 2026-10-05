@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { Nav } from '@/components/Nav';
 import { Habitat } from '@/components/Habitat';
+import { StockLogo } from '@/components/StockLogo';
 import { HUE } from '@/lib/look';
 import { MOODS, SPECIES, petImage, type Mood, type Species } from '@/lib/pets';
 
@@ -20,7 +21,7 @@ export default function Shelf() {
       <div className="lg:mt-5 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start lg:gap-8">
       <Habitat id={open} mood={mood} sizes={[200, 220, 290]} className="mt-4 px-4 pb-4 pt-4 lg:mt-0 lg:py-6">
         <p className="relative text-[26px] font-extrabold tracking-[-0.02em]" style={{ fontFamily: 'var(--font-display)' }}>{sp.name}</p>
-        <p className="text-[13px] num" style={{ color: 'var(--muted)' }}>{sp.species} · {sp.ticker}</p>
+        <p className="relative flex items-center gap-1.5 text-[13px] num" style={{ color: 'var(--muted)' }}>{sp.species} · <StockLogo address={sp.address} ticker={sp.ticker} size={18} />{sp.ticker}</p>
         <p className="mt-1 text-[12.5px]" style={{ color: 'var(--muted)' }}>wrong detail: <span style={{ color: 'var(--ink)' }}>{sp.wrongDetail}</span></p>
         <div className="mt-3 flex flex-wrap justify-center gap-1.5">
           {MOODS.map((m) => (
@@ -36,7 +37,7 @@ export default function Shelf() {
             style={{ outline: open === id ? `3px solid ${HUE[id].main}` : '3px solid transparent', background: `radial-gradient(80% 70% at 50% 40%, color-mix(in srgb, ${HUE[id].main} 26%, transparent), transparent 75%) padding-box, linear-gradient(180deg, var(--card-top), var(--card-bot)) padding-box, var(--card-edge) border-box` }}>
             <img src={petImage(id, 'hero')} alt="" className="h-20 w-20 object-contain" draggable={false} />
             <span className="text-[13px] font-bold" style={{ fontFamily: 'var(--font-display)' }}>{SPECIES[id].name}</span>
-            <span className="-mt-1 text-[11px] num" style={{ color: 'var(--muted)' }}>{SPECIES[id].ticker}</span>
+            <span className="-mt-1 flex items-center gap-1 text-[11px] num" style={{ color: 'var(--muted)' }}><StockLogo address={SPECIES[id].address} ticker={SPECIES[id].ticker} size={14} />{SPECIES[id].ticker}</span>
           </button>
         ))}
       </div>

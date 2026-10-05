@@ -2,6 +2,7 @@
 import { motion, useReducedMotion } from 'framer-motion';
 import { SPECIES, type Species } from '@/lib/pets';
 import { HUE } from '@/lib/look';
+import { StockLogo } from './StockLogo';
 
 const STEP = 92;
 
@@ -48,7 +49,7 @@ export function PodCarousel({ ids, value, onChange }: { ids: Species['id'][]; va
       <div className="mt-1 flex items-center justify-between gap-2">
         <button onClick={() => go(-1)} aria-label="Previous pod" className={arrow} style={{ borderColor: 'var(--line)', background: 'var(--surface-2)' }}>‹</button>
         <div className="min-w-0 text-center">
-          <p className="text-[16px] font-extrabold leading-tight" style={{ fontFamily: 'var(--font-display)' }}>{sp.ticker} <span className="hue-text text-[12px] font-semibold" style={{ ['--hue-main' as string]: HUE[value].main, ['--hue-deep' as string]: HUE[value].deep }}>· {sp.name}</span></p>
+          <p className="flex items-center justify-center gap-1.5 text-[16px] font-extrabold leading-tight" style={{ fontFamily: 'var(--font-display)' }}><StockLogo address={sp.address} ticker={sp.ticker} size={20} />{sp.ticker} <span className="hue-text text-[12px] font-semibold" style={{ ['--hue-main' as string]: HUE[value].main, ['--hue-deep' as string]: HUE[value].deep }}>· {sp.name}</span></p>
           <p className="truncate text-[12px]" style={{ color: 'var(--muted)' }}>{sp.company} · {sp.preIpo ? 'pre-IPO' : 'tokenized stock'}</p>
         </div>
         <button onClick={() => go(1)} aria-label="Next pod" className={arrow} style={{ borderColor: 'var(--line)', background: 'var(--surface-2)' }}>›</button>

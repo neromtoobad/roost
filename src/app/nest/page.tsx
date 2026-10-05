@@ -6,6 +6,7 @@ import { Nav } from '@/components/Nav';
 import { Foil } from '@/components/Foil';
 import { petImage } from '@/lib/pets';
 import { Pet } from '@/components/Pet';
+import { StockLogo } from '@/components/StockLogo';
 import { HUE, LITTER_LOOK } from '@/lib/look';
 import { WIDE, useMedia } from '@/lib/client';
 import { litterById } from '@/lib/litters';
@@ -139,7 +140,7 @@ export default function Nest() {
               <div className="flex items-end justify-between gap-2 px-3 py-2.5">
                 <div className="min-w-0">
                   <p className={`truncate font-extrabold leading-tight ${top ? 'text-[18px]' : 'text-[14.5px]'}`} style={{ fontFamily: 'var(--font-display)' }}>
-                    {p.name} <span className="num text-[11.5px] font-medium" style={{ color: 'var(--muted)' }}>{s.ticker}</span>
+                    {p.name} <span className="num inline-flex items-center gap-1 align-[-3px] text-[11.5px] font-medium" style={{ color: 'var(--muted)' }}><StockLogo address={s.address} ticker={s.ticker} size={top ? 20 : 16} />{s.ticker}</span>
                   </p>
                   <p className="truncate text-[11px]" style={{ color: 'var(--muted)' }}>{s.company} · {isPaper(p) ? 'paper' : 'live'}</p>
                   <p className={`num font-semibold leading-tight ${top ? 'text-[20px]' : 'text-[15px]'}`}>{r.value != null ? `$${r.value.toFixed(2)}` : '—'}</p>

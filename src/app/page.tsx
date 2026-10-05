@@ -10,6 +10,7 @@ import { ConnectPill, useWallet } from '@/components/Wallet';
 import { Confetti } from '@/components/Confetti';
 import { ENTRY_ICON, Report, Ask } from '@/components/Report';
 import { PortfolioCard } from '@/components/PortfolioCard';
+import { StockLogo } from '@/components/StockLogo';
 import { LevelBar, Motes } from '@/components/Stage';
 import { DuelCard, type Duel } from '@/components/Duel';
 import { TelegramLink } from '@/components/Telegram';
@@ -243,7 +244,7 @@ export default function Home() {
                 className="flex shrink-0 items-center gap-1.5 rounded-full border py-1 pl-1 pr-2.5 text-[12px] font-semibold transition-transform active:scale-95"
                 style={{ borderColor: on ? HUE[p.species].main : 'var(--line)', background: on ? `color-mix(in srgb, ${HUE[p.species].main} 20%, var(--surface))` : 'var(--surface)', boxShadow: on ? `0 0 0 3px color-mix(in srgb, ${HUE[p.species].main} 22%, transparent)` : undefined, fontFamily: 'var(--font-display)' }}>
                 <img src={petImage(p.species, 'hero')} alt="" className="h-6 w-6 rounded-full object-cover object-top" style={{ background: `color-mix(in srgb, ${HUE[p.species].main} 35%, var(--canvas))` }} />
-                {p.name}<span className="num" style={{ color: 'var(--muted)' }}>{stockOf(p).ticker}</span>
+                {p.name}<span className="num flex items-center gap-1" style={{ color: 'var(--muted)' }}><StockLogo address={stockOf(p).address} ticker={stockOf(p).ticker} size={15} />{stockOf(p).ticker}</span>
               </button>
             );
           })}
@@ -251,7 +252,7 @@ export default function Home() {
             style={{ borderColor: 'var(--line)', background: 'var(--surface)' }}>+</Link>
         </div>
       )}
-      <p className="mt-1 text-right text-[13px] font-semibold lg:hidden" style={{ color: 'var(--muted)' }}>{pet?.name} · {ticker}{stock && stock.company !== ticker ? ` · ${stock.company}` : ''} · day {pet?.streak ?? 1}</p>
+      <p className="mt-1 text-right text-[13px] font-semibold lg:hidden" style={{ color: 'var(--muted)' }}>{pet?.name} · <span className="inline-flex items-center gap-1 align-[-3px]">{stock && <StockLogo address={stock.address} ticker={ticker} size={16} />}{ticker}</span>{stock && stock.company !== ticker ? ` · ${stock.company}` : ''} · day {pet?.streak ?? 1}</p>
       {pet?.litter && (
         <p className="text-right text-[12px] lg:hidden">
           <Link href={`/litter?key=${pet.litter.key}`} className="underline" style={{ color: 'var(--muted)' }}>one of the {pet.litter.name} litter ›</Link>
@@ -284,7 +285,7 @@ export default function Home() {
       {stock && (
         <div className="absolute left-4 top-4 z-10 hidden items-center gap-2.5 rounded-full border px-3 py-1.5 text-[12px] num lg:flex"
           style={{ borderColor: 'color-mix(in srgb, var(--ink) 12%, transparent)', background: 'color-mix(in srgb, var(--surface) 70%, transparent)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)' }}>
-          <span className="font-semibold" style={{ color: 'var(--ink)' }}>{stock.tokenSymbol}</span>
+          <span className="flex items-center gap-1.5 font-semibold" style={{ color: 'var(--ink)' }}><StockLogo address={stock.address} ticker={stock.ticker} size={20} />{stock.tokenSymbol}</span>
           <span style={{ color: 'var(--ink)' }}>{price.price ? `$${price.price.toFixed(2)}` : '—'}</span>
           <span style={{ color: price.pct24h >= 0 ? 'var(--up)' : 'var(--down)' }}>{price.pct24h >= 0 ? '+' : ''}{price.pct24h.toFixed(2)}%</span>
           {fill?.spreadPct != null && (
@@ -331,7 +332,7 @@ export default function Home() {
       <div className="mb-3 hidden lg:block">
         <h1 className="text-[44px] font-extrabold leading-[1.02] tracking-[-0.03em]" style={{ fontFamily: 'var(--font-display)' }}>{pet?.name}</h1>
         <p className="text-[14px] font-semibold" style={{ color: 'var(--muted)' }}>
-          <span className="num" style={{ color: 'var(--ink)' }}>{ticker}</span>{stock && stock.company !== ticker ? ` · ${stock.company}` : ''} · day {pet?.streak ?? 1}
+          <span className="num inline-flex items-center gap-1.5 align-[-4px]" style={{ color: 'var(--ink)' }}>{stock && <StockLogo address={stock.address} ticker={ticker} size={22} />}{ticker}</span>{stock && stock.company !== ticker ? ` · ${stock.company}` : ''} · day {pet?.streak ?? 1}
           {pet?.litter && <> · <Link href={`/litter?key=${pet.litter.key}`} className="underline">{pet.litter.name} litter</Link></>}
         </p>
       </div>
@@ -395,7 +396,7 @@ export default function Home() {
         )}
       </div>
       <p className="mt-3 text-center text-[13px]" style={{ color: 'var(--muted)' }}>
-        holds <span className="num" style={{ color: 'var(--ink)' }}>{qty.toFixed(4)} {ticker}</span>
+        holds <span className="num inline-flex items-center gap-1 align-[-3px]" style={{ color: 'var(--ink)' }}>{stock && <StockLogo address={stock.address} ticker={ticker} size={16} />}{qty.toFixed(4)} {ticker}</span>
         {qty > 0 && price.ratio && price.ratio > 1.0005 && (
           <span className="num" title="Dividends are reinvested into the token, so one token stands for more than one share"> (≈{(qty * price.ratio).toFixed(4)} shares)</span>
         )}

@@ -6,11 +6,12 @@ import { petImage, type Species } from '@/lib/pets';
 import { challengeRival } from '@/lib/sync';
 import { DuelCard, type Duel } from '@/components/Duel';
 import { Pet } from '@/components/Pet';
+import { StockLogo } from '@/components/StockLogo';
 
 type Row = {
   id: string; name: string; species: Species['id']; ticker: string; personality: Personality;
   streak: number; paper: boolean; isPublic: boolean;
-  qty: number; basis: number; value: number | null; price: number | null;
+  qty: number; basis: number; value: number | null; price: number | null; tokenAddress?: string | null;
   pnlAbs: number | null; pnlPct: number | null; lentQty: number;
   pct24h: number | null; dayAbs: number | null; growth: { stage: string; points: number };
 };
@@ -142,8 +143,8 @@ export default function Board() {
                 <p className="truncate text-[15px] font-bold" style={{ fontFamily: 'var(--font-display)' }}>
                   {r.name}{isMine && <span className="ml-1 text-[11px]" style={{ color: 'var(--accent-ink)' }}>you</span>}
                 </p>
-                <p className="text-[11.5px] num" style={{ color: 'var(--muted)' }}>
-                  {PERSONALITIES[r.personality]?.icon} {r.ticker} · day {r.streak}
+                <p className="flex items-center gap-1 text-[11.5px] num" style={{ color: 'var(--muted)' }}>
+                  {PERSONALITIES[r.personality]?.icon} <StockLogo address={r.tokenAddress} ticker={r.ticker} size={15} /> {r.ticker} · day {r.streak}
                   {r.lentQty > 0 && ' · lending'}{r.isPublic && ' · public'}{r.paper && ' · paper'}
                 </p>
               </div>
@@ -233,7 +234,7 @@ function Podium({ rows, tab }: { rows: Row[]; tab: Tab }) {
         return (
           <div key={r.id} className="flex min-w-0 flex-col items-center">
             <Pet id={r.species} mood={at === 0 ? 'ecstatic' : 'happy'} night={false} size={at === 0 ? 112 : 92} base />
-            <p className="-mt-1 max-w-full truncate text-[14px] font-extrabold" style={{ fontFamily: 'var(--font-display)' }}>{r.name}</p>
+            <p className="-mt-1 flex max-w-full items-center gap-1.5 truncate text-[14px] font-extrabold" style={{ fontFamily: 'var(--font-display)' }}><StockLogo address={r.tokenAddress} ticker={r.ticker} size={18} />{r.name}</p>
             <p className="text-[12px] font-bold num" style={{ color: m.color }}>{m.text}</p>
             <div className="mt-1.5 grid w-full place-items-center rounded-t-[14px] text-[26px] font-extrabold"
               style={{ height: s.h, background: `linear-gradient(180deg, ${s.c}, ${s.d})`, color: 'rgba(0,0,0,.55)', fontFamily: 'var(--font-display)',

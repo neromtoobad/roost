@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import NumberFlow from '@number-flow/react';
 import { ConnectPill, useWallet } from '@/components/Wallet';
 import { Habitat } from '@/components/Habitat';
+import { StockLogo } from '@/components/StockLogo';
 import type { Mood } from '@/lib/pets';
 import { PERSONALITIES, feedPetRemote, feedingDay, isPaper, readPet, recordBuy, setSchedule, stockOf, useFocusPet, usePet } from '@/lib/store';
 import { CADENCE_LABEL, isDue, type Cadence } from '@/lib/care';
@@ -223,7 +224,7 @@ export default function FeedPage() {
           ].map(([k, v, tone]) => (
             <div key={k} className="flex items-center justify-between gap-3 px-3.5 py-2.5 lg:py-2" style={{ borderColor: 'var(--line)' }}>
               <dt style={{ color: 'var(--muted)' }}>{k}</dt>
-              <dd className="num font-medium" style={{ color: tone }}>{v}</dd>
+              <dd className="num flex items-center gap-1.5 font-medium" style={{ color: tone }}>{k === `${pet.name} gets` && shares ? <StockLogo address={sp.address} ticker={sp.ticker} size={18} /> : null}{v}</dd>
             </div>
           ))}
         </dl>

@@ -7,7 +7,7 @@ import { SPECIES, petImage, type Species, type Stock } from '@/lib/pets';
 import { PERSONALITIES, adoptLitter, adoptPetRemote, type Personality } from '@/lib/store';
 import { ConnectPill, useWallet } from '@/components/Wallet';
 import { OnNest, PodCarousel } from '@/components/PodCarousel';
-import { TickerBadge } from '@/components/TickerBadge';
+import { StockLogo } from '@/components/StockLogo';
 import { Pet } from '@/components/Pet';
 import { HUE, LITTER_LOOK, TAKES_IN } from '@/lib/look';
 import { syncPet } from '@/lib/sync';
@@ -202,7 +202,7 @@ export default function Adopt() {
               )}
               {(results?.list ?? []).slice(0, q.trim() ? 20 : wide ? 12 : 8).map((l) => (
                 <div key={l.ticker} className="card flex items-center justify-between gap-3 px-3 py-2 transition-transform hover:-translate-y-px">
-                  <TickerBadge ticker={l.ticker} />
+                  <StockLogo address={l.tokens[0]?.address} ticker={l.ticker} size={38} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[14.5px] font-bold" style={{ fontFamily: 'var(--font-display)' }}>
                       {l.ticker}{l.assetType === 3 && <span className="ml-1.5 text-[11px] font-semibold" style={{ color: 'var(--muted)' }}>ETF</span>}
@@ -236,9 +236,15 @@ export default function Adopt() {
                   <img src={LITTER_LOOK[l.id]?.icon} alt="" aria-hidden draggable={false} className="h-10 w-10 shrink-0 object-contain drop-shadow-[0_4px_6px_rgba(0,0,0,.35)] lg:h-11 lg:w-11" />
                   <span className="flex w-full min-w-0 flex-col gap-0.5">
                     <span className="text-[14.5px] font-bold leading-tight" style={{ fontFamily: 'var(--font-display)' }}>{l.name}</span>
-                    <span className="text-[11.5px] leading-snug lg:truncate" style={{ color: 'var(--muted)' }}>
-                      {loading === l.id ? 'Pricing every pup…' : `${l.members.length} pups · ${l.members.map((m) => m.ticker).join(' ')}`}
-                    </span>
+                    {loading === l.id ? (
+                      <span className="text-[11.5px] leading-snug" style={{ color: 'var(--muted)' }}>Pricing every pup…</span>
+                    ) : (
+                      // The litter as the companies in it: each pup's stock by its own logo.
+                      <span className="mt-0.5 flex items-center gap-1.5 text-[11.5px]" style={{ color: 'var(--muted)' }}>
+                        <span className="flex -space-x-1.5">{l.members.map((m) => <span key={m.ticker} className="rounded-full ring-2 ring-[var(--card-top)]"><StockLogo ticker={m.ticker} size={20} /></span>)}</span>
+                        {l.members.length} pups
+                      </span>
+                    )}
                   </span>
                 </button>
               ))}
@@ -285,8 +291,9 @@ export default function Adopt() {
                     return (
                       <button key={o.stock.address} disabled={on || loading !== null}
                         onClick={() => { setLoading(o.stock.address); void showStock(o.stock).finally(() => setLoading(null)); }}
-                        className="rounded-[8px] px-3 py-1.5 text-[12px] font-semibold num"
+                        className="flex items-center gap-1.5 rounded-[8px] py-1 pl-1 pr-3 text-[12px] font-semibold num"
                         style={on ? { background: 'var(--accent)', color: 'var(--on-accent)', border: '1px solid var(--accent)' } : { background: 'var(--surface-2)', border: '1px solid var(--line)' }}>
+                        <StockLogo address={o.stock.address} ticker={o.stock.ticker} size={22} />
                         {loading === o.stock.address ? '…' : `${o.stock.tokenSymbol}${o.perShare ? ` · $${o.perShare.toFixed(2)}/share` : ''}`}
                       </button>
                     );
@@ -325,7 +332,7 @@ export default function Adopt() {
                   <img src={`/pets/eggs/${m.species}.png`} alt="" className="h-10 w-10 shrink-0 object-contain" />
                   <div className="min-w-0 flex-1">
                     <p className="text-[14px] font-bold" style={{ fontFamily: 'var(--font-display)' }}>
-                      {m.name} <span className="num text-[12px] font-semibold" style={{ color: 'var(--muted)' }}>{m.ticker}{m.stock ? ` · ${m.stock.tokenSymbol}` : ''}</span>
+                      {m.name} <span className="num inline-flex items-center gap-1 align-[-3px] text-[12px] font-semibold" style={{ color: 'var(--muted)' }}>{m.stock && <StockLogo address={m.stock.address} ticker={m.ticker} size={16} />}{m.ticker}{m.stock ? ` · ${m.stock.tokenSymbol}` : ''}</span>
                     </p>
                     <p className="text-[11.5px] leading-snug" style={{ color: 'var(--muted)' }}>{m.error ?? m.choice?.reason}</p>
                   </div>
@@ -362,7 +369,7 @@ export default function Adopt() {
                       <motion.div key="pet" className="flex flex-col items-center" initial={{ scale: 0.4, y: 20, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }}
                         transition={{ type: 'spring', stiffness: 260, damping: 16, delay: i * 0.06 }}>
                         <img src={petImage(m.species, 'ecstatic')} alt="" className="h-20 w-20 object-contain" />
-                        <span className="text-[11px] font-bold num">{m.ticker}</span>
+                        <span className="flex items-center gap-1 text-[11px] font-bold num"><StockLogo address={m.stock?.address} ticker={m.ticker} size={16} />{m.ticker}</span>
                       </motion.div>
                     )}
                   </AnimatePresence>

@@ -84,6 +84,7 @@ async function board() {
       return {
         id: r.id, name: r.name, species: r.species, ticker: r.ticker, personality: r.personality,
         tokenSymbol: r.token_symbol ?? SPECIES[r.species as Species['id']]?.tokenSymbol ?? null,
+        tokenAddress: addressOf(r) || null,
         streak: r.streak, paper: r.paper, isPublic: r.is_public,
         qty, basis, value, price: px,
         pnlAbs: abs, pnlPct: abs !== null && basis > 0 ? (abs / basis) * 100 : null,
