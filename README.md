@@ -204,10 +204,14 @@ The Telegram pet is optional: make a bot with [@BotFather](https://t.me/BotFathe
 
 **Live** at [roost-bnb.up.railway.app](https://roost-bnb.up.railway.app): the Next.js app, Postgres and the hourly worker on Railway, served from Singapore — the RWA API refuses requests from restricted regions (the US, Canada, the Netherlands, the UK and Japan among them).
 
+**Signed on BSC mainnet:** the first live feed — a Fledgling named Pango, $5.00 USDT into 0.0212 `NVDAB`, simulated against the wallet first and signed in the web app on Monday 5 Oct at 06:00 UTC, with the NYSE shut ([BscScan](https://bscscan.com/tx/0x2411ac8db22eae81d3017afbf75536593ddd82941f904a49cd564d0762191bb1)). Its diary line was written from the receipt.
+
 **Verified against the live API:** hatching from any listed stock with its company card; the cheaper issuer by real fills; litters and their rebalancing feed; the nest; release with FIFO cost and realized P&L; on-chain holdings; the mood and strategy engines and the diary; the two-source spread; hourly candles on both issuers; the agent intent layer; the seller agent's deliverable across 448 tickers; the cross-issuer comparison; and the pre-flight simulation against live wallets in all four outcomes — would succeed, needs approval, would fail, not simulated. The Telegram pet was run end to end against a local Postgres and a stand-in Bot API.
 
 **Honest gaps.**
-- **No live trade has been signed yet.** The web app's real feed and release, the `baw` hop and the Agent Studio deploy are built, and every step up to the signature is verified against live wallets — but the signature is the owner's, and none has been made yet.
+- **A live release (sale) has not been signed yet** — only the buy above. It goes through the same simulate, price-check and receipt path.
+- **No trade has gone through the Agentic Wallet yet.** The skill and `baw` CLI are installed and Roost returns simulated `baw` commands, but the Binance App still shows the Agentic Wallet as "coming soon" for this account, so sign-in cannot complete.
+- **The Agent Studio seller is not deployed yet.** It runs locally against the live app — the free x402 route answers with tool-grounded spread reports — and passes `bag deploy prepare` with nothing blocked. The managed testnet trial lasts 48 hours, so it goes up just before submission.
 - **Ondo request-for-quote fills stop in the web app** with that reason rather than being attempted — typically Ondo names on a weekday in market hours, which includes the all-Ondo Buffett litter. bStock swaps at any hour.
 - **NYSE holidays** still come from Backpack's public API, a Solana-ecosystem venue — the next thing to replace.
 - **The Telegram pet** needs a bot token to switch on.

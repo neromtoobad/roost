@@ -37,6 +37,7 @@ kind = "evm-local"
 signer = "local"
 keystore_dir = "../../.studio/wallets"
 # address = "0x..."   # filled by `bag wallet new`
+address = "0x33eeB13C4DF0aCC6efd57F3d5FD061c155E44dF7"
 
 [llm]
 provider = "pieverse-llm"
@@ -49,6 +50,7 @@ network = "bsc-mainnet"
 # zero-deposit default. `bag llm activate` creates the key with $0
 # allocation; switch to a paid model + `bag llm topup` only when you need it.
 initial_allocation_usd = 0
+key_hash = "71ab8f6c4ffac7a5b42618e41c53192cf27d8e58e4d2b9ca5934337afa6c3af8"
 
 [llm.auto_renew]
 # hook auto-allocates from Pieverse Account Balance to the API key when Key

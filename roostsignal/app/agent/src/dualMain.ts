@@ -226,8 +226,18 @@ export function buildRunWork(): RunWork {
       stopWhen: stepCountIs(8), // bounded tool-call loop, then final text
       abortSignal,
     });
-    return result.text.trim();
+    return finalAnswer(result.text);
   };
+}
+
+/**
+ * The deliverable, without the model's scratch work. Reasoning models served through the free
+ * tier return their thinking inline and close it with `</think>`; a buyer pays for the answer,
+ * not the musing, so keep only what follows the last closing tag.
+ */
+function finalAnswer(text: string): string {
+  const end = text.lastIndexOf("</think>");
+  return (end >= 0 ? text.slice(end + "</think>".length) : text).replace(/<think>[\s\S]*?<\/think>/g, "").trim();
 }
 
 function hasErc8183Rail(cfg: TomlTable): boolean {
