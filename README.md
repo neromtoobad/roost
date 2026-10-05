@@ -6,7 +6,7 @@
 Adopt a Fledgling — a creature that is also a trading rule — feed it USDT, and it buys real tokenized equities on BNB Smart Chain, from your own wallet.</p>
 
 <p align="center">
-<a href="https://roost-bnb.up.railway.app"><b>Open the live app →</b></a> ·
+<a href="https://roost.nerom.site"><b>Open the live app →</b></a> ·
 <a href="skills/roost">Agentic Wallet skill</a> ·
 <a href="roostsignal">Agent Studio seller agent</a> ·
 <a href="#what-we-measured-on-bsc">What we measured</a>
@@ -18,7 +18,7 @@ Adopt a Fledgling — a creature that is also a trading rule — feed it USDT, a
 
 ## Try it in a minute
 
-1. Open **[roost-bnb.up.railway.app](https://roost-bnb.up.railway.app)** — phone or desktop, no wallet needed to start.
+1. Open **[roost.nerom.site](https://roost.nerom.site)** — phone or desktop, no wallet needed to start.
 2. **Pick an egg.** Search any of the ~450 tokenized stocks and ETFs on BSC, hatch a whole themed **litter** (Magnificent 7, AI Chips, Buffett Portfolio…), or take one of the six classics.
 3. **Name it and choose a personality.** The personality *is* its trading strategy.
 4. **Feed it.** Without a wallet it trades on paper, and says so everywhere. Connect Binance Web3 Wallet before adopting and every feed is a real swap you sign.
@@ -52,7 +52,7 @@ A pet makes it felt rather than explained:
 - **A nest.** Keep several Fledglings and litters; one portfolio view, real money and paper counted apart.
 - **Habits, not hype.** Weekly, fortnightly or monthly **feeding days** (missed ones are skipped, never stacked into a catch-up buy); a free daily **pet**; a streak that **forgives one missed day a week**; growth from Hatchling to Legend by days visited and feeding days kept — never by returns or deposit size. When a token's share ratio rises, a dividend was reinvested, and the pet says it grew. Confetti is for hatching and care milestones only.
 - **It keeps going without you.** An hourly worker replays the same deterministic engine against the real hourly tape, keeps paper feeding days, and writes the diary. A pet waiting on your yes/no is skipped: the permission rule holds when nobody is watching.
-- **Board and duels.** A leaderboard ranked by real P&L, and 24-hour duels between Fledglings that neither owner can trade during.
+- **Board and duels.** A leaderboard by today's move, all-time P&L or care — the care ranking never counts money — and 24-hour duels between Fledglings that neither owner can trade during, with the closest race up front.
 - **A pet on Telegram.** Feeding-day reminders with a **Sign it** button, the pet's own buy requests, and `/pets` to check in. It never trades from the chat.
 - **Phone and desktop.** A thumb-first phone app with a tab bar; on a wide screen, an exchange-style top bar with the market clock and the wallet, and every page laid out two-up — the pet on its own stage beside its numbers, the market and what it did lately.
 
@@ -202,7 +202,7 @@ The Telegram pet is optional: make a bot with [@BotFather](https://t.me/BotFathe
 
 ## Status
 
-**Live** at [roost-bnb.up.railway.app](https://roost-bnb.up.railway.app): the Next.js app, Postgres and the hourly worker on Railway, served from Singapore — the RWA API refuses requests from restricted regions (the US, Canada, the Netherlands, the UK and Japan among them).
+**Live** at [roost.nerom.site](https://roost.nerom.site): the Next.js app, Postgres and the hourly worker on Railway, served from Singapore — the RWA API refuses requests from restricted regions (the US, Canada, the Netherlands, the UK and Japan among them).
 
 **Signed on BSC mainnet:** the first live feed — a Fledgling named Pango, $5.00 USDT into 0.0212 `NVDAB`, simulated against the wallet first and signed in the web app on Monday 5 Oct at 06:00 UTC, with the NYSE shut ([BscScan](https://bscscan.com/tx/0x2411ac8db22eae81d3017afbf75536593ddd82941f904a49cd564d0762191bb1)). Its diary line was written from the receipt.
 

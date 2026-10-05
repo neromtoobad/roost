@@ -291,7 +291,7 @@ export default function Home() {
           <span className="absolute -bottom-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45" style={{ background: 'var(--surface)', borderRight: '1px solid var(--line)', borderBottom: '1px solid var(--line)' }} aria-hidden />
         </div>
         <button type="button" onClick={tapPet} onPointerDown={strokeStart} onPointerMove={strokeMove} onPointerUp={strokeEnd} onPointerLeave={strokeEnd}
-          className="relative touch-pan-y select-none" aria-label={`${pet?.name}: ${wide ? 'click' : 'tap'} for its mood, press Enter to pet`}>
+          className="relative touch-pan-y select-none rounded-full outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-4 focus-visible:ring-offset-[var(--surface)]" aria-label={`${pet?.name}: ${wide ? 'click' : 'tap'} for its mood, press Enter to pet`}>
           {(celebrate || ms) && <Confetti />}
           {/* It grows with care: a Hatchling is small, a Legend is not. Never with money. */}
           <GrowthRings size={petSize} grown={grown} spread={wide ? 1.45 : 1.04} labels={wide} pulse={stageUp} />
