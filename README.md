@@ -89,7 +89,7 @@ Or fund it and let its rule decide: when the rule fires, the buddy asks for a si
 
 **With the Binance Agentic Wallet** ([`skills/roost`](skills/roost)) — MPC-keyless, signed into from the Binance App by QR, driven through the `baw` CLI inside limits set in the App — `POST /api/agent` returns the Fledgling's decision as one of four instructions: a `swap` carrying the exact `baw` command, an `ask`, a `hold`, or a `blocked`. The owner can also just say "feed it $5" and it eats at once, at any hour. Every `swap` comes back simulated against the wallet that would sign it, and the skill carries Binance's own rule: an `orderId` is not a completed swap — poll to `FINISHED` or `FAILED` before reporting anything.
 
-**On BNB Agent Studio** ([`roostsignal`](roostsignal)), a Fledgling is a seller agent — ERC-8004 identity, ERC-8183 task interface, A2A, MCP and x402 — that sells the gap: `/api/signal` reports it for **all 448 tokenized tickers**, and for the 40 two issuers list, where the same share executes best. Its first rule is that every number comes from a tool call.
+**On BNB Agent Studio** ([`roostsignal`](roostsignal)), a Fledgling is a seller agent — ERC-8004 identity, ERC-8183 task interface, A2A, MCP and x402 — that sells the gap: `/api/signal` reports it for **all 448 tokenized tickers**, and for the 40 two issuers list, where the same share executes best. Its first rule is that every number comes from a tool call. It is live, and registered on the BSC testnet ERC-8004 registry as [agent #2565](https://testnet.bscscan.com/nft/0x8004A818BFB912233c491871b3d84c89A494BD9e/2565) (see Status).
 
 ## What we measured on BSC
 
@@ -206,12 +206,19 @@ The Telegram buddy is optional: make a bot with [@BotFather](https://t.me/BotFat
 
 **Signed on BSC mainnet:** the first live feed — a Fledgling named Pango, $5.00 USDT into 0.0212 `NVDAB`, simulated against the wallet first and signed in the web app on Monday 5 Oct at 06:00 UTC, with the NYSE shut ([BscScan](https://bscscan.com/tx/0x2411ac8db22eae81d3017afbf75536593ddd82941f904a49cd564d0762191bb1)). Its diary line was written from the receipt.
 
+**Agent Studio seller, deployed:** `bag deploy --provider bnb` put it on the BNB Chain managed platform ([agent card](https://bnbagent-api.bnbchain.world/v1/rt/01M46E48D2M9ZZG1F8W48C3SWE/.well-known/agent-card.json)) and registered it as ERC-8004 [agent #2565](https://testnet.bscscan.com/nft/0x8004A818BFB912233c491871b3d84c89A494BD9e/2565), owned by the agent's own wallet. The managed trial lasts 48 hours, so the same code and wallet also run on Railway at [roost-agent.up.railway.app](https://roost-agent.up.railway.app/.well-known/agent-card.json), up through judging. Ask it about any ticker:
+
+```bash
+curl -s -X POST https://roost-agent.up.railway.app/x402 -H 'content-type: application/json' -d '{"prompt":"How far is TSLA from the real share right now?"}'
+```
+
 **Verified against the live API:** hatching from any listed stock with its company card; the cheaper issuer by real fills; litters and their rebalancing feed; the nest; release with FIFO cost and realized P&L; on-chain holdings; the mood and strategy engines and the diary; the two-source spread; hourly candles on both issuers; the agent intent layer; the seller agent's deliverable across 448 tickers; the cross-issuer comparison; and the pre-flight simulation against live wallets in all four outcomes — would succeed, needs approval, would fail, not simulated. The Telegram buddy was run end to end against a local Postgres and a stand-in Bot API.
 
 **Honest gaps.**
 - **A live release (sale) has not been signed yet** — only the buy above. It goes through the same simulate, price-check and receipt path.
 - **No trade has gone through the Agentic Wallet yet.** The skill and `baw` CLI are installed and Roost returns simulated `baw` commands, but the Binance App still shows the Agentic Wallet as "coming soon" for this account, so sign-in cannot complete.
-- **The Agent Studio seller is not deployed yet.** It runs locally against the live app — the free x402 route answers with tool-grounded spread reports — and passes `bag deploy prepare` with nothing blocked. The managed testnet trial lasts 48 hours, so it goes up just before submission.
+- **The seller's free LLM tier is refusing calls** ("Too Many Requests" on Pieverse's `auto/free`), so for now it answers with Roost's measured report and says the commentary is missing — the numbers never came from the model. A paid model needs Pieverse credit.
+- **The managed trial ends 7 Oct, 16:25 UTC.** The Railway copy keeps the agent answering after that, but its ERC-8004 record still points at the trial's address until it is updated.
 - **Ondo request-for-quote fills stop in the web app** with that reason rather than being attempted — typically Ondo names on a weekday in market hours, which includes the all-Ondo Buffett litter. bStock swaps at any hour.
 - **NYSE holidays** still come from Backpack's public API, a Solana-ecosystem venue — the next thing to replace.
 - **The Telegram buddy** needs a bot token to switch on.
