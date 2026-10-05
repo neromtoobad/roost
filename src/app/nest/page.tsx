@@ -3,10 +3,12 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Nav } from '@/components/Nav';
+import { Foil } from '@/components/Foil';
 import { petImage } from '@/lib/pets';
 import { litterById } from '@/lib/litters';
 import { costBasis, heldQty, isPaper, setCurrentPet, stockOf, usePets, type PetState } from '@/lib/store';
 import { useTickAll } from '@/lib/tickall';
+import { stage } from '@/lib/care';
 
 // Every Fledgling on this device as one portfolio: what each holds, what it is worth at the print,
 // what it cost, and what has been taken off the table. Live and paper are counted apart — adding a
@@ -50,6 +52,10 @@ export default function Nest() {
   for (const p of pets) if (p.litter) byLitter.set(p.litter.key, [...(byLitter.get(p.litter.key) ?? []), p]);
   const litters = [...byLitter];
   const singles = pets.filter((p) => !p.litter);
+  // The foil goes to the one cared for most — growth points, never returns — and leads the grid.
+  const grown = (p: PetState) => stage(p.care, p.schedule).points;
+  const star = singles.length > 1 ? singles.reduce((a, b) => (grown(b) > grown(a) ? b : a)) : null;
+  const shelf = star ? [star, ...singles.filter((p) => p !== star)] : singles;
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-[430px] flex-col px-4 pb-24 pt-[max(12px,env(safe-area-inset-top))] lg:h-full lg:min-h-0 lg:max-w-[1200px] lg:px-10 lg:pb-6 lg:pt-6">
@@ -110,30 +116,43 @@ export default function Nest() {
       </div>
 
       {singles.length > 0 && <p className="mb-1 hidden text-[11.5px] font-medium uppercase tracking-[.08em] lg:mt-6 lg:block" style={{ color: 'var(--muted)' }}>Fledglings</p>}
-      <ul className="mt-4 grid gap-2 lg:mt-0 lg:grid-cols-2 lg:gap-3">
-        {singles.map((p) => {
-          const s = stockOf(p), r = row(p), on = p.uid === current;
+      <ul className="mt-4 grid grid-cols-2 gap-3 lg:mt-0 lg:grid-cols-3">
+        {shelf.map((p) => {
+          const s = stockOf(p), r = row(p), on = p.uid === current, top = p === star, g = stage(p.care, p.schedule);
+          const chip = { background: 'color-mix(in srgb, var(--surface) 72%, transparent)', border: '1px solid var(--line)' };
+          const body = (
+            <>
+              {/* The collectible: art on its own lit plinth, stage and age in the corners, name on a frosted tag. */}
+              <div className={`relative ${top ? 'min-h-56 flex-1' : 'h-36 lg:h-40'}`} style={{ background: 'var(--stage-glow)' }}>
+                <span className="absolute left-2.5 top-2.5 z-[1] rounded-full px-2 py-0.5 text-[10.5px] font-medium uppercase tracking-[.06em]" style={{ ...chip, color: top ? 'var(--accent-ink)' : 'var(--muted)' }}>{g.name}</span>
+                <span className="absolute right-2.5 top-2.5 z-[1] rounded-full px-2 py-0.5 text-[10.5px] num" style={{ ...chip, color: 'var(--muted)' }}>day {p.streak}</span>
+                <img src={petImage(p.species, 'hero')} alt="" draggable={false}
+                  className={`absolute inset-x-0 mx-auto object-contain ${top ? 'bottom-3 h-[86%]' : 'bottom-2 h-[84%]'}`} />
+                <span className={`absolute bottom-2 left-1/2 z-[1] -translate-x-1/2 whitespace-nowrap rounded-full px-3 py-1 font-semibold backdrop-blur ${top ? 'text-[14px]' : 'text-[12.5px]'}`} style={chip}>
+                  {p.name} <span className="num font-medium" style={{ color: 'var(--muted)' }}>{s.ticker}</span>
+                </span>
+              </div>
+              <div className="flex items-end justify-between gap-2 px-3 py-2.5">
+                <div className="min-w-0">
+                  <p className="truncate text-[11px]" style={{ color: 'var(--muted)' }}>{s.company} · {isPaper(p) ? 'paper' : 'live'}</p>
+                  <p className={`num font-semibold leading-tight ${top ? 'text-[20px]' : 'text-[15px]'}`}>{r.value != null ? `$${r.value.toFixed(2)}` : '—'}</p>
+                </div>
+                {r.pnl != null && r.basis > 0 && (
+                  <span className="shrink-0 rounded-full px-2 py-0.5 text-[11px] num"
+                    style={{ color: r.pnl >= 0 ? 'var(--up)' : 'var(--down)', background: `color-mix(in srgb, ${r.pnl >= 0 ? 'var(--up)' : 'var(--down)'} 14%, transparent)` }}>
+                    {r.pnl >= 0 ? '+' : ''}{((r.pnl / r.basis) * 100).toFixed(2)}%
+                  </span>
+                )}
+              </div>
+            </>
+          );
+          const frame = { outline: on ? '2px solid var(--accent)' : '2px solid transparent', outlineOffset: '-2px' };
           return (
-            <li key={p.uid ?? p.adoptedAt}>
-              <button onClick={() => open(p)} className="card flex w-full items-center gap-3 px-3 py-2.5 text-left lg:px-4 lg:py-3.5"
-                style={{ outline: on ? '3px solid var(--accent)' : '3px solid transparent' }}>
-                <img src={petImage(p.species, 'hero')} alt="" className="h-12 w-12 shrink-0 rounded-full object-cover object-top" style={{ background: 'var(--canvas)' }} />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[15px] font-bold" style={{ fontFamily: 'var(--font-display)' }}>
-                    {p.name} <span className="num text-[12px] font-semibold" style={{ color: 'var(--muted)' }}>{s.ticker}</span>
-                  </p>
-                  <p className="truncate text-[12px]" style={{ color: 'var(--muted)' }}>
-                    {s.company} · {isPaper(p) ? 'paper' : 'live'} · {r.qty.toFixed(4)} {s.tokenSymbol}
-                  </p>
-                </div>
-                <div className="shrink-0 text-right">
-                  <p className="num text-[15px] font-bold">{r.value != null ? `$${r.value.toFixed(2)}` : '—'}</p>
-                  {r.pnl != null && r.basis > 0 && (
-                    <p className="num text-[11.5px]" style={{ color: r.pnl >= 0 ? 'var(--up)' : 'var(--down)' }}>
-                      {r.pnl >= 0 ? '+' : ''}{((r.pnl / r.basis) * 100).toFixed(2)}%
-                    </p>
-                  )}
-                </div>
+            <li key={p.uid ?? p.adoptedAt} className={top ? 'col-span-2 lg:row-span-2' : ''}>
+              <button onClick={() => open(p)} className="block h-full w-full text-left" aria-label={`Open ${p.name}`}>
+                {top
+                  ? <Foil className="card flex h-full flex-col overflow-hidden" style={frame}>{body}</Foil>
+                  : <div className="card flex h-full flex-col overflow-hidden transition-transform hover:-translate-y-0.5" style={frame}>{body}</div>}
               </button>
             </li>
           );

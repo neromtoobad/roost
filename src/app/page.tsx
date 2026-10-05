@@ -1,5 +1,6 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type MouseEvent, type PointerEvent } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Pet } from '@/components/Pet';
@@ -13,7 +14,7 @@ import { GrowthRings } from '@/components/Stage';
 import { DuelCard, type Duel } from '@/components/Duel';
 import { TelegramLink } from '@/components/Telegram';
 import { petImage, type Mood } from '@/lib/pets';
-import { computeMood, moodLine } from '@/lib/mood';
+import { computeMood, moodLine, moodReason } from '@/lib/mood';
 import { SHORT, TALL, WIDE, WIDER, useMarketSession, useMedia, useNow, useSearch } from '@/lib/client';
 import { runEngine } from '@/lib/engine';
 import { useTickAll } from '@/lib/tickall';
@@ -58,6 +59,11 @@ export default function Home() {
   const celebrate = Boolean(q.get('hatched') || q.get('public'));
   const fed = Boolean(q.get('fed'));
   const [petLine, setPetLine] = useState<{ text: string; at: number } | null>(null);
+  // Touch: a tap asks why it looks the way it does; a stroke across it pets it (with hearts).
+  const [why, setWhy] = useState(false);
+  const [hearts, setHearts] = useState<{ id: number; x: number; y: number }[]>([]);
+  const stroke = useRef<{ x: number; y: number; dist: number; beat: number; petted: boolean } | null>(null);
+  const travel = useRef(0);
 
   useEffect(() => { if (now && !pet) router.replace('/adopt'); }, [now, pet, router]);
   useEffect(() => { if (pet) touchVisit(pet); }, [pet?.lastVisitDay]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -163,6 +169,8 @@ export default function Home() {
   }, [ms?.key, pet?.uid]); // eslint-disable-line react-hooks/exhaustive-deps
   // Cleared by its own timer (see onPet), so showing it needs no clock read during render.
   const justPetted = Boolean(petLine);
+  // A stage milestone being celebrated: the ring it just reached pulses.
+  const stageUp = ms?.key.startsWith('stage-') ? grown.index - 1 : undefined;
   const computed = useMemo(() => computeMood({ pct24h: price.pct24h, session, hunger }), [price.pct24h, session, hunger]);
   const mood: Mood = celebrate || ms ? 'ecstatic' : justPetted || fed ? 'happy' : ((q.get('mood') as Mood | null) ?? computed);
   const line = celebrate
@@ -181,6 +189,33 @@ export default function Home() {
     setTimeout(() => setPetLine(null), 4000);
     if (next) void syncPet(next);
   };
+
+  const strokeStart = (e: PointerEvent<HTMLButtonElement>) => { stroke.current = { x: e.clientX, y: e.clientY, dist: 0, beat: 0, petted: false }; travel.current = 0; };
+  const strokeMove = (e: PointerEvent<HTMLButtonElement>) => {
+    const s = stroke.current;
+    if (!s) return;
+    s.dist += Math.hypot(e.clientX - s.x, e.clientY - s.y);
+    s.x = e.clientX; s.y = e.clientY; travel.current = s.dist;
+    if (s.dist - s.beat > 26) {
+      s.beat = s.dist;
+      const box = e.currentTarget.getBoundingClientRect();
+      const h = { id: performance.now() + Math.random(), x: e.clientX - box.left, y: e.clientY - box.top };
+      setHearts((hs) => [...hs.slice(-7), h]);
+      setTimeout(() => setHearts((hs) => hs.filter((x) => x.id !== h.id)), 1250);
+    }
+    // A real stroke, not a slip of the finger, counts as the day's pet.
+    if (!s.petted && s.dist > 90) { s.petted = true; setWhy(false); onPet(); }
+  };
+  const strokeEnd = () => { stroke.current = null; };
+  const tapPet = (e: MouseEvent<HTMLButtonElement>) => {
+    if (e.detail === 0) { onPet(); return; } // keyboard: Enter pets, since it cannot stroke
+    if (travel.current < 10) setWhy((w) => !w);
+  };
+  useEffect(() => {
+    if (!why) return;
+    const t = setTimeout(() => setWhy(false), 7000);
+    return () => clearTimeout(t);
+  }, [why]);
 
   const qty = pet ? heldQty(pet) : 0;
   const petSize = Math.round((!wide ? 300 : short ? 250 : wider && tall ? 440 : 340) * grown.scale);
@@ -255,15 +290,25 @@ export default function Home() {
           {line}
           <span className="absolute -bottom-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45" style={{ background: 'var(--surface)', borderRight: '1px solid var(--line)', borderBottom: '1px solid var(--line)' }} aria-hidden />
         </div>
-        <button type="button" onClick={onPet} className="relative" aria-label={pet && canPet(pet.care) ? `Pet ${pet.name}` : `${pet?.name} was petted recently`}>
+        <button type="button" onClick={tapPet} onPointerDown={strokeStart} onPointerMove={strokeMove} onPointerUp={strokeEnd} onPointerLeave={strokeEnd}
+          className="relative touch-pan-y select-none" aria-label={`${pet?.name}: ${wide ? 'click' : 'tap'} for its mood, press Enter to pet`}>
           {(celebrate || ms) && <Confetti />}
           {/* It grows with care: a Hatchling is small, a Legend is not. Never with money. */}
-          <GrowthRings size={petSize} grown={grown} spread={wide ? 1.45 : 1.04} labels={wide} />
+          <GrowthRings size={petSize} grown={grown} spread={wide ? 1.45 : 1.04} labels={wide} pulse={stageUp} />
           <Pet id={species} mood={mood} night={night} size={petSize} />
+          <AnimatePresence>
+            {hearts.map((h) => (
+              <motion.span key={h.id} className="pointer-events-none absolute z-20 text-[24px] leading-none" style={{ left: h.x - 12, top: h.y - 16, color: 'var(--accent)', textShadow: '0 0 10px color-mix(in srgb, var(--accent) 70%, transparent)' }}
+                initial={{ opacity: 0, y: 0, scale: 0.5 }} animate={{ opacity: [0, 1, 1, 0], y: -56, scale: 1.2 }} exit={{ opacity: 0 }}
+                transition={{ duration: 1.2, ease: 'easeOut', opacity: { times: [0, 0.12, 0.6, 1], duration: 1.2 } }} aria-hidden>♥</motion.span>
+            ))}
+          </AnimatePresence>
         </button>
-        <p className="relative z-10 -mt-1 text-[11.5px] num lg:text-[13px]" style={{ color: 'var(--muted)' }}>
-          {grown.name}{grown.next !== null ? ` · ${grown.points}/${grown.next} to grow` : ''}
-          {pet && canPet(pet.care) ? ` · ${wide ? 'click' : 'tap'} to pet` : ''}
+        {/* The caption: growth, or why it looks like this (after a tap), or that it just grew. */}
+        <p className="relative z-10 -mt-1 max-w-[340px] text-center text-[11.5px] num lg:text-[13px]" style={{ color: why || stageUp !== undefined ? 'var(--ink)' : 'var(--muted)' }} aria-live="polite">
+          {stageUp !== undefined ? <span style={{ color: 'var(--accent-ink)' }}>✦ Grew into a {grown.name}</span>
+            : why ? moodReason(computed, { pct24h: price.pct24h, session, hunger }, ticker)
+            : <>{grown.name}{grown.next !== null ? ` · ${grown.points}/${grown.next} to grow` : ''} · {pet && canPet(pet.care) ? 'stroke to pet · ' : ''}{wide ? 'click' : 'tap'} for its mood</>}
         </p>
       </div>
       </section>

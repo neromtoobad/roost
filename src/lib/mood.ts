@@ -41,3 +41,21 @@ export function moodLine(mood: Mood, pct24h: number, ticker: string): string {
     ? pick
     : `${ticker} ${sign}${pct24h.toFixed(1)}%. ${pick}`;
 }
+
+/**
+ * Why it looks the way it does, in one plain sentence — what the pet shows when you tap it. The same
+ * rules as computeMood, in the same order, so the explanation can never disagree with the face.
+ */
+export function moodReason(mood: Mood, i: MoodInput, ticker: string): string {
+  const pct = Number.isFinite(i.pct24h) ? `${i.pct24h >= 0 ? '+' : '−'}${Math.abs(i.pct24h).toFixed(2)}%` : 'flat';
+  switch (mood) {
+    case 'hungry': return 'Hungry: it has gone two days without food. Hunger outranks the market.';
+    case 'pajamas': return `In pajamas: the NYSE is closed for the ${i.session === 'holiday' ? 'holiday' : 'weekend'}. ${ticker} still trades on-chain; the pet rests.`;
+    case 'nightowl': return `Night owl: the NYSE is shut for the night, but ${ticker} trades on-chain around the clock.`;
+    case 'ecstatic': return `Ecstatic: ${ticker} is ${pct} today — up 4% or more.`;
+    case 'happy': return `Happy: ${ticker} is ${pct} today — up between 1% and 4%.`;
+    case 'sulking': return `Sulking: ${ticker} is ${pct} today — down 4% or more. It passes.`;
+    case 'nervous': return `Nervous: ${ticker} is ${pct} today — down between 1% and 4%.`;
+    default: return `Chill: ${ticker} moved less than 1% today (${pct}).`;
+  }
+}

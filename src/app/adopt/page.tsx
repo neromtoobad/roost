@@ -6,6 +6,7 @@ import { Confetti } from '@/components/Confetti';
 import { SPECIES, petImage, type Species, type Stock } from '@/lib/pets';
 import { PERSONALITIES, adoptLitter, adoptPetRemote, type Personality } from '@/lib/store';
 import { ConnectPill, useWallet } from '@/components/Wallet';
+import { EggCarousel } from '@/components/EggCarousel';
 import { syncPet } from '@/lib/sync';
 import { StockCard, type StockInfo } from '@/components/StockCard';
 import { LITTERS, type Litter, type LitterMember } from '@/lib/litters';
@@ -54,6 +55,8 @@ export default function Adopt() {
   const router = useRouter();
   const [step, setStep] = useState<Step>('egg');
   const [pick, setPick] = useState<Species['id'] | null>(null);
+  // The classic egg in front of the turntable; hatching it makes it the pick.
+  const [egg, setEgg] = useState<Species['id']>(ORDER[0]);
   const [cracked, setCracked] = useState(false);
   const [name, setName] = useState('');
   const [personality, setPersonality] = useState<Personality>('degen');
@@ -115,11 +118,12 @@ export default function Adopt() {
     setLoading(null);
   };
 
-  const hatch = () => {
-    if (!pick) return;
+  const hatch = (id: Species['id'] | null = pick) => {
+    if (!id) return;
+    setPick(id);
     setStep('hatch');
     setTimeout(() => setCracked(true), 1400);
-    setTimeout(() => { setName(SPECIES[pick].name); setStep('name'); }, 3200);
+    setTimeout(() => { setName(SPECIES[id].name); setStep('name'); }, 3200);
   };
   const adopt = () => {
     if (!pick || !name.trim()) return;
@@ -169,6 +173,14 @@ export default function Adopt() {
             className="lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
             <h1 className="mt-5 text-center text-[32px] font-bold lg:mt-0 lg:text-[28px]" style={{ fontFamily: 'var(--font-display)' }}>Pick your egg</h1>
             <p className="mt-1 text-center text-[14px] lg:mt-0.5 lg:text-[13.5px]" style={{ color: 'var(--muted)' }}>Any of ~450 tokenized stocks. Its sector decides which Fledgling hatches.</p>
+            {/* What a newcomer needs to hear before choosing anything. */}
+            <ul className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-1 text-[12px] lg:mt-2" style={{ color: 'var(--muted)' }}>
+              {['Start free on paper', 'From $5 when it’s real', 'You sign every trade'].map((t) => (
+                <li key={t} className="flex items-center gap-1.5">
+                  <span className="grid h-4 w-4 place-items-center rounded-full text-[10px]" style={{ background: 'color-mix(in srgb, var(--accent) 22%, transparent)', color: 'var(--accent-ink)' }} aria-hidden>✓</span>{t}
+                </li>
+              ))}
+            </ul>
 
             {/* Desktop: two columns that fit the window; the stock list scrolls inside its own column. */}
             <div className="lg:mt-4 lg:grid lg:min-h-0 lg:flex-1 lg:grid-cols-2 lg:gap-10">
@@ -226,21 +238,9 @@ export default function Adopt() {
             </div>
 
             <p className="mt-6 text-[12px] font-semibold uppercase tracking-wide lg:mt-4" style={{ color: 'var(--muted)' }}>Or a classic</p>
-            <div className="mt-2 grid grid-cols-2 gap-3 lg:mb-3 lg:grid-cols-3 lg:gap-2">
-              {ORDER.map((id) => {
-                const s = SPECIES[id], on = pick === id;
-                return (
-                  <button key={id} onClick={() => setPick(id)} className="card flex flex-col items-center gap-2 px-3 pb-3 pt-4 text-left transition-transform active:scale-[0.98] lg:gap-1 lg:pb-2 lg:pt-2.5"
-                    style={{ outline: on ? '3px solid var(--accent)' : '3px solid transparent', boxShadow: on ? 'var(--glow)' : 'none' }}>
-                    <img src={`/pets/eggs/${id}.png`} alt="" className="h-28 w-28 object-contain lg:h-16 lg:w-16" draggable={false} />
-                    <span className="text-[15px] font-bold" style={{ fontFamily: 'var(--font-display)' }}>{s.ticker}</span>
-                    <span className="-mt-1 text-[12px]" style={{ color: 'var(--muted)' }}>{s.preIpo ? 'pre-IPO' : 'tokenized stock'}</span>
-                  </button>
-                );
-              })}
+            <div className="lg:mb-3"><EggCarousel ids={ORDER} value={egg} onChange={setEgg} /></div>
             </div>
-            </div>
-            <button onClick={() => { setChosen(null); setChoice(null); hatch(); }} disabled={!pick} className="pill mt-6 w-full shrink-0 text-[18px] disabled:opacity-40 lg:mt-auto">Hatch</button>
+            <button onClick={() => { setChosen(null); setChoice(null); hatch(egg); }} className="pill mt-6 w-full shrink-0 text-[18px] lg:mt-auto">Hatch {SPECIES[egg].ticker}</button>
             </div>
             </div>
           </motion.section>
@@ -283,7 +283,7 @@ export default function Adopt() {
             </div>
             <div>
             <div className="mt-3 lg:mt-0"><StockCard info={chosen} /></div>
-            <button onClick={hatch} className="pill mt-4 w-full text-[18px]">Hatch {chosen.stock.ticker}</button>
+            <button onClick={() => hatch()} className="pill mt-4 w-full text-[18px]">Hatch {chosen.stock.ticker}</button>
             <button onClick={() => { setChosen(null); setChoice(null); setPick(null); setStep('egg'); }} className="mt-3 w-full text-center text-[13px] underline" style={{ color: 'var(--muted)' }}>
               Pick a different stock
             </button>

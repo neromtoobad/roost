@@ -6,7 +6,7 @@ import { STAGES, type Stage } from '@/lib/care';
  * grow into. Rings it has reached are lit; the next one fills as an arc with its care points. So the
  * decoration is the growth meter, drawn where the eye already is.
  */
-export function GrowthRings({ size, grown, spread = 1.45, labels = true }: { size: number; grown: Stage; spread?: number; labels?: boolean }) {
+export function GrowthRings({ size, grown, spread = 1.45, labels = true, pulse }: { size: number; grown: Stage; spread?: number; labels?: boolean; pulse?: number }) {
   const d = Math.round(size * spread);
   const c = d / 2;
   const radii = [0.6, 0.79, 0.97].map((f) => f * (c - 8));
@@ -27,7 +27,7 @@ export function GrowthRings({ size, grown, spread = 1.45, labels = true }: { siz
           return (
             <g key={s.name}>
               <circle cx={c} cy={c} r={r} fill="none" stroke={reached ? 'var(--accent)' : 'var(--stage-ring)'} strokeOpacity={reached ? 0.45 : 1}
-                strokeWidth="1" strokeDasharray={reached || isNext ? undefined : '2 5'} />
+                strokeWidth="1" strokeDasharray={reached || isNext ? undefined : '2 5'} className={pulse === i ? 'ring-pulse' : undefined} />
               {isNext && progress > 0 && (
                 <circle cx={c} cy={c} r={r} fill="none" stroke="var(--accent)" strokeOpacity="0.85" strokeWidth="1.5" strokeLinecap="round"
                   strokeDasharray={`${circ * progress} ${circ}`} transform={`rotate(-90 ${c} ${c})`} style={{ filter: 'drop-shadow(var(--glow))' }} />

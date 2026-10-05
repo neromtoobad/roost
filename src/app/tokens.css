@@ -46,6 +46,28 @@ body {
   transition: background-color .6s ease, color .6s ease;
 }
 /* In Tailwind's components layer, so a utility on the element (h-10, rounded-…) can still size it. */
+/* A collectible's foil (components/Foil.tsx): a pointer-following sheen and a slight tilt. Day mode
+   blends it softer, since colour-dodge on white has nothing to brighten. */
+:root { --foil-blend: soft-light; --foil-strength: .9; }
+:root[data-session="night"] { --foil-blend: color-dodge; --foil-strength: .5; }
+.foil { position: relative; isolation: isolate; transform: perspective(900px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)); transition: transform .3s ease; }
+.foil::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 0;
+  mix-blend-mode: var(--foil-blend); opacity: calc(var(--foil-o, .3) * var(--foil-strength)); transition: opacity .3s ease;
+  background:
+    radial-gradient(circle at var(--mx, 50%) var(--my, 28%), rgba(255,255,255,.6), transparent 42%),
+    linear-gradient(115deg, transparent 26%, rgba(252,213,53,.5) 40%, rgba(110,231,255,.32) 51%, rgba(255,128,214,.32) 60%, transparent 74%);
+  background-size: 100% 100%, 260% 260%;
+  background-position: center, var(--mx, 50%) var(--my, 50%);
+}
+/* The sheen is the card, not the figure: what the card holds sits above it, so the pet stays clean. */
+.foil > * { position: relative; z-index: 1; }
+@media (prefers-reduced-motion: reduce) { .foil { transform: none !important; } }
+
+/* A stage just reached: its ring breathes a few times, then settles lit. */
+@keyframes ring-pulse { 0%, 100% { stroke-width: 1; stroke-opacity: .45; } 50% { stroke-width: 5; stroke-opacity: 1; } }
+.ring-pulse { animation: ring-pulse 1.1s ease-in-out 3; filter: drop-shadow(var(--glow)); }
+
 /* Rolling numbers (NumberFlow): the cents step back so the dollars read first. */
 .dim-cents::part(fraction-digit), .dim-cents::part(decimal) { opacity: .42; }
 @layer components {
