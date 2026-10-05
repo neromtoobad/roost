@@ -30,7 +30,7 @@ A tokenized stock trades every hour of the week. The exchange behind it is open 
 
 A buddy makes it felt rather than explained:
 
-- **It lives on the market's clock.** The app has a day and a night in Binance's colours — its light theme while the NYSE trades, its dark one while it sleeps — switched by the real session, holidays included. At the close the Fledgling's floor starts to glow. There is a mood only a 24/7 chain can have — **Night Owl**: *"Wall Street sleeps. I don't."*
+- **It lives on the market's clock.** The app has a day and a night in Binance's colours — its light theme while the NYSE trades, its dark one while it sleeps — switched by the real session, holidays included. At the close the room goes dark and its stage lights up. There is a mood only a 24/7 chain can have — **Night Owl**: *"Wall Street sleeps. I don't."*
 - **Its mood is the market.** Eight moods from the live print, the session and how hungry it is. Hunger and session outrank price, so care is never masked by a green day.
 - **Its personality is its strategy.** 💎 *Diamond Hands* deploys at every open and never sells. ⚡ *Degen* hunts 2% dips at any hour. 🕰 *Boomer* trades regular hours only and keeps 20% back. 📊 *Quant* rebalances weekly and cites basis points. 🌙 *Night Shift* buys only while Wall Street sleeps, and only under the last close. 🏄 *Trend Rider* adds weekly, and only to a stock already above its five-day average.
 - **It rewards habits, not hype.** Feeding days, a streak that forgives a missed day, growth from care — and no confetti for trading.
@@ -52,9 +52,9 @@ A buddy makes it felt rather than explained:
 - **A nest.** Keep several Fledglings and litters; one portfolio view, real money and paper counted apart.
 - **Habits, not hype.** Weekly, fortnightly or monthly **feeding days** (missed ones are skipped, never stacked into a catch-up buy); a free daily **scratch**; a streak that **forgives one missed day a week**; growth from Hatchling to Legend by days visited and feeding days kept — never by returns or deposit size. When a token's share ratio rises, a dividend was reinvested, and the buddy says it grew. Confetti is for hatching and care milestones only.
 - **It keeps going without you.** An hourly worker replays the same deterministic engine against the real hourly tape, keeps paper feeding days, and writes the diary. A buddy waiting on your yes/no is skipped: the permission rule holds when nobody is watching.
-- **Board and duels.** A leaderboard by today's move, all-time P&L or care — the care ranking never counts money — and 24-hour duels between Fledglings that neither owner can trade during, with the closest race up front.
+- **Board and duels.** A leaderboard by today's move, all-time P&L or care — the care ranking never counts money — and 24-hour duels between Fledglings that neither owner can trade during, with the top three on a podium and the closest race up front.
 - **A buddy on Telegram.** Feeding-day reminders with a **Sign it** button, the buddy's own buy requests, and `/buddies` to check in. It never trades from the chat.
-- **Phone and desktop.** A thumb-first phone app with a tab bar; on a wide screen, an exchange-style top bar with the market clock and the wallet, and every page laid out two-up — the buddy on its own stage beside its numbers, the market and what it did lately.
+- **Phone and desktop.** A thumb-first phone app with a tab bar; on a wide screen, an exchange-style top bar with the market clock and the wallet, and every page laid out two-up — the buddy standing on its own habitat on a lit stage, beside its numbers, the market and what it did lately.
 
 <p align="center"><img src="docs/img/home-mobile.webp" width="300" alt="Roost on a phone" />&nbsp;&nbsp;&nbsp;<img src="docs/img/feed-mobile.webp" width="300" alt="Feeding a Fledgling on a phone" /></p>
 
