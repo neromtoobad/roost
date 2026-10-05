@@ -34,7 +34,7 @@ export function DuelCard({ duel, mine }: { duel: Duel; mine: string | null }) {
           style={{ opacity: settled && !winning ? 0.5 : 1 }} />
         <div className="min-w-0">
           <p className="truncate text-[13.5px] font-bold" style={{ fontFamily: 'var(--font-display)' }}>
-            {name}{isMine && <span className="ml-1 text-[10px]" style={{ color: 'var(--accent)' }}>you</span>}
+            {name}{isMine && <span className="ml-1 text-[10px]" style={{ color: 'var(--accent-ink)' }}>you</span>}
           </p>
           <p className="text-[12px] font-bold num" style={{ color: move === null ? 'var(--muted)' : move >= 0 ? 'var(--up)' : 'var(--down)' }}>
             {move === null ? '—' : `${move >= 0 ? '+' : ''}${move.toFixed(2)}%`}

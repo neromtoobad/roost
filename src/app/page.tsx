@@ -4,18 +4,18 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Pet } from '@/components/Pet';
 import { Ring } from '@/components/Ring';
-import { Nav } from '@/components/Nav';
+import { Nav, SessionBadge } from '@/components/Nav';
 import { ConnectPill, useWallet } from '@/components/Wallet';
 import { Confetti } from '@/components/Confetti';
-import { Report, Ask } from '@/components/Report';
+import { ENTRY_ICON, Report, Ask } from '@/components/Report';
 import { Sparkline } from '@/components/Sparkline';
 import { DuelCard, type Duel } from '@/components/Duel';
 import { TelegramLink } from '@/components/Telegram';
 import { petImage, type Mood } from '@/lib/pets';
 import { computeMood, moodLine } from '@/lib/mood';
-import { isNight, nyseSession, sessionLabel } from '@/lib/session';
-import { WIDE, WIDER, useMedia, useNow, useSearch } from '@/lib/client';
+import { WIDE, WIDER, useMarketSession, useMedia, useNow, useSearch } from '@/lib/client';
 import { runEngine } from '@/lib/engine';
+import { useTickAll } from '@/lib/tickall';
 import { pullPet, syncPet } from '@/lib/sync';
 import { answerProposal, feedPet, feedingDay, heldQty, isPaper, markCelebrated, mergeEntries, noteRatio, pauseSchedule, petPet, pnl, readPet, savePet, setCurrentPet, stockOf, touchVisit, useFocusPet, usePet, usePets, waitingLine, type Entry } from '@/lib/store';
 import { CADENCE_LABEL, bond as bondOf, canPet, isDue, milestone, stage } from '@/lib/care';
@@ -29,6 +29,8 @@ export default function Home() {
   const pet = usePet();
   const { pets } = usePets();
   const hasStore = pets.length > 0;
+  // The rest of the nest catches up too; the pet on screen catches up below, with its report.
+  useTickAll(pets.filter((p) => p.uid !== pet?.uid));
   const now = useNow();
   const q = useSearch();
   const wide = useMedia(WIDE);
@@ -37,7 +39,6 @@ export default function Home() {
   const elsewhere = useFocusPet(q);
   const [price, setPrice] = useState<Price>({ price: null, pct24h: 0, source: 'none' });
   const [bars, setBars] = useState<Bar[]>([]);
-  const [holidays, setHolidays] = useState<Set<string>>();
   const [report, setReport] = useState<{ fresh: Entry[]; awayMs: number } | null>(null);
   const [duel, setDuel] = useState<Duel | null>(null);
   const remoteId = pet?.remoteId ?? null;
@@ -91,11 +92,6 @@ export default function Home() {
   }, [holdingKey]); // eslint-disable-line react-hooks/exhaustive-deps
   const onChain = holding && holding.key === holdingKey ? holding.qty : null;
 
-  useEffect(() => {
-    let alive = true;
-    fetch('/api/holidays').then((r) => r.json()).then((j: { dates: string[] }) => { if (alive) setHolidays(new Set(j.dates)); }).catch(() => {});
-    return () => { alive = false; };
-  }, []);
 
   // Price, history, and the catch-up tick all hang off one load.
   useEffect(() => {
@@ -147,9 +143,7 @@ export default function Home() {
     return () => { alive = false; };
   }, [remoteId]);
 
-  const session = q.get('night') ? 'overnight' : nyseSession(now ? new Date(now) : new Date(), holidays);
-  const night = isNight(session);
-  useEffect(() => { document.documentElement.dataset.session = night ? 'night' : 'day'; }, [night]);
+  const { session, night } = useMarketSession();
 
   const ticker = stock?.ticker ?? '';
   const lastFed = pet?.lastFed ?? now;
@@ -191,11 +185,10 @@ export default function Home() {
   if (!hasStore && !pet) return <main className="min-h-dvh" />;
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-[430px] flex-col px-4 pb-24 pt-[max(12px,env(safe-area-inset-top))] lg:max-w-[1120px] lg:px-10 lg:pb-12 lg:pt-8">
-      <div className="flex items-center justify-between gap-2">
-        <span className="truncate rounded-full border px-3 py-1.5 text-[12px] num" style={{ borderColor: night ? 'var(--accent)' : 'var(--ink)', color: night ? 'var(--accent)' : 'var(--ink)', boxShadow: night ? 'var(--glow)' : 'none' }}>
-          {night ? '☾' : '☀'} {sessionLabel[session]}
-        </span>
+    <main className="mx-auto flex min-h-dvh max-w-[430px] flex-col px-4 pb-24 pt-[max(12px,env(safe-area-inset-top))] lg:min-h-0 lg:max-w-[1200px] lg:px-10 lg:pb-16 lg:pt-8">
+      {/* Desktop has the clock and the wallet in the top bar. */}
+      <div className="flex items-center justify-between gap-2 lg:hidden">
+        <SessionBadge />
         <div className="shrink-0"><ConnectPill /></div>
       </div>
       {/* The nest: every pet on this device, and a way to hatch another. */}
@@ -229,7 +222,7 @@ export default function Home() {
         </p>
       )}
       {fill?.spreadPct != null && (
-        <p className="mt-0.5 text-right text-[11.5px] num" style={{ color: 'var(--muted)' }}>
+        <p className="mt-0.5 text-right text-[11.5px] num lg:hidden" style={{ color: 'var(--muted)' }}>
           {ticker} on-chain{' '}
           <b style={{ color: fill.spreadPct >= 0 ? 'var(--up)' : 'var(--down)' }}>
             {fill.spreadPct >= 0 ? '+' : ''}{fill.spreadPct.toFixed(3)}%
@@ -240,7 +233,7 @@ export default function Home() {
 
       {/* Desktop: the pet gets a stage of its own on the left, and the numbers sit beside it. */}
       <div className="lg:mt-4 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(360px,420px)] xl:gap-10">
-      <section className="lg:sticky lg:top-8 lg:rounded-[28px] lg:border lg:border-[var(--line)] lg:bg-[var(--surface)] lg:flex lg:min-h-[620px] lg:flex-col lg:items-center lg:justify-center lg:py-10">
+      <section className="lg:sticky lg:top-8 lg:rounded-[var(--radius-card)] lg:border lg:border-[var(--line)] lg:bg-[var(--surface)] lg:flex lg:min-h-[620px] lg:flex-col lg:items-center lg:justify-center lg:py-10">
       <div className="relative mt-5 flex flex-col items-center lg:mt-0">
         <div className="card relative mb-2 max-w-[264px] px-4 py-2.5 text-center text-[15px] font-semibold lg:max-w-[360px] lg:px-5 lg:py-3 lg:text-[18px]" style={{ fontFamily: 'var(--font-display)' }}>
           {line}
@@ -318,8 +311,7 @@ export default function Home() {
             ) : (
               <Link href="/feed?due=1" className="pill grid flex-1 place-items-center text-[15px]">Sign it</Link>
             )}
-            <button onClick={() => void syncPet(feedingDay(pet, 'skipped'))} className="flex-1 rounded-full border py-3 text-[15px] font-bold"
-              style={{ borderColor: 'var(--line)', background: 'var(--surface)', fontFamily: 'var(--font-display)' }}>Skip this one</button>
+            <button onClick={() => void syncPet(feedingDay(pet, 'skipped'))} className="btn-2 flex-1 py-3 text-[15px]">Skip this one</button>
           </div>
         </div>
       ) : (
@@ -334,8 +326,7 @@ export default function Home() {
       <div className={`mt-5 grid gap-2 ${qty > 0 ? 'grid-cols-[1fr_auto]' : 'grid-cols-1'}`}>
         <Link href="/feed" className="pill grid place-items-center text-[18px] active:scale-[0.98]" style={{ transition: 'transform .1s' }}>Feed</Link>
         {qty > 0 && (
-          <Link href="/release" className="grid place-items-center rounded-full border px-6 text-[15px] font-bold active:scale-[0.98]"
-            style={{ borderColor: 'var(--line)', background: 'var(--surface)', fontFamily: 'var(--font-display)', transition: 'transform .1s' }}>Release</Link>
+          <Link href="/release" className="btn-2 grid place-items-center px-7 text-[15px] active:scale-[0.98]">Release</Link>
         )}
       </div>
       <p className="mt-3 text-center text-[13px]" style={{ color: 'var(--muted)' }}>
@@ -358,6 +349,39 @@ export default function Home() {
         <p className="mt-1 text-center text-[12px]" style={{ color: 'var(--muted)' }}>{waitingLine[pet.personality]}</p>
       )}
       {pet && <TelegramLink pet={pet} />}
+
+      {/* Desktop has room for what the phone keeps a tap away: the stock, and what the pet did lately. */}
+      <div className="card mt-6 hidden px-5 py-4 lg:block">
+        <p className="text-[11.5px] font-medium uppercase tracking-[.08em]" style={{ color: 'var(--muted)' }}>Market</p>
+        <div className="mt-1.5 flex items-baseline justify-between gap-3">
+          <p className="num text-[20px] font-semibold">{price.price ? `$${price.price.toFixed(2)}` : '—'} <span className="text-[13px] font-medium" style={{ color: 'var(--muted)' }}>{stock?.tokenSymbol}</span></p>
+          <p className="num text-[13px] font-medium" style={{ color: price.pct24h >= 0 ? 'var(--up)' : 'var(--down)' }}>{price.pct24h >= 0 ? '+' : ''}{price.pct24h.toFixed(2)}% 24h</p>
+        </div>
+        {fill?.spreadPct != null && (
+          <p className="mt-1 text-[12.5px] num" style={{ color: 'var(--muted)' }}>
+            On-chain <b style={{ color: fill.spreadPct >= 0 ? 'var(--up)' : 'var(--down)' }}>{fill.spreadPct >= 0 ? '+' : ''}{fill.spreadPct.toFixed(3)}%</b> vs reference{fill.vendor ? ` · ${fill.vendor}` : ''}
+          </p>
+        )}
+      </div>
+      {pet && pet.diary.length > 0 && (
+        <div className="card mt-3 hidden px-5 py-4 lg:block">
+          <div className="flex items-center justify-between">
+            <p className="text-[11.5px] font-medium uppercase tracking-[.08em]" style={{ color: 'var(--muted)' }}>Recent</p>
+            <Link href="/diary" className="text-[12.5px] font-medium" style={{ color: 'var(--accent-ink)' }}>Diary ›</Link>
+          </div>
+          <ul className="mt-2.5 grid gap-3">
+            {[...pet.diary].sort((a, b) => b.ts - a.ts).slice(0, 4).map((e, i) => (
+              <li key={`${e.ts}-${i}`} className="flex gap-3 text-[13.5px]">
+                <span aria-hidden className="w-5 shrink-0 text-center">{ENTRY_ICON[e.kind] ?? '•'}</span>
+                <div className="min-w-0">
+                  <p className="truncate">{e.text}</p>
+                  <p className="num text-[11px]" style={{ color: 'var(--muted)' }}>{new Date(e.ts).toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       </section>
       </div>
 

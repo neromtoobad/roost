@@ -43,7 +43,7 @@ async function main() {
     D(`(${fill ? 'aggregator quote' : 'oracle read'}${hasWallet ? '' : ' — no wallet given'})`));
 
   console.log(`\n${B('What each personality wants, same tape, same cash')}\n`);
-  for (const p of ['diamond', 'degen', 'boomer', 'quant'] as const) {
+  for (const p of ['diamond', 'degen', 'boomer', 'quant', 'night', 'momentum'] as const) {
     const state = { cash: 40, heldQty: 0.18, lentQty: 0.05, lastBuyAt: Date.now() - 9 * 86400e3, totalFed: 80 };
     const ins = toInstruction(species, decide(p, bars, bars.length - 1, state));
     const tag = ins.kind === 'swap' ? G('SWAP') : ins.kind === 'ask' ? Y('ASK ') : ins.kind === 'blocked' ? Y('BLCK') : D('HOLD');

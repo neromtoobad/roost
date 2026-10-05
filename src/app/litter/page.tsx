@@ -137,10 +137,10 @@ export default function LitterPage() {
   const hatched = Boolean(q.get('hatched'));
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-[430px] flex-col px-4 pb-24 pt-[max(12px,env(safe-area-inset-top))] lg:max-w-[1120px] lg:px-10 lg:pb-12 lg:pt-8">
+    <main className="mx-auto flex min-h-dvh max-w-[430px] flex-col px-4 pb-24 pt-[max(12px,env(safe-area-inset-top))] lg:min-h-0 lg:max-w-[1200px] lg:px-10 lg:pb-16 lg:pt-8">
       <div className="flex items-center justify-between gap-2">
         <button onClick={() => router.push('/nest')} aria-label="Back to the nest" className="text-[22px]">‹</button>
-        <ConnectPill />
+        <div className="lg:hidden"><ConnectPill /></div>
       </div>
       <div className="relative">
         {hatched && <Confetti count={30} />}
@@ -196,8 +196,8 @@ export default function LitterPage() {
       <div className="mt-2 grid grid-cols-4 gap-2">
         {(live ? AMOUNTS.live : AMOUNTS.paper).map((a) => (
           <button key={a} onClick={() => { setUsd(a); setOutcomes(null); }} disabled={running}
-            className="rounded-full py-3 text-[16px] font-bold num"
-            style={usd === a ? { background: 'var(--accent)', color: 'var(--on-accent)', boxShadow: 'var(--glow)' } : { background: 'var(--surface)', border: '1px solid var(--line)' }}>${a}</button>
+            className="rounded-[var(--radius-btn)] py-3 text-[16px] font-semibold num"
+            style={usd === a ? { background: 'var(--accent)', color: 'var(--on-accent)', border: '1px solid var(--accent)' } : { background: 'var(--surface-2)', border: '1px solid var(--line)' }}>${a}</button>
         ))}
       </div>
       <p className="card mt-3 px-4 py-3 text-[13.5px] leading-snug">
@@ -222,7 +222,7 @@ export default function LitterPage() {
           {outcomes.map((o) => (
             <li key={o.uid} style={{ color: o.ok ? 'var(--ink)' : 'var(--down)' }}>
               {o.ok ? '✓' : '✗'} <b>{o.name}</b> ${o.usd.toFixed(2)} — {o.note}
-              {o.hash && <> · <a href={bscscan(o.hash)} target="_blank" rel="noreferrer" className="num underline" style={{ color: 'var(--accent)' }}>BscScan ↗</a></>}
+              {o.hash && <> · <a href={bscscan(o.hash)} target="_blank" rel="noreferrer" className="num underline" style={{ color: 'var(--accent-ink)' }}>BscScan ↗</a></>}
             </li>
           ))}
         </ul>

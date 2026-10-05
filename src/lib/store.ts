@@ -14,10 +14,12 @@ import type { Species, Stock } from './pets';
 export * from './pet-math';
 
 export const PERSONALITIES: Record<Personality, { name: string; tagline: string; icon: string }> = {
-  diamond: { name: 'Diamond Hands', tagline: 'deploys at every open, lends it all, never sells', icon: '💎' },
+  diamond: { name: 'Diamond Hands', tagline: 'deploys at every open, never sells',              icon: '💎' },
   degen:   { name: 'Degen',         tagline: 'hunts 2% dips at any hour',                        icon: '⚡' },
   boomer:  { name: 'Boomer',        tagline: 'regular hours only, keeps 20% in reserve',          icon: '🕰' },
   quant:   { name: 'Quant',         tagline: 'weekly rebalance, cites basis points',              icon: '📊' },
+  night:   { name: 'Night Shift',   tagline: 'buys only while Wall Street sleeps, at a discount',  icon: '🌙' },
+  momentum: { name: 'Trend Rider',  tagline: 'adds weekly to whatever is already running',        icon: '🏄' },
 };
 
 // A nest: every Fledgling this device has adopted, and which one is on screen. It replaced a single
@@ -384,8 +386,11 @@ export function answerProposal(p: PetState, accept: boolean, price: number): Pet
   if (!p.proposal) return p;
   const t = Date.now();
   if (!accept) {
-    savePet({ ...p, proposal: null, diary: [...p.diary, { ts: t, text: 'Fine. Not today.', kind: 'hold' }] });
-    return p;
+    // Returned, not only saved: the caller syncs what this returns, and the old copy still carries the
+    // question — the server would keep asking it.
+    const declined: PetState = { ...p, proposal: null, diary: [...p.diary, { ts: t, text: 'Fine. Not today.', kind: 'hold' }] };
+    savePet(declined);
+    return declined;
   }
   const usd = Math.min(p.proposal.usd, p.cash);
   const qty = usd / price;
@@ -404,6 +409,8 @@ function hatchLine(v: Personality, name: string) {
     degen: `${name} HAS ENTERED THE CHAT. where's the dip`,
     boomer: `${name} here. Markets open at 9:30. I'll be ready at 9:00.`,
     quant: `${name} initialized. Baseline: zero. Everything from here is alpha.`,
+    night: `${name} online. You sleep, I shop.`,
+    momentum: `${name} here. If it's going up, I'm getting on.`,
   }[v];
 }
 
@@ -412,4 +419,6 @@ export const waitingLine: Record<Personality, string> = {
   degen: 'Sitting on it. Waiting for something to break.',
   boomer: 'It will be deployed during regular hours. Not before.',
   quant: 'Queued for the next rebalance window.',
+  night: 'Waiting for the closing bell, and a discount.',
+  momentum: 'Waiting for the open, and for strength.',
 };

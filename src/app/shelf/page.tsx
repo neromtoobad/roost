@@ -11,7 +11,7 @@ export default function Shelf() {
   const [mood, setMood] = useState<Mood>('chill');
   const sp = SPECIES[open];
   return (
-    <main className="mx-auto flex min-h-dvh max-w-[430px] flex-col px-4 pb-24 pt-[max(12px,env(safe-area-inset-top))] lg:max-w-[1040px] lg:px-10 lg:pb-12 lg:pt-8">
+    <main className="mx-auto flex min-h-dvh max-w-[430px] flex-col px-4 pb-24 pt-[max(12px,env(safe-area-inset-top))] lg:min-h-0 lg:max-w-[1200px] lg:px-10 lg:pb-16 lg:pt-8">
       <h1 className="text-center text-[28px] font-bold" style={{ fontFamily: 'var(--font-display)' }}>Shelf</h1>
       <p className="text-center text-[13px]" style={{ color: 'var(--muted)' }}>Six Fledglings. One wrong detail each.</p>
 

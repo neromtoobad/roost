@@ -5,7 +5,8 @@ import type { Care, Schedule } from './care';
 // localStorage: the browser, the API routes and the hourly worker all reason about the same pet,
 // so the numbers a judge sees on the board are the numbers the engine acted on.
 
-export type Personality = 'diamond' | 'degen' | 'boomer' | 'quant';
+/** The personality is the trading rule. `night` and `momentum` arrived last; see lib/strategy. */
+export type Personality = 'diamond' | 'degen' | 'boomer' | 'quant' | 'night' | 'momentum';
 
 export type Lot = { ts: number; qty: number; price: number };
 export type EntryKind = 'feed' | 'buy' | 'sell' | 'lend' | 'yield' | 'hold' | 'ask' | 'system';

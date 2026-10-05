@@ -1,4 +1,4 @@
-import { decide, HOURLY_YIELD, type Bar, type StrategyState } from './strategy';
+import { decide, type Bar, type StrategyState } from './strategy';
 import { isPaper, totalFed, type Entry, type PetState } from './pet-math';
 
 // Replays the hours since the pet last ticked and applies whatever its strategy decided.
@@ -30,20 +30,12 @@ export function runEngine(pet: PetState, bars: Bar[], now = Date.now()): TickRes
   const lots = [...pet.lots];
   const fresh: Entry[] = [];
   const paper = isPaper(pet);
-  let yieldQty = pet.yieldQty;
+  const yieldQty = pet.yieldQty;
   let proposal = pet.proposal ?? null;
-  let earnedThisRun = 0;
 
   for (let i = 0; i < window.length; i++) {
     const bar = window[i];
     const idx = bars.findIndex((b) => b.t === bar.t);
-
-    // Lending accrues every hour it sits, and compounds — earned shares stay lent rather than
-    // reappearing as idle and re-triggering a lend every hour.
-    if (s.lentQty > 0) {
-      const earned = s.lentQty * HOURLY_YIELD;
-      yieldQty += earned; s.heldQty += earned; s.lentQty += earned; earnedThisRun += earned;
-    }
 
     if (proposal) continue; // one open question at a time; the pet waits for an answer
 
@@ -56,10 +48,6 @@ export function runEngine(pet: PetState, bars: Bar[], now = Date.now()): TickRes
       const why = intent.why ?? 'its rule fired';
       proposal = { ts: bar.t, usd, reason: why };
       fresh.push({ ts: bar.t, text: `Wants to buy $${usd.toFixed(2)} — ${why}. Needs your signature.`, kind: 'ask', usd });
-    } else if (intent.kind === 'lend' && !paper) {
-      // No venue on BSC takes a tokenized equity as collateral. A paper pet can pretend; real
-      // shares stay idle rather than report yield nobody is paying.
-      continue;
     } else if (intent.kind === 'buy') {
       const usd = Math.min(intent.usd, s.cash);
       if (usd < 1) continue;
@@ -67,21 +55,12 @@ export function runEngine(pet: PetState, bars: Bar[], now = Date.now()): TickRes
       lots.push({ ts: bar.t, qty, price: bar.close });
       s.cash -= usd; s.heldQty += qty; s.lastBuyAt = bar.t;
       fresh.push({ ts: bar.t, text: intent.reason, kind: 'buy', qty, price: bar.close, usd, paper });
-    } else if (intent.kind === 'lend') {
-      const add = s.heldQty - s.lentQty;
-      if (add <= 1e-9) continue;
-      s.lentQty += add;
-      fresh.push({ ts: bar.t, text: intent.reason, kind: 'lend', qty: add, paper });
     } else if (intent.kind === 'propose') {
       proposal = { ts: bar.t, usd: Math.min(intent.usd, s.cash), reason: intent.reason };
       fresh.push({ ts: bar.t, text: `Wants to put $${proposal.usd.toFixed(0)} in — ${intent.reason}.`, kind: 'ask', usd: proposal.usd });
     } else if (intent.kind === 'hold' && !fresh.some((f) => f.kind === 'hold')) {
       fresh.push({ ts: bar.t, text: intent.reason, kind: 'hold' });
     }
-  }
-
-  if (earnedThisRun > 1e-9) {
-    fresh.push({ ts: now, text: `Earned ${earnedThisRun.toFixed(5)} from lending while you were away.`, kind: 'yield', qty: earnedThisRun, paper });
   }
 
   const next: PetState = {

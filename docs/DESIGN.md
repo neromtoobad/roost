@@ -1,54 +1,63 @@
-# Stocklings — design tokens (v1, Sept 16)
+# Roost — design tokens (v3, Oct 4)
 
-Locked decisions: matte-vinyl characters (direction A), day/night UI driven by the market session, lime as the single accent. No purple anywhere.
+Locked decisions: matte-vinyl characters, a day/night UI driven by the market session, and Binance's palette — yellow as the single accent, Binance's light theme while the NYSE trades and its dark theme while it sleeps. Roost's own name and mark; no Binance logo or wordmark.
 
 ## Color
 
 | Token | Day (market open / pre / post) | Night (overnight, weekend, holiday) | Role |
 |---|---|---|---|
-| `canvas` | `#F6F5EE` warm off-white | `#0B0F14` navy-black + dotted grid (`#1A2230` dots, 24px) | page ground |
-| `surface` | `#FFFFFF` | `#131A22` | cards |
-| `ink` | `#111111` | `#F2F4F1` | text |
-| `muted` | `#6B6F66` | `#8C95A0` | captions |
-| `line` | `#E4E3DA` | `#243040` | borders |
-| `accent` | `#C8FF3D` lime | `#C8FF3D` lime (+ glow `0 0 24px #C8FF3D66`) | the one voltage |
-| `on-accent` | `#111111` | `#111111` | text on lime |
-| `up` / `down` | `#178F62` / `#D6403F` | `#3ED598` / `#FF7B7A` | P&L only, never decoration |
+| `canvas` | `#FAFAFA` | `#0B0E11` | page ground |
+| `surface` | `#FFFFFF` | `#181A20` | cards, top bar, tab bar |
+| `surface-2` | `#F5F5F5` | `#1E2329` | secondary buttons, unselected options, table heads |
+| `ink` | `#1E2329` | `#EAECEF` | text |
+| `muted` | `#707A8A` | `#848E9C` | captions |
+| `line` | `#EAECEF` | `#2B3139` | borders |
+| `accent` | `#FCD535` | `#FCD535` (+ glow `0 0 24px #F0B90B59`) | primary buttons, selection, gauges |
+| `accent-ink` | `#C99400` | `#FCD535` | yellow used as text (plain yellow does not read on white) |
+| `on-accent` | `#202630` | `#202630` | text on yellow |
+| `up` / `down` | `#03A66D` / `#CF304A` | `#0ECB81` / `#F6465D` | P&L only, never decoration |
 
-Night mode adds one thing day mode doesn't: the pet's LEDs glow and light the floor. Day is matte, night is lit.
+Night mode adds one thing day mode doesn't: the pet's floor glows yellow. Day is flat, night is lit.
 
 ## Shape
 
-- Pill buttons: radius `999px`, height 56px, full width on the home screen.
-- Cards: radius `28px`. Chips: `999px`. Nothing has a sharp corner.
-- Ring gauges: 3 per home screen, 72px, 8px stroke, lime track on `line`.
+- Primary buttons (`.pill`): yellow, radius `12px`, height 52px. Secondary (`.btn-2`): `surface-2` with a `line` border, same radius.
+- Cards: radius `16px`. Status badges and pet chips stay fully round.
+- Option selectors (amounts, cadence, issuer): `12px` rectangles; the selected one is yellow (or ink for cadence).
+- Ring gauges: 3 per home screen, 72px, 8px stroke, yellow on `line`.
+
+## Layout
+
+- Phone: one column (max 430px) with a bottom tab bar of line icons.
+- Desktop (≥1024px): a sticky top bar — Roost, the places (Pet, Nest, Board, Diary, Fledglings), the NYSE session badge, Hatch and the wallet — over a 1200px content column, and a footer. Pages go two-up: the pet's stage beside its numbers, totals beside the nest, the leaderboard table beside the duels, the diary as one ledger.
 
 ## Type
 
-- Display: **Fredoka** 600/700 (rounded, toy-like) — titles, pet names, the speech bubble.
-- Body: **Nunito** 500/600 — everything else.
-- Numbers: **JetBrains Mono** 500 with `tabular-nums` — holdings, prices, timestamps.
-- Scale: 32 / 24 / 18 / 16 / 14 / 12. Uppercase labels get `letter-spacing: .08em`.
+- Display and body: **IBM Plex Sans** 400–700 (the family Binance's own typeface builds on).
+- Numbers: **IBM Plex Mono** 500 with `tabular-nums` — holdings, prices, timestamps.
+- Scale: 36 / 28 / 24 / 18 / 16 / 14 / 12. Uppercase labels get `letter-spacing: .08em`.
 
-## Characters (canonical renders in `art/`)
+## Characters (renders in `public/pets/`)
 
-| Species | Name | Home stock | Wrong detail | Mood carrier |
+| Species | Name | Home stock | Wrong detail | Lime accent |
 |---|---|---|---|---|
-| Robot cat | Nova | NVDA | left ear bent | pixel eyes on visor |
-| Lightning dog | Volt | TSLA | right ear folded | red LED visor band |
-| Earbud hedgehog | Pip | AAPL | one bent spine | eyes + spine fan |
-| Space frog | Booster | SPCX | mismatched eyes, crooked patch | eyes inside helmet |
-| Cloud | Nimbus | OpenAI (pre-IPO) | drooping puff | embossed line face + inflation |
-| Night owl | Lurk | RDDT | one eye half closed | eyes + beanie |
+| Circuit pangolin | Pango | NVDA | one scale flipped up | circuit traces between the scales |
+| Copper axolotl | Coil | TSLA | one gill shorter | plug tips on the coil gills |
+| Shopping capybara | Bara | AAPL | a notch in one ear | the leaf in its tote bag |
+| Jetpack beaver | Rivet | SPCX | one chipped tooth | jetpack thruster |
+| Patchwork sheep | Patch | CRWV | one patch upside down | one quilt square |
+| Dish-eared fennec | Fen | RDDT | one dented ear dish | signal lights on the ear tips |
+
+Every creature is a soft-vinyl designer toy with a flocked finish and lime only on its signature detail — the pets' own glow, apart from the UI's yellow.
 
 Eight moods, same vocabulary for every species: Ecstatic, Happy, Chill, Nervous, Sulking (hoodie), Night Owl (coffee, blue vignette), Pajamas (nightcap), Hungry (bowl).
 
 ## Asset pipeline
 
-1. Canonical hero render per species (4:5, off-white) — done.
-2. Mood sheet per species referencing the hero + Nova's sheet — in progress.
-3. Transparent cutouts: `gpt_image_2_5` with `background: transparent`, referencing the hero — verified RGBA on Nova.
-4. Crop mood panels from sheets into individual 512px PNGs for the app.
+1. A hero render per species: `gpt_image_2_5`, 4:5, `background: transparent`.
+2. Eight moods per species, each generated with the hero as its reference image so the design holds (1:1, transparent).
+3. An egg per species, referencing the hero for palette and material only, its surface hinting at the creature.
+4. Resized for the app: hero 896×1120, moods 512×512, eggs 410×512.
 5. Motion in code: idle breathing (scale 1→1.02, 3s), blink (every 4–7s), mood switch = squash-and-stretch 200ms, feed = chomp + confetti burst.
 
 ## Copy voice

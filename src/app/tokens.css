@@ -1,42 +1,50 @@
-/* Roost design tokens — source of truth is DESIGN.md. Session-driven: <html data-session="day|night">. */
+/* Roost design tokens — source of truth is DESIGN.md. Session-driven: <html data-session="day|night">.
+   Binance's palette: light while the NYSE trades, dark while it sleeps. */
 :root {
-  --canvas: #F6F5EE;
+  --canvas: #FAFAFA;
   --surface: #FFFFFF;
-  --ink: #111111;
-  --muted: #6B6F66;
-  --line: #E4E3DA;
-  --accent: #C8FF3D;
-  --on-accent: #111111;
-  --up: #178F62;
-  --down: #D6403F;
+  --surface-2: #F5F5F5;
+  --ink: #1E2329;
+  --muted: #707A8A;
+  --line: #EAECEF;
+  --accent: #FCD535;
+  --accent-ink: #C99400;     /* the yellow that still reads as text on white */
+  --on-accent: #202630;
+  --up: #03A66D;
+  --down: #CF304A;
   --glow: none;
-  --grid: none;
-  --radius-card: 28px;
+  --radius-card: 16px;
+  --radius-btn: 12px;
   --radius-pill: 999px;
-  --font-display: "Fredoka", "Nunito", system-ui, sans-serif;
-  --font-body: "Nunito", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  --font-display: var(--font-plex), "IBM Plex Sans", system-ui, sans-serif;
+  --font-body: var(--font-plex), "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: var(--font-plex-mono), "IBM Plex Mono", ui-monospace, Menlo, monospace;
 }
 :root[data-session="night"] {
-  --canvas: #0B0F14;
-  --surface: #131A22;
-  --ink: #F2F4F1;
-  --muted: #8C95A0;
-  --line: #243040;
-  --up: #3ED598;
-  --down: #FF7B7A;
-  --glow: 0 0 28px #C8FF3D66;
-  --grid: radial-gradient(#1A2230 1px, transparent 1px);
+  --canvas: #0B0E11;
+  --surface: #181A20;
+  --surface-2: #1E2329;
+  --ink: #EAECEF;
+  --muted: #848E9C;
+  --line: #2B3139;
+  --accent-ink: #FCD535;
+  --up: #0ECB81;
+  --down: #F6465D;
+  --glow: 0 0 24px #F0B90B59;
 }
 body {
   background: var(--canvas);
-  background-image: var(--grid);
-  background-size: 24px 24px;
   color: var(--ink);
   font-family: var(--font-body);
   transition: background-color .6s ease, color .6s ease;
 }
-.pill { border-radius: var(--radius-pill); background: var(--accent); color: var(--on-accent); font-family: var(--font-display); font-weight: 600; height: 56px; box-shadow: var(--glow); }
-.card { border-radius: var(--radius-card); background: var(--surface); border: 1px solid var(--line); }
-.num  { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+/* In Tailwind's components layer, so a utility on the element (h-10, rounded-…) can still size it. */
+@layer components {
+  .pill { border-radius: var(--radius-btn); background: var(--accent); color: var(--on-accent); font-family: var(--font-display); font-weight: 600; height: 52px; transition: background-color .15s ease, transform .1s ease; }
+  .pill:hover { background: #F0B90B; }
+  .btn-2 { border-radius: var(--radius-btn); border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); font-family: var(--font-display); font-weight: 600; transition: border-color .15s ease; }
+  .btn-2:hover { border-color: var(--muted); }
+  .card { border-radius: var(--radius-card); background: var(--surface); border: 1px solid var(--line); }
+  .num  { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+}
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }

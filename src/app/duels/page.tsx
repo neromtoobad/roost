@@ -58,30 +58,37 @@ export default function Board() {
   const medal = (i: number) => (i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}`);
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-[430px] flex-col px-4 pb-24 pt-[max(12px,env(safe-area-inset-top))] lg:max-w-[820px] lg:px-10 lg:pb-12 lg:pt-8">
-      <h1 className="text-center text-[28px] font-bold" style={{ fontFamily: 'var(--font-display)' }}>Board</h1>
-      <p className="text-center text-[13px]" style={{ color: 'var(--muted)' }}>
+    <main className="mx-auto flex min-h-dvh max-w-[430px] flex-col px-4 pb-24 pt-[max(12px,env(safe-area-inset-top))] lg:min-h-0 lg:max-w-[1200px] lg:px-10 lg:pb-16 lg:pt-8">
+      <div className="lg:flex lg:items-end lg:justify-between lg:gap-6">
+      <div>
+      <h1 className="text-center text-[28px] font-bold lg:text-left lg:text-[36px]" style={{ fontFamily: 'var(--font-display)' }}>Board</h1>
+      <p className="text-center text-[13px] lg:text-left lg:text-[14px]" style={{ color: 'var(--muted)' }}>
         Ranked by real P&amp;L. Nobody reports their own score.
       </p>
+      </div>
 
       {pulse && pulse.actions > 0 && (
-        <p className="mt-2 text-center text-[12px] num" style={{ color: 'var(--muted)' }}>
+        <p className="mt-2 text-center text-[12px] num lg:text-right" style={{ color: 'var(--muted)' }}>
           {pulse.actions} moves in the last 24h
-          {pulse.afterHours > 0 && <> · <span style={{ color: 'var(--accent)' }}>{pulse.afterHours} while the NYSE was shut</span></>}
+          {pulse.afterHours > 0 && <> · <span style={{ color: 'var(--accent-ink)' }}>{pulse.afterHours} while the NYSE was shut</span></>}
         </p>
       )}
+      </div>
 
       {note && (
-        <p className="mt-3 text-center text-[13px]" style={{ color: 'var(--accent)' }} onClick={() => setNote(null)}>{note}</p>
+        <p className="mt-3 text-center text-[13px]" style={{ color: 'var(--accent-ink)' }} onClick={() => setNote(null)}>{note}</p>
       )}
 
+      {/* Desktop: the table on the left, the duels beside it. */}
+      <div className="flex flex-col lg:mt-6 lg:grid lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start lg:gap-8">
       {open.length > 0 && (
-        <section className="mt-5">
-          <h2 className="mb-2 text-[13px] font-bold uppercase tracking-wide" style={{ color: 'var(--muted)' }}>Live duels</h2>
+        <section className="mt-5 lg:order-2 lg:col-start-2 lg:row-start-1 lg:mt-0">
+          <h2 className="mb-2 text-[12px] font-medium uppercase tracking-[.08em]" style={{ color: 'var(--muted)' }}>Live duels</h2>
           <div className="grid gap-2">{open.map((d) => <DuelCard key={d.id} duel={d} mine={mine} />)}</div>
         </section>
       )}
 
+      <div className="lg:col-start-1 lg:row-span-3 lg:row-start-1">
       {rows === null && <p className="mt-8 text-center text-[13px] num" style={{ color: 'var(--muted)' }}>loading…</p>}
 
       {rows?.length === 0 && (
@@ -92,18 +99,23 @@ export default function Board() {
         </div>
       )}
 
-      <ul className="mt-4 grid gap-2">
+      <ul className="mt-4 grid gap-2 empty:hidden lg:mt-0 lg:gap-0 lg:overflow-hidden lg:rounded-[var(--radius-card)] lg:border lg:border-[var(--line)] lg:bg-[var(--surface)]">
+        {rows && rows.length > 0 && (
+          <li className="hidden px-4 py-2.5 text-[12px] lg:grid lg:grid-cols-[32px_44px_minmax(0,1fr)_130px_44px] lg:items-center lg:gap-3" style={{ color: 'var(--muted)', background: 'var(--surface-2)' }}>
+            <span className="text-center">#</span><span /><span>Fledgling</span><span className="text-right">P&amp;L · value</span><span />
+          </li>
+        )}
         {rows?.map((r, i) => {
           const isMine = r.id === mine;
           const up = (r.pnlPct ?? 0) >= 0;
           return (
-            <li key={r.id} className="card flex items-center gap-3 px-3 py-2.5"
-              style={isMine ? { outline: '3px solid var(--accent)' } : undefined}>
+            <li key={r.id} className="card flex items-center gap-3 px-3 py-2.5 lg:grid lg:grid-cols-[32px_44px_minmax(0,1fr)_130px_44px] lg:rounded-none lg:border-0 lg:border-t lg:px-4 lg:py-3"
+              style={isMine ? { outline: '3px solid var(--accent)', outlineOffset: '-3px' } : undefined}>
               <span className="w-6 shrink-0 text-center text-[14px] font-bold num" style={{ color: 'var(--muted)' }}>{medal(i)}</span>
               <img src={petImage(r.species, up ? 'happy' : 'sulking')} alt="" className="h-11 w-11 shrink-0 object-contain" />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[15px] font-bold" style={{ fontFamily: 'var(--font-display)' }}>
-                  {r.name}{isMine && <span className="ml-1 text-[11px]" style={{ color: 'var(--accent)' }}>you</span>}
+                  {r.name}{isMine && <span className="ml-1 text-[11px]" style={{ color: 'var(--accent-ink)' }}>you</span>}
                 </p>
                 <p className="text-[11.5px] num" style={{ color: 'var(--muted)' }}>
                   {PERSONALITIES[r.personality]?.icon} {r.ticker} · day {r.streak}
@@ -120,8 +132,8 @@ export default function Board() {
               </div>
               {!isMine && mine && !busyIds.has(r.id) && !busyIds.has(mine) && (
                 <button onClick={() => onChallenge(r.id)} disabled={busy} aria-label={`Challenge ${r.name}`}
-                  className="shrink-0 rounded-full px-2.5 py-1.5 text-[14px]"
-                  style={{ background: 'var(--bg)', border: '1px solid var(--line)', opacity: busy ? 0.5 : 1 }}>⚔</button>
+                  className="shrink-0 rounded-[8px] px-2.5 py-1.5 text-[14px]"
+                  style={{ background: 'var(--surface-2)', border: '1px solid var(--line)', opacity: busy ? 0.5 : 1 }}>⚔</button>
               )}
             </li>
           );
@@ -129,17 +141,25 @@ export default function Board() {
       </ul>
 
       {rows && rows.length > 0 && (
-        <p className="mt-4 text-center text-[12px]" style={{ color: 'var(--muted)' }}>
+        <p className="mt-4 text-center text-[12px] lg:text-left" style={{ color: 'var(--muted)' }}>
           Tap ⚔ to put yours up against another for 24 hours. Neither of you gets to trade.
         </p>
       )}
+      </div>
 
       {duels.some((d) => d.settledAt) && (
-        <section className="mt-6">
-          <h2 className="mb-2 text-[13px] font-bold uppercase tracking-wide" style={{ color: 'var(--muted)' }}>Settled</h2>
+        <section className="mt-6 lg:order-3 lg:col-start-2 lg:mt-0">
+          <h2 className="mb-2 text-[12px] font-medium uppercase tracking-[.08em]" style={{ color: 'var(--muted)' }}>Settled</h2>
           <div className="grid gap-2">{duels.filter((d) => d.settledAt).map((d) => <DuelCard key={d.id} duel={d} mine={mine} />)}</div>
         </section>
       )}
+
+      <aside className="card hidden px-5 py-4 text-[13px] lg:order-4 lg:col-start-2 lg:block" style={{ color: 'var(--muted)' }}>
+        <p className="text-[12px] font-medium uppercase tracking-[.08em]">How the board works</p>
+        <p className="mt-2">Every Fledgling holding shares is ranked by its return on what it paid for them, priced the same way for everyone.</p>
+        <p className="mt-2">A duel puts two of them side by side for 24 hours. Neither owner can trade during it, so only the rule and the market decide.</p>
+      </aside>
+      </div>
       <Nav />
     </main>
   );

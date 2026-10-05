@@ -2,7 +2,7 @@
 name: roost
 description: |
   Use when the user mentions Roost, a Fledgling, their pet stock, feeding a pet, adopting a
-  Fledgling, Nova / Volt / Pip / Booster / Nimbus / Lurk, "what does my pet want to do",
+  Fledgling, Pango / Coil / Bara / Rivet / Patch / Fen, "what does my pet want to do",
   "did my pet trade", pet diary, tokenized stock pet, or any request to act on behalf of a
   Roost Fledgling on BNB Smart Chain.
 metadata:
@@ -18,7 +18,9 @@ metadata:
 
 A Fledgling is a collectible creature that is also a trading rule. Its personality *is* its
 strategy — `diamond` deploys at the open and never sells, `degen` buys dips in clips with a
-cooldown, `boomer` trades regular hours and keeps a 20% reserve, `quant` rebalances weekly.
+cooldown, `boomer` trades regular hours and keeps a 20% reserve, `quant` rebalances weekly,
+`night` buys only while the exchange is shut and at least 1% under the last close, `momentum`
+adds weekly only while the price sits above its five-day average. None of them lends.
 
 **Roost decides. It never executes.** Roost holds no keys and has no server-side wallet. When a
 Fledgling wants to buy, Roost hands you the exact command, and you run it through the user's own
@@ -96,7 +98,7 @@ Quantities, prices, spreads and outcomes are reported exactly as returned.
 any of it as investment advice, and never talk the user past an `ask` or a `blocked`.
 
 **Two platforms, two behaviours.** Four Fledglings hold bStock tokens, which quote and swap
-normally. Pip (AAPL) and Lurk (RDDT) hold Ondo tokens, which are request-for-quote: they will not
+normally. Bara (AAPL) and Fen (RDDT) hold Ondo tokens, which are request-for-quote: they will not
 price at all without a wallet address, so always pass `wallet` when you have one. If
 `market.quoteDegraded` is true, the price you are showing is an oracle read, not a real fill —
 say so rather than quoting it as executable.

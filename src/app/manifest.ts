@@ -7,8 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: 'Adopt a Fledgling — an AI with its own wallet that invests for you.',
     start_url: '/',
     display: 'standalone',
-    background_color: '#F6F5EE',
-    theme_color: '#C8FF3D',
-    icons: [{ src: '/icon.png', sizes: '1024x1024', type: 'image/png' }],
+    background_color: '#0B0E11',
+    theme_color: '#FCD535',
+    icons: [{ src: '/icon.png', sizes: '512x512', type: 'image/png' }],
   };
 }

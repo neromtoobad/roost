@@ -20,12 +20,15 @@ function plan(personality: string, open: boolean, name: string): string {
   if (personality === 'degen') return `${name} will hunt a 2% dip, at any hour.`;
   if (personality === 'boomer') return open ? `${name} will deploy it now, keeping 20% in reserve.` : `${name} will wait for regular hours. Not before.`;
   if (personality === 'quant') return `${name} will deploy it at the next weekly rebalance.`;
-  return open ? `${name} will deploy it now and lend it out.` : `${name} will deploy it at the open and lend it out.`;
+  if (personality === 'night') return open ? `${name} waits for the close — it only buys while the exchange sleeps.` : `${name} will buy any 1% discount to the last close, tonight.`;
+  if (personality === 'momentum') return `${name} will buy at the next open, if it's above its five-day average.`;
+  return open ? `${name} will deploy it now.` : `${name} will deploy it at the open.`;
 }
 
-/** The same rules for a live pet, which can only ask: Roost cannot sign, and it does not lend. */
+/** The same rules for a live pet, which can only ask: Roost cannot sign. */
 const later: Record<string, string> = {
   diamond: 'buy at the open', degen: 'hunt a 2% dip', boomer: 'buy in regular hours', quant: 'buy at the weekly rebalance',
+  night: 'buy a discount while the exchange sleeps', momentum: 'buy strength at the open',
 };
 
 const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
@@ -116,7 +119,7 @@ export default function FeedPage() {
   };
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-[430px] flex-col px-4 pb-10 pt-[max(12px,env(safe-area-inset-top))] lg:max-w-[1040px] lg:px-10 lg:pb-12 lg:pt-8">
+    <main className="mx-auto flex min-h-dvh max-w-[430px] flex-col px-4 pb-10 pt-[max(12px,env(safe-area-inset-top))] lg:min-h-0 lg:max-w-[1200px] lg:px-10 lg:pb-16 lg:pt-8">
       <div className="grid grid-cols-[40px_1fr_40px] items-center">
         <button onClick={() => router.back()} aria-label="Back" className="text-[22px]">‹</button>
         <span className="justify-self-center rounded-full border px-3 py-1.5 text-[12px] num" style={{ borderColor: 'var(--ink)' }}>
@@ -132,7 +135,7 @@ export default function FeedPage() {
 
       {/* Desktop: the pet and the question on the left, the choices on the right. */}
       <div className="lg:mt-6 lg:grid lg:grid-cols-2 lg:items-center lg:gap-8 xl:gap-14">
-      <div className="lg:rounded-[28px] lg:border lg:border-[var(--line)] lg:bg-[var(--surface)] lg:px-6 lg:py-10">
+      <div className="lg:rounded-[var(--radius-card)] lg:border lg:border-[var(--line)] lg:bg-[var(--surface)] lg:px-6 lg:py-10">
       <div className="relative mx-auto mt-4 grid h-56 w-56 place-items-center lg:mt-0 lg:h-64 lg:w-64 xl:h-80 xl:w-80">
         <motion.img src={petImage(pet.species, face(step, paperDone))} alt="" className="h-52 w-52 object-contain lg:h-60 lg:w-60 xl:h-76 xl:w-76"
           animate={paperDone || step.at === 'done' ? { y: [0, -6, 0] } : {}} transition={{ duration: 0.4 }} />
@@ -148,8 +151,8 @@ export default function FeedPage() {
         <div className="mt-5 grid grid-cols-4 gap-2 lg:mt-0">
           {amounts.map((a) => (
             <button key={a} onClick={() => { setUsd(a); if (step.at === 'stopped') reset(); }} disabled={busy(step) || step.at === 'done'}
-              className="rounded-full py-3 text-[16px] font-bold num"
-              style={amount === a ? { background: 'var(--accent)', color: 'var(--on-accent)', boxShadow: 'var(--glow)' } : { background: 'var(--surface)', border: '1px solid var(--line)' }}>${a}</button>
+              className="rounded-[var(--radius-btn)] py-3 text-[16px] font-semibold num"
+              style={amount === a ? { background: 'var(--accent)', color: 'var(--on-accent)', border: '1px solid var(--accent)' } : { background: 'var(--surface-2)', border: '1px solid var(--line)' }}>${a}</button>
           ))}
         </div>
       )}
@@ -160,8 +163,8 @@ export default function FeedPage() {
           <div className="mt-1.5 grid grid-cols-4 gap-2">
             {([null, 'week', 'fortnight', 'month'] as (Cadence | null)[]).map((c) => (
               <button key={c ?? 'once'} onClick={() => setRepeat(c)} disabled={busy(step) || step.at === 'done'}
-                className="rounded-full py-2 text-[12.5px] font-bold"
-                style={repeat === c ? { background: 'var(--ink)', color: 'var(--canvas)' } : { background: 'var(--surface)', border: '1px solid var(--line)' }}>
+                className="rounded-[var(--radius-btn)] py-2 text-[12.5px] font-semibold"
+                style={repeat === c ? { background: 'var(--ink)', color: 'var(--canvas)', border: '1px solid var(--ink)' } : { background: 'var(--surface-2)', border: '1px solid var(--line)' }}>
                 {c === null ? 'Once' : c === 'week' ? 'Weekly' : c === 'fortnight' ? '2 weeks' : 'Monthly'}
               </button>
             ))}
@@ -190,7 +193,7 @@ export default function FeedPage() {
         <div className="card mt-3 px-4 py-3 text-[13.5px]" style={{ color: line.tone }}>
           <p className="font-semibold leading-snug">{line.text}</p>
           {line.hash && (
-            <a href={bscscan(line.hash)} target="_blank" rel="noreferrer" className="mt-1 inline-block text-[12px] num" style={{ color: 'var(--accent)' }}>
+            <a href={bscscan(line.hash)} target="_blank" rel="noreferrer" className="mt-1 inline-block text-[12px] num" style={{ color: 'var(--accent-ink)' }}>
               View on BscScan ↗
             </a>
           )}

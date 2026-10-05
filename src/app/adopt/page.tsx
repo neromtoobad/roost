@@ -148,14 +148,14 @@ export default function Adopt() {
   };
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-[430px] flex-col px-4 pb-10 pt-[max(12px,env(safe-area-inset-top))] lg:max-w-[1120px] lg:px-10 lg:pb-12 lg:pt-8">
+    <main className="mx-auto flex min-h-dvh max-w-[430px] flex-col px-4 pb-10 pt-[max(12px,env(safe-area-inset-top))] lg:min-h-0 lg:max-w-[1200px] lg:px-10 lg:pb-16 lg:pt-8">
       <div className="flex items-center justify-between gap-2">
         <span className="rounded-full border px-3 py-1.5 text-[12px] num" style={{ borderColor: 'var(--ink)' }}>
           {step === 'egg' ? 'Adopt' : step === 'stock' ? 'Meet the stock' : step === 'litter' ? 'A litter' : step === 'hatch' ? 'Hatching' : 'Name & personality'}
         </span>
         {/* A Fledgling is bound to the wallet connected at adoption. Without one it stays paper,
-            so the pill has to be reachable here — not only after the pet exists. */}
-        <ConnectPill />
+            so the pill has to be reachable here — not only after the pet exists. On desktop it is in the top bar. */}
+        <div className="lg:hidden"><ConnectPill /></div>
       </div>
       {!address && step === 'name' && (
         <p className="mt-2 text-center text-[11.5px]" style={{ color: 'var(--muted)' }}>
@@ -194,7 +194,7 @@ export default function Adopt() {
                     </p>
                   </div>
                   <button onClick={() => void openListing(l)} disabled={loading !== null}
-                    className="shrink-0 rounded-full px-3.5 py-1.5 text-[12px] font-bold"
+                    className="shrink-0 rounded-[8px] px-4 py-1.5 text-[12.5px] font-semibold"
                     style={{ background: 'var(--accent)', color: 'var(--on-accent)', opacity: loading && loading !== l.ticker ? 0.4 : 1 }}>
                     {loading === l.ticker ? (l.tokens.length > 1 ? 'Comparing…' : '…') : 'Pick'}
                   </button>
@@ -263,8 +263,8 @@ export default function Adopt() {
                     return (
                       <button key={o.stock.address} disabled={on || loading !== null}
                         onClick={() => { setLoading(o.stock.address); void showStock(o.stock).finally(() => setLoading(null)); }}
-                        className="rounded-full px-3 py-1.5 text-[12px] font-bold num"
-                        style={on ? { background: 'var(--accent)', color: 'var(--on-accent)' } : { background: 'var(--surface)', border: '1px solid var(--line)' }}>
+                        className="rounded-[8px] px-3 py-1.5 text-[12px] font-semibold num"
+                        style={on ? { background: 'var(--accent)', color: 'var(--on-accent)', border: '1px solid var(--accent)' } : { background: 'var(--surface-2)', border: '1px solid var(--line)' }}>
                         {loading === o.stock.address ? '…' : `${o.stock.tokenSymbol}${o.perShare ? ` · $${o.perShare.toFixed(2)}/share` : ''}`}
                       </button>
                     );

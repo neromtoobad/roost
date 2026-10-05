@@ -4,14 +4,15 @@ import { petImage } from '@/lib/pets';
 import { awayLabel } from '@/lib/engine';
 import { isPaper, type Entry, type PetState } from '@/lib/store';
 
-const ICON: Record<string, string> = { buy: '📈', sell: '🕊', lend: '🏦', yield: '✨', hold: '🤚', ask: '🙋', feed: '🍽', system: '🔔' };
+/** One glyph per diary entry kind, shared with the home screen's recent list. */
+export const ENTRY_ICON: Record<string, string> = { buy: '📈', sell: '🕊', lend: '🏦', yield: '✨', hold: '🤚', ask: '🙋', feed: '🍽', system: '🔔' };
 
 /** A BSC transaction on BscScan. Signatures from the Solana era still resolve on Solscan. */
 export function TxLink({ sig }: { sig: string }) {
   const bsc = sig.startsWith('0x');
   return (
     <a href={bsc ? `https://bscscan.com/tx/${sig}` : `https://solscan.io/tx/${sig}`} target="_blank" rel="noreferrer"
-      className="mt-1 inline-block text-[11.5px] num" style={{ color: 'var(--accent)' }}>
+      className="mt-1 inline-block text-[11.5px] num" style={{ color: 'var(--accent-ink)' }}>
       View on {bsc ? 'BscScan' : 'Solscan'} ↗
     </a>
   );
@@ -29,7 +30,7 @@ export function Report({ pet, fresh, awayMs, price, onClose }: {
     <div className="fixed inset-0 z-30 flex items-end justify-center lg:items-center lg:p-8" style={{ background: 'rgba(0,0,0,.45)' }} onClick={onClose}>
       {/* A bottom sheet on a phone; a dialog in the middle of a desktop screen. */}
       <motion.div onClick={(e) => e.stopPropagation()} initial={{ y: '100%' }} animate={{ y: 0 }} transition={{ type: 'spring', stiffness: 260, damping: 28 }}
-        className="w-full max-w-[430px] rounded-t-[28px] px-5 pb-[max(20px,env(safe-area-inset-bottom))] pt-4 lg:max-w-[520px] lg:rounded-[28px] lg:px-7 lg:pb-7"
+        className="w-full max-w-[430px] rounded-t-[20px] px-5 pb-[max(20px,env(safe-area-inset-bottom))] pt-4 lg:max-w-[520px] lg:rounded-[var(--radius-card)] lg:px-7 lg:pb-7"
         style={{ background: 'var(--surface)', maxHeight: '86dvh', overflowY: 'auto' }}>
         <div className="mx-auto mb-3 h-1 w-10 rounded-full lg:hidden" style={{ background: 'var(--line)' }} />
         <div className="flex items-center gap-3">
@@ -43,13 +44,13 @@ export function Report({ pet, fresh, awayMs, price, onClose }: {
         {(spent > 0 || earned > 0) && (
           <div className={`mt-3 grid gap-2 ${spent > 0 && earned > 0 ? 'grid-cols-2' : 'grid-cols-1'}`}>
             {spent > 0 && (
-              <div className="rounded-[20px] px-3 py-2.5" style={{ background: 'var(--canvas)' }}>
+              <div className="rounded-[var(--radius-card)] px-3 py-2.5" style={{ background: 'var(--canvas)' }}>
                 <p className="text-[11px]" style={{ color: 'var(--muted)' }}>Deployed</p>
                 <p className="text-[19px] font-bold num">${spent.toFixed(2)}</p>
               </div>
             )}
             {earned > 0 && (
-              <div className="rounded-[20px] px-3 py-2.5" style={{ background: 'var(--canvas)' }}>
+              <div className="rounded-[var(--radius-card)] px-3 py-2.5" style={{ background: 'var(--canvas)' }}>
                 <p className="text-[11px]" style={{ color: 'var(--muted)' }}>Earned lending</p>
                 <p className="text-[19px] font-bold num" style={{ color: 'var(--up)' }}>
                   {price ? `+$${(earned * price).toFixed(4)}` : `+${earned.toFixed(5)}`}
@@ -61,8 +62,8 @@ export function Report({ pet, fresh, awayMs, price, onClose }: {
 
         <ul className="mt-3 grid gap-2">
           {fresh.slice(-8).map((f, i) => (
-            <li key={`${f.ts}-${i}`} className="flex items-start gap-3 rounded-[20px] px-3 py-2.5" style={{ background: 'var(--canvas)' }}>
-              <span aria-hidden className="text-[16px] leading-6">{ICON[f.kind] ?? '•'}</span>
+            <li key={`${f.ts}-${i}`} className="flex items-start gap-3 rounded-[var(--radius-card)] px-3 py-2.5" style={{ background: 'var(--canvas)' }}>
+              <span aria-hidden className="text-[16px] leading-6">{ENTRY_ICON[f.kind] ?? '•'}</span>
               <div className="min-w-0 flex-1">
                 <p className="text-[14.5px] font-semibold leading-snug" style={{ fontFamily: 'var(--font-display)' }}>{f.text}</p>
                 <p className="mt-0.5 text-[11px] num" style={{ color: 'var(--muted)' }}>
@@ -101,8 +102,7 @@ export function Ask({ pet, price, onAnswer }: { pet: PetState; price: number | n
       </p>
       <div className="mt-3 flex gap-2">
         <button onClick={() => onAnswer(true)} className="pill flex-1 text-[15px]">{live ? 'Sign it' : `Let ${pet.name.split(' ')[0]}`}</button>
-        <button onClick={() => onAnswer(false)} className="flex-1 rounded-full border py-3 text-[15px] font-bold"
-          style={{ borderColor: 'var(--line)', background: 'var(--surface)', fontFamily: 'var(--font-display)' }}>Not today</button>
+        <button onClick={() => onAnswer(false)} className="btn-2 flex-1 py-3 text-[15px]">Not today</button>
       </div>
     </motion.div>
   );

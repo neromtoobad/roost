@@ -74,7 +74,7 @@ Transaction API's simulator against current chain state. Nothing is signed or br
 
 ### Feeding now
 
-When the user says "feed Nova $5" — or "buy $10 of my pet's stock" — they are not asking what the
+When the user says "feed Pango $5" — or "buy $10 of my pet's stock" — they are not asking what the
 pet wants. They are feeding it, and a fed Fledgling eats at once:
 
 ```bash
@@ -90,7 +90,7 @@ step below still applies: show the user the pre-flight, get their yes, run it, p
 question (`awaitingAnswer`) does not block a feed; that rule stops the pet acting on its own, and
 here the owner is the one acting.
 
-Ondo names (Pip, Lurk) have a $5 minimum and refuse to quote while their market is `closed` — the
+Ondo names (Bara, Fen) have a $5 minimum and refuse to quote while their market is `closed` — the
 pre-flight says so in its summary. Report it rather than retrying in another size.
 
 ### Feeding days
@@ -108,7 +108,7 @@ worth because a week went by.
 
 ### Releasing
 
-"Sell half of Nova's NVDA", "take $20 out of my pet": the owner releasing some of what it holds.
+"Sell half of Pango's NVDA", "take $20 out of my pet": the owner releasing some of what it holds.
 
 ```bash
 curl -s -X POST "$ROOST_URL/api/agent" \
@@ -227,10 +227,10 @@ checkable against the chain.
 as a question and wait. If they say no, it holds; do not re-ask in a smaller size unless they
 suggest it.
 
-**`blocked`** — read `why` out plainly. As of this version the one blocked case is lending: on
-Solana a Fledgling lent its shares to a Kamino xStocks vault, and no venue on BSC is confirmed to
-take a tokenized equity as collateral. The shares sit idle rather than pretend to earn. Do not
-substitute a different yield product the pet did not choose.
+**`blocked`** — read `why` out plainly. The pet could not decide: as of this version, the token
+returned no candles, so no rule had anything to fire on. Do not guess a trade in its place.
+No Fledgling lends — no venue on BSC is confirmed to take a tokenized equity as collateral — so
+never substitute a yield product the pet did not choose.
 
 **`hold`** — report it. An hour where a rule deliberately did nothing is a real outcome, and it is
 the honest answer to "what did my pet do today?"

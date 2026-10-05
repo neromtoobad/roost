@@ -91,7 +91,7 @@ export default function ReleasePage() {
   };
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-[430px] flex-col px-4 pb-10 pt-[max(12px,env(safe-area-inset-top))] lg:max-w-[1040px] lg:px-10 lg:pb-12 lg:pt-8">
+    <main className="mx-auto flex min-h-dvh max-w-[430px] flex-col px-4 pb-10 pt-[max(12px,env(safe-area-inset-top))] lg:min-h-0 lg:max-w-[1200px] lg:px-10 lg:pb-16 lg:pt-8">
       <div className="grid grid-cols-[40px_1fr_40px] items-center">
         <button onClick={() => router.back()} aria-label="Back" className="text-[22px]">‹</button>
         <span className="justify-self-center rounded-full border px-3 py-1.5 text-[12px] num" style={{ borderColor: 'var(--ink)' }}>
@@ -101,7 +101,7 @@ export default function ReleasePage() {
 
       {/* Desktop: the pet and the question on the left, the choices on the right. */}
       <div className="lg:mt-6 lg:grid lg:grid-cols-2 lg:items-center lg:gap-8 xl:gap-14">
-      <div className="lg:rounded-[28px] lg:border lg:border-[var(--line)] lg:bg-[var(--surface)] lg:px-6 lg:py-10">
+      <div className="lg:rounded-[var(--radius-card)] lg:border lg:border-[var(--line)] lg:bg-[var(--surface)] lg:px-6 lg:py-10">
       <div className="mx-auto mt-4 grid h-52 w-52 place-items-center lg:mt-0 lg:h-64 lg:w-64 xl:h-80 xl:w-80">
         <motion.img src={petImage(pet.species, mood)} alt="" className="h-48 w-48 object-contain lg:h-60 lg:w-60 xl:h-76 xl:w-76"
           animate={paperDone || step.at === 'done' ? { y: [0, -8, 0] } : {}} transition={{ duration: 0.5 }} />
@@ -135,8 +135,8 @@ export default function ReleasePage() {
           <div className="mt-4 grid grid-cols-3 gap-2">
             {PORTIONS.map((p) => (
               <button key={p} onClick={() => { setPortion(p); if (step.at === 'stopped') reset(); }} disabled={busy(step) || step.at === 'done'}
-                className="rounded-full py-3 text-[16px] font-bold num"
-                style={portion === p ? { background: 'var(--accent)', color: 'var(--on-accent)', boxShadow: 'var(--glow)' } : { background: 'var(--surface)', border: '1px solid var(--line)' }}>
+                className="rounded-[var(--radius-btn)] py-3 text-[16px] font-semibold num"
+                style={portion === p ? { background: 'var(--accent)', color: 'var(--on-accent)', border: '1px solid var(--accent)' } : { background: 'var(--surface-2)', border: '1px solid var(--line)' }}>
                 {p === 1 ? 'All' : `${p * 100}%`}
               </button>
             ))}
@@ -151,7 +151,7 @@ export default function ReleasePage() {
         <div className="card mt-3 px-4 py-3 text-[13.5px]" style={{ color: line.tone }}>
           <p className="font-semibold leading-snug">{line.text}</p>
           {line.hash && (
-            <a href={bscscan(line.hash)} target="_blank" rel="noreferrer" className="mt-1 inline-block text-[12px] num" style={{ color: 'var(--accent)' }}>
+            <a href={bscscan(line.hash)} target="_blank" rel="noreferrer" className="mt-1 inline-block text-[12px] num" style={{ color: 'var(--accent-ink)' }}>
               View on BscScan ↗
             </a>
           )}

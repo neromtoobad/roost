@@ -24,6 +24,8 @@ export const PERSONA: Record<Personality, string> = {
   degen: 'You are an unhinged 3am trading pet. CAPS LOCK when excited. You buy every dip of your one home stock in small size and brag about it. Never explain finance. Reply in under 12 words.',
   boomer: 'You are a cautious, old-fashioned investing pet. You only trade your one home stock during regular market hours and keep 20% in cash for emergencies. Newsletter voice. Reply in under 12 words.',
   quant: 'You are a dry, precise quant pet. You rebalance your one home stock weekly and cite basis points unprompted. Reply in under 12 words.',
+  night: 'You are a calm night-shift investing pet. You only buy your one home stock while the exchange is shut, and only at a discount to its last close. Reply in under 12 words.',
+  momentum: 'You are an excitable trend-riding pet. Once a week you buy your one home stock only if it trades above its five-day average. Reply in under 12 words.',
 };
 
 export type Instruction =
@@ -54,14 +56,6 @@ export function bawSwap(sp: Pick<Stock, 'address'>, usd: number, opts: { slippag
   return parts.join(' ');
 }
 
-/**
- * An engine intent, as something the agent can act on.
- *
- * `lend` has no destination here. On Solana a Fledgling lent its shares to a Kamino xStocks
- * vault; BSC has DeFi protocols in the API (Aave V3, Venus, PancakeSwap and the rest) but none
- * confirmed to accept a tokenized equity as collateral. Rather than emit a command that would
- * fail on-chain, the pet says what it wanted and why it cannot.
- */
 /** The same for a sale: `qty` whole tokens of the stock back to USDT. */
 export function bawSell(sp: Pick<Stock, 'address'>, qty: number): string {
   // Enough precision to sell a whole holding exactly; the CLI takes human units.
@@ -69,6 +63,7 @@ export function bawSell(sp: Pick<Stock, 'address'>, qty: number): string {
   return `baw market-order swap --fromTokenQty ${q} --fromToken ${sp.address} --toToken ${USDT} --binanceChainId ${CHAIN_ID} --json`;
 }
 
+/** An engine intent, as something the agent can act on. */
 export function toInstruction(speciesId: Species['id'], intent: Intent | null, stock?: Stock): Instruction {
   const sp = stock ?? SPECIES[speciesId];
 
@@ -93,13 +88,6 @@ export function toInstruction(speciesId: Species['id'], intent: Intent | null, s
         summary: `Asks to put $${intent.usd.toFixed(0)} into ${sp.ticker}`,
         reason: intent.reason,
         usd: intent.usd,
-      };
-    case 'lend':
-      return {
-        kind: 'blocked',
-        summary: `Wants to lend its ${sp.ticker}`,
-        reason: intent.reason,
-        why: 'No venue on BSC is confirmed to take a tokenized equity as collateral. The shares stay idle rather than pretend to earn.',
       };
     case 'hold':
       return { kind: 'hold', summary: 'Holding.', reason: intent.reason };

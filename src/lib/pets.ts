@@ -10,7 +10,7 @@
 //   ondo    is request-for-quote. It refuses to quote without a userWalletAddress and
 //           settles through /dex/aggregator/order/submit instead of a plain swap.
 //
-// Four of the six swap; Pip and Lurk go through RFQ, because AAPL and RDDT are not
+// Four of the six swap; Bara and Fen go through RFQ, because AAPL and RDDT are not
 // listed as bStocks. That split is deliberate: it is the honest shape of the market.
 
 export const MOODS = [
@@ -53,42 +53,42 @@ export type Species = {
 
 export const SPECIES: Record<Species['id'], Species> = {
   nova: {
-    id: 'nova', name: 'Nova', species: 'Robot cat', wrongDetail: 'left ear bent',
+    id: 'nova', name: 'Pango', species: 'Circuit pangolin', wrongDetail: 'one scale flipped up',
     company: 'Nvidia', ticker: 'NVDA', tokenSymbol: 'NVDAB', platform: 'bstock',
     address: '0x02fca66c1d1afb4e2a7884261eb00f63598a7436', decimals: 18, preIpo: false,
-    greeting: { chill: 'Sideways. Vibing.', nightowl: "Wall Street sleeps. I don't.", hungry: "Feed me and I'll buy the dip." },
+    greeting: { chill: 'Curled up. Computing.', nightowl: "Wall Street sleeps. I don't.", hungry: "Feed me and I'll roll toward the dip." },
   },
   volt: {
-    id: 'volt', name: 'Volt', species: 'Lightning dog', wrongDetail: 'right ear folded',
+    id: 'volt', name: 'Coil', species: 'Copper axolotl', wrongDetail: 'one gill shorter',
     company: 'Tesla', ticker: 'TSLA', tokenSymbol: 'TSLAB', platform: 'bstock',
     address: '0x5b1910eaad6450e50f816082aa078c41f10c292f', decimals: 18, preIpo: false,
-    greeting: { ecstatic: 'WE ARE SO BACK.', sulking: "Don't look at me." },
+    greeting: { ecstatic: 'FULLY CHARGED.', sulking: 'Low battery. Leave me.' },
   },
   pip: {
-    id: 'pip', name: 'Pip', species: 'Earbud hedgehog', wrongDetail: 'one bent spine',
+    id: 'pip', name: 'Bara', species: 'Shopping capybara', wrongDetail: 'a notch in one ear',
     company: 'Apple', ticker: 'AAPL', tokenSymbol: 'AAPLon', platform: 'ondo',
     address: '0x390a684ef9cade28a7ad0dfa61ab1eb3842618c4', decimals: 18, preIpo: false,
-    greeting: { happy: 'Green day. I bought a hat.', pajamas: 'Markets closed. Snacks open.' },
+    greeting: { happy: 'Green day. I bought a leaf.', pajamas: 'Markets closed. Bath time.' },
   },
   booster: {
-    id: 'booster', name: 'Booster', species: 'Space frog', wrongDetail: 'mismatched eyes, crooked patch',
+    id: 'booster', name: 'Rivet', species: 'Jetpack beaver', wrongDetail: 'one chipped tooth',
     company: 'SpaceX', ticker: 'SPCX', tokenSymbol: 'SPCXB', platform: 'bstock',
     address: '0xbe9d156892e55e7154bcd3cb0fea677f9d3103e1', decimals: 18, preIpo: true,
-    greeting: { nervous: "It's a dip. It's a healthy dip. Right?", chill: 'No closing bell for a private company.' },
+    greeting: { nervous: "It's a dip. I've built through worse.", chill: 'No closing bell for a private company.' },
   },
   nimbus: {
-    // Was OpenAI on Solana. OpenAI is listed by neither bStock nor Ondo, so the cloud keeps
-    // its meaning by renting out compute instead of making the model.
-    id: 'nimbus', name: 'Nimbus', species: 'Cloud', wrongDetail: 'drooping puff',
+    // A woolly sheep reads as a cloud (CoreWeave rents out cloud compute), and wool sewn from many
+    // patches is a basket — which is why ETFs hatch one too.
+    id: 'nimbus', name: 'Patch', species: 'Patchwork sheep', wrongDetail: 'one patch upside down',
     company: 'CoreWeave', ticker: 'CRWV', tokenSymbol: 'CRWVB', platform: 'bstock',
     address: '0x33e7317e17838fee56b10fe8d0b9ca6ca3090c95', decimals: 18, preIpo: false,
-    greeting: { chill: 'I rent out the thunder.', nightowl: "The GPUs don't sleep either." },
+    greeting: { chill: 'A little of everything. Mostly wool.', nightowl: 'Counting stocks instead of sheep.' },
   },
   lurk: {
-    id: 'lurk', name: 'Lurk', species: 'Night owl', wrongDetail: 'one eye half closed',
+    id: 'lurk', name: 'Fen', species: 'Dish-eared fennec', wrongDetail: 'one dented ear dish',
     company: 'Reddit', ticker: 'RDDT', tokenSymbol: 'RDDTon', platform: 'ondo',
     address: '0x4da12f47578ef89c76179b760c778e70b668f80b', decimals: 18, preIpo: false,
-    greeting: { nightowl: 'This is my hour.', chill: 'Reading. Not posting.' },
+    greeting: { nightowl: 'I can hear the market at night.', chill: 'Listening. Not posting.' },
   },
 };
 
@@ -111,12 +111,12 @@ export const isAddress = (s: string): s is `0x${string}` => /^0x[a-fA-F0-9]{40}$
  * Which Fledgling hatches from a stock, by the sector Binance's RWA profile gives its company.
  * Each creature keeps its signature stock and takes in the sector it stands for:
  *
- *   Nova, the robot cat         Technology
- *   Volt, the lightning dog     Energy, Utilities, Basic Materials — things that carry a charge
- *   Pip, the earbud hedgehog    Consumer (cyclical and defensive), Healthcare, Real Estate
- *   Booster, the space frog     Industrials — aerospace, space and defence live here
- *   Nimbus, the cloud           ETFs — a cloud of many stocks — and anything the profile leaves blank
- *   Lurk, the night owl         Communication Services, Financial Services
+ *   Pango, the circuit pangolin   Technology
+ *   Coil, the copper axolotl      Energy, Utilities, Basic Materials — things that carry a charge
+ *   Bara, the shopping capybara   Consumer (cyclical and defensive), Healthcare, Real Estate
+ *   Rivet, the jetpack beaver     Industrials — aerospace, space and defence live here
+ *   Patch, the patchwork sheep    ETFs — many patches, one basket — and anything the profile leaves blank
+ *   Fen, the dish-eared fennec    Communication Services, Financial Services — it listens to the crowd
  *
  * The profile's industry list, sampled across 163 tokens, is exactly those eleven values plus ETF.
  */

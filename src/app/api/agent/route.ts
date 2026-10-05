@@ -53,7 +53,7 @@ export async function POST(req: Request) {
 
   const sp = SPECIES[body.species];
   if (!sp) return NextResponse.json({ error: 'unknown species' }, { status: 400 });
-  if (!['diamond', 'degen', 'boomer', 'quant'].includes(body.personality)) {
+  if (!['diamond', 'degen', 'boomer', 'quant', 'night', 'momentum'].includes(body.personality)) {
     return NextResponse.json({ error: 'unknown personality' }, { status: 400 });
   }
 
