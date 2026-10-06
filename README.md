@@ -53,7 +53,7 @@ A buddy makes it felt rather than explained:
 - **Habits, not hype.** Weekly, fortnightly or monthly **feeding days** (missed ones are skipped, never stacked into a catch-up buy); a free daily **scratch**; a streak that **forgives one missed day a week**; growth from Hatchling to Legend by days visited and feeding days kept — never by returns or deposit size. When a token's share ratio rises, a dividend was reinvested, and the buddy says it grew. Confetti is for hatching and care milestones only.
 - **It keeps going without you.** An hourly worker replays the same deterministic engine against the real hourly tape, keeps paper feeding days, and writes the diary. A buddy waiting on your yes/no is skipped: the permission rule holds when nobody is watching.
 - **Board and duels.** A leaderboard by today's move, all-time P&L or care — the care ranking never counts money — and 24-hour duels between Fledglings that neither owner can trade during, with the top three on a podium and the closest race up front.
-- **A buddy on Telegram.** Feeding-day reminders with a **Sign it** button, the buddy's own buy requests, and `/buddies` to check in. It never trades from the chat.
+- **A buddy on Telegram.** Tap *Remind me on Telegram* under any buddy. Feeding-day reminders with a **Sign it** button, the buddy's own buy requests, and `/buddies` to check in. It never trades from the chat.
 - **Phone and desktop.** A thumb-first phone app with a tab bar; on a wide screen, an exchange-style top bar with the market clock and the wallet, and every page laid out two-up — the buddy standing on its own habitat on a lit stage, beside its numbers, the market and what it did lately.
 
 <p align="center"><img src="docs/img/home-mobile.webp" width="300" alt="Roost on a phone" />&nbsp;&nbsp;&nbsp;<img src="docs/img/feed-mobile.webp" width="300" alt="Feeding a Fledgling on a phone" /></p>
@@ -212,7 +212,7 @@ The Telegram buddy is optional: make a bot with [@BotFather](https://t.me/BotFat
 curl -s -X POST https://roost-agent.up.railway.app/x402 -H 'content-type: application/json' -d '{"prompt":"How far is TSLA from the real share right now?"}'
 ```
 
-**Verified against the live API:** hatching from any listed stock with its company card; the cheaper issuer by real fills; litters and their rebalancing feed; the nest; release with FIFO cost and realized P&L; on-chain holdings; the mood and strategy engines and the diary; the two-source spread; hourly candles on both issuers; the agent intent layer; the seller agent's deliverable across 448 tickers; the cross-issuer comparison; and the pre-flight simulation against live wallets in all four outcomes — would succeed, needs approval, would fail, not simulated. The Telegram buddy was run end to end against a local Postgres and a stand-in Bot API.
+**Verified against the live API:** hatching from any listed stock with its company card; the cheaper issuer by real fills; litters and their rebalancing feed; the nest; release with FIFO cost and realized P&L; on-chain holdings; the mood and strategy engines and the diary; the two-source spread; hourly candles on both issuers; the agent intent layer; the seller agent's deliverable across 448 tickers; the cross-issuer comparison; and the pre-flight simulation against live wallets in all four outcomes — would succeed, needs approval, would fail, not simulated. The Telegram buddy is live: a buddy linked from the app on 6 Oct got its welcome message and answers `/buddies`, and the hourly worker sends its feeding-day reminders.
 
 **Honest gaps.**
 - **A live release (sale) has not been signed yet** — only the buy above. It goes through the same simulate, price-check and receipt path.
@@ -221,4 +221,3 @@ curl -s -X POST https://roost-agent.up.railway.app/x402 -H 'content-type: applic
 - **The managed trial ends 7 Oct, 16:25 UTC.** The Railway copy keeps the agent answering after that, but its ERC-8004 record still points at the trial's address until it is updated.
 - **Ondo request-for-quote fills stop in the web app** with that reason rather than being attempted — typically Ondo names on a weekday in market hours, which includes the all-Ondo Buffett litter. bStock swaps at any hour.
 - **NYSE holidays** still come from Backpack's public API, a Solana-ecosystem venue — the next thing to replace.
-- **The Telegram buddy** needs a bot token to switch on.
