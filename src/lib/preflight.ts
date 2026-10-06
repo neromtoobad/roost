@@ -81,7 +81,8 @@ export type Preflight = {
   simulatedAt: number;
 };
 
-type QuoteRow = { quoteId: string; executionMode?: string; tradeFee?: string; approveTarget?: string; toTokenAmount?: string };
+type QuoteRow = { quoteId: string; executionMode?: string; vendorName?: string; tradeFee?: string; approveTarget?: string; toTokenAmount?: string };
+type RfqPayload = { vendor?: string; orderId?: string; txType?: string; typedDataToSign?: string; signingScheme?: string; signatureData?: string[] };
 type Tx = { from: string; to: string; value: string; data: string; gas: string; gasPrice: string; minReceiveAmount?: string; slippagePercent?: string };
 type Simulation = {
   status?: string;
@@ -131,12 +132,29 @@ async function balances(wallet: string, token?: string): Promise<{ usdt: number 
 /** A transaction for the owner's wallet to sign, exactly as the aggregator built it. */
 export type UnsignedTx = { to: string; data: string; value: string; gas: string };
 
+/** EIP-712 typed data, as `eth_signTypedData_v4` takes it. */
+export type TypedData = {
+  domain: Record<string, unknown>;
+  types: Record<string, { name: string; type: string }[]>;
+  primaryType: string;
+  message: Record<string, unknown>;
+};
+
+/**
+ * A request-for-quote order: nothing to broadcast. The owner signs `typedData`, Roost forwards the
+ * signature to Binance's RFQ desk, and the vendor settles it on-chain (and pays its gas) or lets it
+ * expire. `orderId` is what the desk calls the order when it is submitted.
+ */
+export type RfqOrder = { vendor: string; orderId: string; signingScheme: string | null; typedData: TypedData };
+
 export type BuyPlan = {
   preflight: Preflight;
   /** The swap, present only when the simulation says it would go through. */
   swap: UnsignedTx | null;
   /** An allowance for exactly this amount, present only when that is all that stands in the way. */
   approval: UnsignedTx | null;
+  /** A request-for-quote order to sign instead of a swap, when that is how this trade fills. */
+  order?: RfqOrder | null;
 };
 
 /** Would buying `usd` of this stock go through from `wallet`, right now? */
@@ -173,7 +191,7 @@ async function plan(
     minReceiveQty: null, slippagePct: null, gasUsd: null, usdtBalance: null, bnbBalance: null, tokenBalance: null,
     executionMode: null, spender: null, failReason: null, premiumPct: null, simulatedAt: Date.now(),
   };
-  const only = (preflight: Preflight): BuyPlan => ({ preflight, swap: null, approval: null });
+  const only = (preflight: Preflight): BuyPlan => ({ preflight, swap: null, approval: null, order: null });
   // The gateway's own reason is the useful part ("market is currently closed", "minimum order
   // amount is 5 USD"), so it goes in the sentence, not only in `failReason`.
   const notSimulated = (why: string, failReason: string | null = null): BuyPlan => only({
@@ -233,8 +251,7 @@ async function plan(
           : '';
 
     if (quote.executionMode === 'RFQ') {
-      const rfq = notSimulated('this is a request-for-quote fill, settled from a signed order rather than a transaction, so there is nothing on-chain to simulate before the desk fills it');
-      return { ...rfq, preflight: { ...rfq.preflight, summary: rfq.preflight.summary + priceNote } };
+      return await planOrder({ side, sp, size, wallet, amount, pair, quote, got, held, out, priceNote, notSimulated, only });
     }
 
     // autoSlippage rather than a number of ours: the preflight should not tighten or loosen what
@@ -345,9 +362,11 @@ async function currentAllowance(owner: string, approval: UnsignedTx, token: stri
  * unlimited: it costs the owner a second signature per trade, and in exchange nothing can ever
  * pull more from their wallet than the trade they just agreed to.
  */
-async function approvalFor(token: string, amount: string, router: string): Promise<UnsignedTx | null> {
+async function approvalFor(token: string, amount: string, router: string, vendor?: string): Promise<UnsignedTx | null> {
   const r = await request('GET', '/api/v1/dex/aggregator/approve-transaction', {
-    params: { binanceChainId: CHAIN_ID, tokenContractAddress: token, approveAmount: amount },
+    // An RFQ vendor settles from its own contract (1inch's router, PancakeSwap's Permit2, CoW's
+    // vault relayer), so the allowance has to go there, not to the aggregator's router.
+    params: { binanceChainId: CHAIN_ID, tokenContractAddress: token, approveAmount: amount, ...(vendor ? { vendor } : {}) },
   });
   const row = (r.json as { data?: { data?: string; dexContractAddress?: string; gasLimit?: string }[] } | null)?.data?.[0];
   const data = row?.data ?? '';
@@ -359,4 +378,130 @@ async function approvalFor(token: string, amount: string, router: string): Promi
     && lower(row?.dexContractAddress) === lower(router)
     && approved !== null && approved === BigInt(amount);
   return ok ? { to: token, data, value: '0', gas: row?.gasLimit || '70000' } : null;
+}
+
+// ── request-for-quote ────────────────────────────────────────────────────────────────────
+//
+// Ondo (and at times bStock) can fill through a market maker instead of a pool. The aggregator
+// then answers `executionMode: RFQ`, and `/swap` returns an EIP-712 order instead of a
+// transaction: the owner signs it, `POST /order/submit` hands it to the vendor, and
+// `GET /order/{orderId}` reports FILLED with the settlement's transaction hash. The vendor
+// broadcasts and pays the gas. There is no transaction of ours to simulate, so the checks move:
+//
+//   · price — the same reference check as a swap, already done by the time this runs
+//   · funds — the wallet must hold what it spends; the desk would only fail later
+//   · spender — two sources must agree on the vendor contract the allowance goes to: the order's
+//     own `signatureData` and `/approve-transaction` asked for that vendor
+//   · allowance — exactly this amount, so the signed order can never pull more than the trade
+//   · the order — chain 56, and it trades exactly these two tokens; a receiver, if it names one,
+//     is this wallet. The wallet then shows the owner every field before they sign.
+
+const ZERO = '0x0000000000000000000000000000000000000000';
+
+/** `typedDataToSign` arrives as JSON, JSON in a string, or JSON hex-encoded. A bare EIP-712
+ *  digest (0x1901…) cannot be shown to the owner, so it is refused rather than signed blind. */
+export function parseTypedData(raw: string | undefined): TypedData | null {
+  if (!raw) return null;
+  let text: unknown = raw.trim();
+  try {
+    if (typeof text === 'string' && /^0x[0-9a-f]*$/i.test(text)) {
+      if (text.toLowerCase().startsWith('0x1901')) return null;
+      text = Buffer.from(text.slice(2), 'hex').toString('utf8');
+    }
+    for (let i = 0; i < 2 && typeof text === 'string'; i++) text = JSON.parse(text);
+  } catch {
+    return null;
+  }
+  const t = text as Partial<TypedData> | null;
+  if (!t || typeof t !== 'object' || !t.domain || !t.types || !t.primaryType || !t.message) return null;
+  if (!t.types[t.primaryType]) return null;
+  return t as TypedData;
+}
+
+/** Every address-looking value in the message, with the field it sat under. */
+function addresses(v: unknown, key = '', out: { key: string; value: string }[] = []): { key: string; value: string }[] {
+  if (typeof v === 'string' && /^0x[0-9a-fA-F]{40}$/.test(v)) out.push({ key, value: v.toLowerCase() });
+  else if (Array.isArray(v)) v.forEach((x) => addresses(x, key, out));
+  else if (v && typeof v === 'object') for (const [k, x] of Object.entries(v)) addresses(x, k, out);
+  return out;
+}
+
+/** Why this order should not be put in front of the owner, or null if it matches the trade. */
+export function orderMismatch(td: TypedData, wallet: string, from: string, to: string): string | null {
+  const chain = td.domain.chainId;
+  if (chain !== undefined && Number(chain) !== Number(CHAIN_ID)) return `it is for chain ${String(chain)}, not BSC`;
+  const found = addresses(td.message);
+  const has = (a: string) => found.some((f) => f.value === lower(a));
+  if (!has(from)) return `it does not spend ${abbrev(from)}`;
+  if (!has(to)) return `it does not buy ${abbrev(to)}`;
+  const stranger = found.find((f) => /receiver|recipient|beneficiary/i.test(f.key) && f.value !== lower(wallet) && f.value !== ZERO);
+  if (stranger) return `it pays out to ${abbrev(stranger.value)} (${stranger.key}), not this wallet`;
+  return null;
+}
+
+type OrderInput = {
+  side: 'buy' | 'sell'; sp: Tradable; size: number; wallet: string; amount: string;
+  pair: Record<string, string>; quote: QuoteRow; got: number;
+  held: { usdt: number | null; bnb: number | null; token: number | null };
+  out: Preflight; priceNote: string;
+  notSimulated: (why: string, failReason?: string | null) => BuyPlan;
+  only: (p: Preflight) => BuyPlan;
+};
+
+async function planOrder({ side, sp, size, wallet, amount, pair, quote, got, held, out, priceNote, notSimulated, only }: OrderInput): Promise<BuyPlan> {
+  const buying = side === 'buy';
+  const from = buying ? USDT : sp.address;
+  const to = buying ? sp.address : USDT;
+  const spentSymbol = buying ? 'USDT' : sp.tokenSymbol;
+  out.gasUsd = 0; // the vendor broadcasts the settlement and pays for it
+
+  if (buying && held.usdt !== null && held.usdt < size) {
+    return only({ ...out, status: 'would-fail', summary: `Would fail: the wallet holds ${held.usdt.toFixed(2)} USDT and this buy needs ${size.toFixed(2)}.` });
+  }
+  if (!buying && held.token !== null && held.token < size) {
+    return only({ ...out, status: 'would-fail', summary: `Would fail: the wallet holds ${held.token.toPrecision(4)} ${sp.tokenSymbol} and this sale needs ${size.toPrecision(4)}.` });
+  }
+
+  const s = await request('GET', '/api/v1/dex/aggregator/swap', {
+    params: { quoteId: quote.quoteId, ...pair, autoSlippage: 'true', approveTransaction: 'true' },
+  });
+  const data = (s.json as { data?: { executionMode?: string; rfq?: RfqPayload | null } } | null)?.data;
+  const rfq = data?.rfq;
+  if (!rfq?.typedDataToSign || !rfq.vendor || !rfq.orderId) {
+    return notSimulated('the request-for-quote desk would not build an order', gatewayMsg(s));
+  }
+  const typedData = parseTypedData(rfq.typedDataToSign);
+  if (!typedData) return notSimulated('the request-for-quote order came back in a form a wallet cannot show before signing, so it is not passed on');
+  const bad = orderMismatch(typedData, wallet, from, to);
+  if (bad) return notSimulated('the request-for-quote order does not match this trade, so it is not passed on', bad);
+
+  // Where the allowance goes, from the order itself; `/approve-transaction` must agree.
+  const named = (rfq.signatureData ?? []).map((j) => { try { return JSON.parse(j) as { approveContract?: string }; } catch { return {}; } })
+    .map((x) => x.approveContract).find((a): a is string => /^0x[0-9a-fA-F]{40}$/.test(a ?? ''));
+  const spender = named ?? quote.approveTarget;
+  if (!spender) return notSimulated('the request-for-quote desk did not say which contract settles it');
+  const approval = await approvalFor(from, amount, spender, rfq.vendor);
+  if (!approval) return notSimulated(`Roost could not build an approval that matches this order exactly (to ${abbrev(spender)}, for ${rfq.vendor})`);
+  const allowance = await currentAllowance(wallet, approval, from, spender);
+  out.spender = spender;
+
+  const inText = buying ? `${size.toFixed(2)} USDT` : `${size.toPrecision(4)} ${sp.tokenSymbol}`;
+  const outText = buying ? `about ${got.toPrecision(4)} ${sp.tokenSymbol}` : `about ${got.toFixed(2)} USDT`;
+  if (allowance === null || allowance < BigInt(amount)) {
+    return {
+      preflight: {
+        ...out, status: 'needs-approval',
+        summary: `A request-for-quote order through ${rfq.vendor}: ${inText} for ${outText}. It needs an allowance for ${rfq.vendor}'s settlement contract (${abbrev(spender)}) first, for exactly this much ${spentSymbol}.${priceNote}`,
+      },
+      swap: null, approval, order: null,
+    };
+  }
+  return {
+    preflight: {
+      ...out, status: 'not-simulated',
+      summary: `A request-for-quote order through ${rfq.vendor}: ${inText} for ${outText}. You sign an order, not a transaction; the desk settles it on-chain and pays the gas, or lets it expire and nothing moves. There is nothing of ours to simulate.${priceNote}`,
+    },
+    swap: null, approval: null,
+    order: { vendor: rfq.vendor, orderId: rfq.orderId, signingScheme: rfq.signingScheme ?? null, typedData },
+  };
 }

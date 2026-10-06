@@ -11,6 +11,7 @@
     "check:api": "tsx scripts/check-api.ts",
     "check:quotes": "tsx scripts/check-quotes.ts",
     "check:agent": "tsx scripts/check-agent.ts",
+    "check:rfq": "tsx scripts/check-rfq.ts",
     "dx": "tsx scripts/dx-evidence.ts",
     "cross": "tsx scripts/cross-issuer.ts"
   },

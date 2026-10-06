@@ -1,10 +1,10 @@
 'use client';
 import { useCallback, useRef, useState } from 'react';
-import { getConnection, sendTransaction, switchChain, waitForTransactionReceipt } from 'wagmi/actions';
+import { getConnection, sendTransaction, signTypedData, switchChain, waitForTransactionReceipt } from 'wagmi/actions';
 import { erc20Abi, formatUnits, parseEventLogs, type Hex } from 'viem';
 import { config, BSC_CHAIN_ID } from './chain';
 import { USDT, type Species, type Stock } from './pets';
-import type { BuyPlan, Preflight, UnsignedTx } from './preflight';
+import type { BuyPlan, Preflight, RfqOrder, TypedData, UnsignedTx } from './preflight';
 
 // Feeding a live Fledgling for real, or releasing some of what it holds, from the browser.
 //
@@ -17,6 +17,10 @@ import type { BuyPlan, Preflight, UnsignedTx } from './preflight';
 //   4. receipt              what actually arrived, read from the swap's own Transfer logs
 //
 // Step 4 is the one that goes in the diary. Not the quote and not the simulation: the chain.
+//
+// A request-for-quote fill (Ondo, mostly in market hours) swaps step 3 for an order: the owner
+// signs EIP-712 typed data, /api/trade/order hands it to Binance's RFQ desk, and the vendor
+// settles it on-chain. Step 4 is then read from the vendor's settlement transaction, the same way.
 
 export type BuyStep =
   | { at: 'idle' }
@@ -25,6 +29,8 @@ export type BuyStep =
   | { at: 'approving'; hash: string }
   | { at: 'buy'; preflight: Preflight }
   | { at: 'buying'; hash: string }
+  | { at: 'sign'; preflight: Preflight }
+  | { at: 'settling'; orderId: string }
   | { at: 'done'; hash: string; qty: number; usdt: number }
   | { at: 'stopped'; reason: string; hash?: string };
 
@@ -70,6 +76,44 @@ function why(e: unknown): string {
   return err.shortMessage ?? err.message ?? 'Something went wrong talking to the wallet.';
 }
 
+/** viem wants integers as bigints; the desk sends them as strings. Walk the declared types. */
+function typed(td: TypedData) {
+  const types = Object.fromEntries(Object.entries(td.types).filter(([k]) => k !== 'EIP712Domain'));
+  const coerce = (type: string, v: unknown): unknown => {
+    if (type.endsWith(']')) return Array.isArray(v) ? v.map((x) => coerce(type.slice(0, type.lastIndexOf('[')), x)) : v;
+    if (/^u?int\d*$/.test(type)) return typeof v === 'string' || typeof v === 'number' ? BigInt(v) : v;
+    const fields = types[type];
+    if (fields && v && typeof v === 'object') {
+      const o = v as Record<string, unknown>;
+      return Object.fromEntries(fields.map((f) => [f.name, coerce(f.type, o[f.name])]));
+    }
+    return v;
+  };
+  const domain = { ...td.domain } as Record<string, unknown>;
+  if (domain.chainId !== undefined) domain.chainId = Number(domain.chainId);
+  return { domain, types, primaryType: td.primaryType, message: coerce(td.primaryType, td.message) as Record<string, unknown> };
+}
+
+const TERMINAL = new Set(['FILLED', 'FAILED', 'EXPIRED', 'CANCELLED']);
+
+/** Hand the signed order to the desk and wait for it to settle, or not. */
+async function settle(order: RfqOrder, signature: string, onSubmitted: (id: string) => void): Promise<{ status: string; txHash: string | null; orderId: string }> {
+  const r = await fetch('/api/trade/order', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ orderId: order.orderId, vendor: order.vendor, signingScheme: order.signingScheme, signature, requestId: crypto.randomUUID() }),
+  });
+  const j = (await r.json()) as { orderId?: string; error?: string };
+  if (!r.ok || !j.orderId) throw new Error(j.error ?? `Roost answered HTTP ${r.status}`);
+  onSubmitted(j.orderId);
+  // RFQ orders carry a deadline of minutes; give it five, then say where it stands.
+  for (let i = 0; i < 100; i++) {
+    await sleep(3000);
+    const s = await fetch(`/api/trade/order?id=${encodeURIComponent(j.orderId)}`).then((x) => x.json() as Promise<{ status?: string; txHash?: string | null }>).catch(() => null);
+    if (s?.status && TERMINAL.has(s.status)) return { status: s.status, txHash: s.txHash ?? null, orderId: j.orderId };
+  }
+  return { status: 'PENDING', txHash: null, orderId: j.orderId };
+}
+
 export function useBuy() {
   const [step, setStep] = useState<BuyStep>({ at: 'idle' });
   const reset = useCallback(() => setStep({ at: 'idle' }), []);
@@ -87,7 +131,7 @@ export function useBuy() {
     stopped.current = null;
     let approved = false;
     // What has already left for the chain. After that point "nothing was spent" stops being true.
-    let sent: { hash: string; what: 'approval' | 'buy' } | null = null;
+    let sent: { hash: string; what: 'approval' | 'buy' | 'order' } | null = null;
 
     try {
       // The Fledgling is bound to one wallet. Signing from another would buy into the wrong pocket.
@@ -119,13 +163,32 @@ export function useBuy() {
         }
       }
 
-      if (p.preflight.status !== 'would-succeed' || !p.swap) return stop(p.preflight.summary);
+      let h: string;
+      if (p.order) {
+        // Request-for-quote: an order to sign, settled by the vendor. Nothing leaves the wallet
+        // until the desk fills it, and the allowance caps it at exactly this trade.
+        setStep({ at: 'sign', preflight: p.preflight });
+        const t = typed(p.order.typedData);
+        const sig = await signTypedData(config, { account: wallet as Hex, ...t } as Parameters<typeof signTypedData>[1]);
+        sent = { hash: '', what: 'order' };
+        const res = await settle(p.order, sig, (id) => setStep({ at: 'settling', orderId: id }));
+        if (res.status !== 'FILLED' || !res.txHash) {
+          return res.status === 'PENDING'
+            ? stop(`The order (${res.orderId}) is still with the desk after five minutes. It fills or expires on its own; check your wallet before trying again.`)
+            : stop(`The desk did not fill the order (${res.status.toLowerCase()}), so nothing left your wallet. Prices move; try again in a minute.`);
+        }
+        h = res.txHash;
+        sent = { hash: h, what: 'buy' };
+        setStep({ at: 'buying', hash: h });
+      } else {
+        if (p.preflight.status !== 'would-succeed' || !p.swap) return stop(p.preflight.summary);
 
-      setStep({ at: 'buy', preflight: p.preflight });
-      const h = await send(p.swap, wallet);
-      sent = { hash: h, what: 'buy' };
-      setStep({ at: 'buying', hash: h });
-      const rc = await waitForTransactionReceipt(config, { hash: h, chainId: BSC_CHAIN_ID });
+        setStep({ at: 'buy', preflight: p.preflight });
+        h = await send(p.swap, wallet);
+        sent = { hash: h, what: 'buy' };
+        setStep({ at: 'buying', hash: h });
+      }
+      const rc = await waitForTransactionReceipt(config, { hash: h as Hex, chainId: BSC_CHAIN_ID });
       if (rc.status !== 'success') return stop(`The swap reverted on-chain. The gas is spent; the ${selling ? sp.tokenSymbol : 'USDT'} is not.`, h);
 
       // What actually moved, from the receipt — the only number the diary should carry.
@@ -147,6 +210,7 @@ export function useBuy() {
     } catch (e) {
       const reason = why(e);
       if (sent?.what === 'buy') return stop(`${reason} The ${deal} was already sent — check it on BscScan before trying again.`, sent.hash);
+      if (sent?.what === 'order') return stop(`${reason} The signed order may already be with the desk — check your wallet before trying again.`);
       if (sent && !approved) return stop(`${reason} The approval was sent but not confirmed here — check it on BscScan.`, sent.hash);
       return stop(approved ? `${reason} The approval stays in place, so the next try skips it.` : `${reason} Nothing was spent.`);
     }

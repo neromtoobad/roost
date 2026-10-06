@@ -18,7 +18,7 @@ const PORTIONS = [0.25, 0.5, 1] as const;
 type Price = { price: number | null };
 
 const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
-const busy = (s: BuyStep) => ['checking', 'approve', 'approving', 'buy', 'buying'].includes(s.at);
+const busy = (s: BuyStep) => ['checking', 'approve', 'approving', 'buy', 'buying', 'sign', 'settling'].includes(s.at);
 
 function progress(step: BuyStep, name: string, symbol: string): { text: string; tone: string; hash?: string } | null {
   switch (step.at) {
@@ -28,6 +28,8 @@ function progress(step: BuyStep, name: string, symbol: string): { text: string; 
     case 'approving': return { text: 'Approval confirming on BSC…', tone: 'var(--muted)', hash: step.hash };
     case 'buy': return { text: `Confirm the sale in your wallet. ${step.preflight.summary}`, tone: 'var(--ink)' };
     case 'buying': return { text: 'Sent. Waiting for BSC to confirm it…', tone: 'var(--muted)', hash: step.hash };
+    case 'sign': return { text: `Sign the sale order in your wallet — an order, not a transaction. ${step.preflight.summary}`, tone: 'var(--ink)' };
+    case 'settling': return { text: 'Order signed. The desk is filling it on BSC…', tone: 'var(--muted)' };
     case 'done': return { text: `${name} let go of ${step.qty.toFixed(4)} ${symbol}. $${step.usdt.toFixed(2)} USDT is back in your wallet.`, tone: 'var(--up)', hash: step.hash };
     case 'stopped': return { text: step.reason, tone: 'var(--down)', hash: step.hash };
   }

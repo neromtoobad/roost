@@ -16,9 +16,8 @@ import { listStocks, quotesForStocks, referencePerToken, shareRatio } from './qu
 //   feed  the traded price from the market feed, divided by the ratio. What a paper pet is priced
 //         at anyway, so for a paper pet it is the honest basis, not a fallback.
 //
-// For a live pet the choice also has to be one the web app can sign. Ondo often fills by
-// request-for-quote — a signed order, not a transaction — and the web feed stops on those rather
-// than attempting them. So a cheaper RFQ route loses to a swap route, and the reason says so.
+// Ondo often fills by request-for-quote — an EIP-712 order the owner signs, settled by a market
+// maker — rather than a pool swap. The web app signs both, so both compete on price alone.
 
 export type IssuerOption = {
   stock: Stock;
@@ -139,11 +138,8 @@ export async function chooseIssuer(ticker: string, opts: { wallet?: string; usd?
   const options = await Promise.all(listings.map((s) =>
     option(s, basis, usd, wallet, feed[s.address.toLowerCase()]?.price ?? null)));
 
-  // Cheapest per share first; a swap route beats a request-for-quote one for a live pet, because
-  // the web app can sign the one and not the other.
-  const ranked = options.filter(usable).sort((a, b) => a.perShare! - b.perShare!);
-  const signable = basis === 'fill' ? ranked.filter((o) => o.mode !== 'rfq') : ranked;
-  const pool = signable.length ? signable : ranked;
+  // Cheapest per share first, whether it fills by swap or by request-for-quote.
+  const pool = options.filter(usable).sort((a, b) => a.perShare! - b.perShare!);
   const how = basis === 'fill' ? `for $${usd}, quoted for your wallet` : 'at the traded price';
 
   if (!pool.length) {
@@ -171,11 +167,7 @@ export async function chooseIssuer(ticker: string, opts: { wallet?: string; usd?
   } else {
     reason = `${pick.stock.tokenSymbol} costs ${savingPct!.toFixed(2)}% less per share than ${next.stock.tokenSymbol} ${how}.`;
   }
-  // The cheaper route it passed over, and why — it should never look like it missed it.
-  const skipped = ranked.find((o) => o.mode === 'rfq' && o.perShare! < pick.perShare!);
-  if (basis === 'fill' && skipped) {
-    reason += ` ${skipped.stock.tokenSymbol} was ${((pick.perShare! / skipped.perShare! - 1) * 100).toFixed(2)}% cheaper, but it fills by request-for-quote, which the web app cannot sign yet.`;
-  }
+  if (basis === 'fill' && pick.mode === 'rfq') reason += ' It fills by request-for-quote: you sign an order and a market maker settles it.';
 
   return { ticker: t, company, pick: pick.stock, options, basis, usd: basis === 'fill' ? usd : null, savingPct, reason, asOf: now };
 }

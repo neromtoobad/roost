@@ -138,8 +138,8 @@ curl -s "$ROOST_URL/api/issuer?ticker=NVDA&wallet=0xYourAgenticWalletAddress&usd
 
 `pick` is the token to use, `reason` is one sentence to show the owner, `options[]` carries each
 issuer's `perShare` and why any was left out. With a `wallet` the comparison is real aggregator fills
-at that size; without one it is the traded price. A request-for-quote route is passed over for a
-swap route even when slightly cheaper, and `reason` says so — keep that sentence when you relay it.
+at that size; without one it is the traded price. Swap and request-for-quote routes compete on price
+alone; when the pick fills by request-for-quote, `reason` says so — keep that sentence when you relay it.
 
 ### Feeding a litter
 

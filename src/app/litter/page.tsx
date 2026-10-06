@@ -28,7 +28,7 @@ const AMOUNTS = { paper: [20, 50, 100, 200], live: [25, 50, 100, 200] } as const
 const MIN_LIVE = 6;
 
 const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
-const busy = (s: BuyStep) => ['checking', 'approve', 'approving', 'buy', 'buying'].includes(s.at);
+const busy = (s: BuyStep) => ['checking', 'approve', 'approving', 'buy', 'buying', 'sign', 'settling'].includes(s.at);
 
 function stepLine(step: BuyStep): string {
   switch (step.at) {
@@ -37,6 +37,8 @@ function stepLine(step: BuyStep): string {
     case 'approving': return 'Approval confirming on BSC…';
     case 'buy': return `Confirm the buy. ${step.preflight.summary}`;
     case 'buying': return 'Sent. Waiting for BSC…';
+    case 'sign': return `Sign the order in your wallet. ${step.preflight.summary}`;
+    case 'settling': return 'Order signed. The desk is filling it…';
     case 'done': return 'Ate.';
     case 'stopped': return step.reason;
     default: return '';

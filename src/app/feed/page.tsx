@@ -45,7 +45,7 @@ const later: Record<string, string> = {
 };
 
 const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
-const busy = (s: BuyStep) => ['checking', 'approve', 'approving', 'buy', 'buying'].includes(s.at);
+const busy = (s: BuyStep) => ['checking', 'approve', 'approving', 'buy', 'buying', 'sign', 'settling'].includes(s.at);
 
 /** One line for where the real buy has got to, in the order the wallet will see it. */
 function progress(step: BuyStep, name: string, ticker: string): { text: string; tone: string; hash?: string } | null {
@@ -56,6 +56,8 @@ function progress(step: BuyStep, name: string, ticker: string): { text: string; 
     case 'approving': return { text: 'Approval confirming on BSC…', tone: 'var(--muted)', hash: step.hash };
     case 'buy': return { text: `Confirm the buy in your wallet. ${step.preflight.summary}`, tone: 'var(--ink)' };
     case 'buying': return { text: 'Bought. Waiting for BSC to confirm it…', tone: 'var(--muted)', hash: step.hash };
+    case 'sign': return { text: `Sign the order in your wallet — an order, not a transaction. ${step.preflight.summary}`, tone: 'var(--ink)' };
+    case 'settling': return { text: 'Order signed. The desk is filling it on BSC…', tone: 'var(--muted)' };
     case 'done': return { text: `${name} ate. ${step.qty.toFixed(4)} ${ticker} is in your wallet.`, tone: 'var(--up)', hash: step.hash };
     case 'stopped': return { text: step.reason, tone: 'var(--down)', hash: step.hash };
   }
