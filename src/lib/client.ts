@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useSyncExternalStore } from 'react';
 import { isNight, nyseSession, type Session } from './session';
 
 // Browser-only state exposed through useSyncExternalStore, so the server snapshot is stable
@@ -61,12 +61,6 @@ export function setLocal(key: string, value: string) {
   window.dispatchEvent(new Event(LOCAL_EVENT));
 }
 
-// NYSE closure dates, fetched once per page load and shared by every screen that asks.
-let holidaysLoad: Promise<Set<string>> | null = null;
-const loadHolidays = () => (holidaysLoad ??= fetch('/api/holidays')
-  .then((r) => r.json()).then((j: { dates?: string[] }) => new Set(j.dates ?? []))
-  .catch(() => new Set<string>()));
-
 /**
  * The NYSE session the whole app keeps time by: day theme while it trades, night while it sleeps.
  * `?night=1` and `?day=1` force a side, for demos and screenshots.
@@ -74,12 +68,6 @@ const loadHolidays = () => (holidaysLoad ??= fetch('/api/holidays')
 export function useMarketSession(): { session: Session; night: boolean } {
   const now = useNow();
   const q = useSearch();
-  const [holidays, setHolidays] = useState<Set<string>>();
-  useEffect(() => {
-    let alive = true;
-    void loadHolidays().then((h) => { if (alive) setHolidays(h); });
-    return () => { alive = false; };
-  }, []);
-  const session: Session = q.get('night') ? 'overnight' : q.get('day') ? 'regular' : nyseSession(now ? new Date(now) : new Date(), holidays);
+  const session: Session = q.get('night') ? 'overnight' : q.get('day') ? 'regular' : nyseSession(now ? new Date(now) : new Date());
   return { session, night: isNight(session) };
 }

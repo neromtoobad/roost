@@ -112,6 +112,7 @@ invoke_url = "https://bnbagent-api.bnbchain.world/v1/rt/01M46E48D2M9ZZG1F8W48C3S
 last_deploy_at = "2026-10-05T16:43:38Z"
 
 [identity]
-endpoint = "https://bnbagent-api.bnbchain.world/v1/rt/01M46E48D2M9ZZG1F8W48C3SWE/.well-known/agent-card.json"
-registered_at = "2026-10-05T16:26:40.528Z"
+endpoint = "https://roost-agent.up.railway.app/.well-known/agent-card.json"
+registered_at = "2026-10-06T07:06:42.989Z"
 agent_id = 2565
+last_register_tx = "0x1942a4c130d47fae1cd52e6573e474d530a8ca0d7ddc27ea4d0afd8cebd9cb60"

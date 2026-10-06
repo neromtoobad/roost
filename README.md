@@ -30,7 +30,7 @@ A tokenized stock trades every hour of the week. The exchange behind it is open 
 
 A buddy makes it felt rather than explained:
 
-- **It lives on the market's clock.** The app has a day and a night in Binance's colours — its light theme while the NYSE trades, its dark one while it sleeps — switched by the real session, holidays included. At the close the room goes dark and its stage lights up. There is a mood only a 24/7 chain can have — **Night Owl**: *"Wall Street sleeps. I don't."*
+- **It lives on the market's clock.** The app has a day and a night in Binance's colours — its light theme while the NYSE trades, its dark one while it sleeps — switched by the real session, holidays and 1 p.m. early closes included (worked out from the NYSE's own rules, with no outside calendar). At the close the room goes dark and its stage lights up. There is a mood only a 24/7 chain can have — **Night Owl**: *"Wall Street sleeps. I don't."*
 - **Its mood is the market.** Eight moods from the live print, the session and how hungry it is. Hunger and session outrank price, so care is never masked by a green day.
 - **Its personality is its strategy.** 💎 *Diamond Hands* deploys at every open and never sells. ⚡ *Degen* hunts 2% dips at any hour. 🕰 *Boomer* trades regular hours only and keeps 20% back. 📊 *Quant* rebalances weekly and cites basis points. 🌙 *Night Shift* buys only while Wall Street sleeps, and only under the last close. 🏄 *Trend Rider* adds weekly, and only to a stock already above its five-day average.
 - **It rewards habits, not hype.** Feeding days, a streak that forgives a missed day, growth from care — and no confetti for trading.
@@ -206,7 +206,7 @@ The Telegram buddy is optional: make a bot with [@BotFather](https://t.me/BotFat
 
 **Signed on BSC mainnet:** the first live feed — a Fledgling named Pango, $5.00 USDT into 0.0212 `NVDAB`, simulated against the wallet first and signed in the web app on Monday 5 Oct at 06:00 UTC, with the NYSE shut ([BscScan](https://bscscan.com/tx/0x2411ac8db22eae81d3017afbf75536593ddd82941f904a49cd564d0762191bb1)). Its diary line was written from the receipt.
 
-**Agent Studio seller, deployed:** `bag deploy --provider bnb` put it on the BNB Chain managed platform ([agent card](https://bnbagent-api.bnbchain.world/v1/rt/01M46E48D2M9ZZG1F8W48C3SWE/.well-known/agent-card.json)) and registered it as ERC-8004 [agent #2565](https://testnet.bscscan.com/nft/0x8004A818BFB912233c491871b3d84c89A494BD9e/2565), owned by the agent's own wallet. The managed trial lasts 48 hours, so the same code and wallet also run on Railway at [roost-agent.up.railway.app](https://roost-agent.up.railway.app/.well-known/agent-card.json), up through judging. Ask it about any ticker:
+**Agent Studio seller, deployed:** `bag deploy --provider bnb` put it on the BNB Chain managed platform ([agent card](https://bnbagent-api.bnbchain.world/v1/rt/01M46E48D2M9ZZG1F8W48C3SWE/.well-known/agent-card.json)) and registered it as ERC-8004 [agent #2565](https://testnet.bscscan.com/nft/0x8004A818BFB912233c491871b3d84c89A494BD9e/2565), owned by the agent's own wallet. The managed trial lasts 48 hours, so the same code and wallet also run on Railway at [roost-agent.up.railway.app](https://roost-agent.up.railway.app/.well-known/agent-card.json), up through judging, and the ERC-8004 record now points there ([update tx](https://testnet.bscscan.com/tx/0x1942a4c130d47fae1cd52e6573e474d530a8ca0d7ddc27ea4d0afd8cebd9cb60), signed by the agent's wallet). Ask it about any ticker:
 
 ```bash
 curl -s -X POST https://roost-agent.up.railway.app/x402 -H 'content-type: application/json' -d '{"prompt":"How far is TSLA from the real share right now?"}'
@@ -218,6 +218,4 @@ curl -s -X POST https://roost-agent.up.railway.app/x402 -H 'content-type: applic
 - **A live release (sale) has not been signed yet** — only the buy above. It goes through the same simulate, price-check and receipt path.
 - **No trade has gone through the Agentic Wallet yet.** The skill and `baw` CLI are installed and Roost returns simulated `baw` commands, but the Binance App still shows the Agentic Wallet as "coming soon" for this account, so sign-in cannot complete.
 - **The seller's free LLM tier is refusing calls** ("Too Many Requests" on Pieverse's `auto/free`), so for now it answers with Roost's measured report and says the commentary is missing — the numbers never came from the model. A paid model needs Pieverse credit.
-- **The managed trial ends 7 Oct, 16:25 UTC.** The Railway copy keeps the agent answering after that, but its ERC-8004 record still points at the trial's address until it is updated.
 - **Ondo request-for-quote fills stop in the web app** with that reason rather than being attempted — typically Ondo names on a weekday in market hours, which includes the all-Ondo Buffett litter. bStock swaps at any hour.
-- **NYSE holidays** still come from Backpack's public API, a Solana-ecosystem venue — the next thing to replace.
